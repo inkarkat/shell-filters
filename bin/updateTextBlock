@@ -67,9 +67,10 @@ cleanup()
 }
 [ "$DEBUG" ] || trap 'cleanup' 0
 
+isFailure=
 for file
 do
-    cp "$file" "$TMPFILE" || { echo >&2 "ERROR: Failed to process ${file}."; continue; }
+    cp "$file" "$TMPFILE" || { isFailure='true'; echo >&2 "ERROR: Failed to process ${file}."; continue; }
     sed -ne "
 /^${beginMarker}\$/{
 =
@@ -81,17 +82,16 @@ x
 /^${beginMarker}\$/=
 }
 " "$TMPFILE" | {
-set -x
 	read startLine
 	read endLine
 	if [ "$endLine" ]; then
-	    sed -i -e "${startLine},${endLine}d" "$TMPFILE"
 	    sed -i -e "
-${startLine}a\\
+${endLine}a\\
 ${beginMarker}
-${startLine}r $updateFile
-${startLine}a\\
+${endLine}r $updateFile
+${endLine}a\\
 ${endMarker}
+${startLine},${endLine}d
 " "$TMPFILE"
 	else
 	    sed -i -e "
@@ -101,7 +101,7 @@ ${beginMarker}
 \$a\\
 ${endMarker}
 " "$TMPFILE"
-	fi
-	cat "$TMPFILE" ;
+	fi || { isFailure='true'; echo >&2 "ERROR: Failed to process ${file} in the temporary location."; continue; } 
+	mv "$TMPFILE" "$file" || { isFailure='true'; echo >&2 "ERROR: Failed to update ${file}."; continue; }
     }
 done
