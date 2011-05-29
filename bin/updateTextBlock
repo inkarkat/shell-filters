@@ -1,0 +1,107 @@
+#!/bin/sh
+
+printShortUsage()
+{
+    cat <<SHORTHELPTEXT
+    Usage: "$(basename "$1")" -u|--update inputfile [-m|--marker markertext | ( -b|--begin-marker text -e|--end-marker text )] file [, ...] [-?|-h|--help]
+SHORTHELPTEXT
+}
+printUsage()
+{
+    # This is the short help when launched with no or incorrect arguments. 
+    # It is printed to stderr to avoid accidental processing. 
+    printShortUsage "$1" >&2
+    cat >&2 <<MOREHELP
+Try "$(basename "$1")" --help for more information.
+MOREHELP
+}
+printLongUsage()
+{
+    # This is the long "man page" when launched with the help argument. 
+    # It is printed to stdout to allow paging with 'more'. 
+    cat <<HELPDESCRIPTION
+Update a block of text delimited by markers with text read from an inputfile. 
+HELPDESCRIPTION
+    echo
+    printShortUsage "$1"
+    cat <<HELPTEXT
+    --update|-u	inputfile	Update with the contents of inputfile. 
+    --marker|-m markertext	Contents are framed by lines containing markertext,
+    				with appended -BEGIN and -END. Default is 
+				# INCLUDED-CONTENT
+    --begin-marker|-b text	Begin of contents is framed by a line containing text. 
+    --end-marker|-e text	End of contents is framed by a line containing text. 
+
+Example:
+"$(basename "$1")" -u myinput /tmp/foobar
+HELPTEXT
+}
+
+updateFile=
+beginMarker='# INCLUDED-CONTENT-BEGIN'
+endMarker='# INCLUDED-CONTENT-END'
+isCustomBeginMarker=
+isCustomEndMarker=
+while [ $# -ne 0 ]
+do
+    case "$1" in
+	--help|-h|-\?)	shift; printLongUsage "$0"; exit 0;;
+	--)		shift; break;;
+	--update|-u)	shift; updateFile="$1"; shift;;
+	--marker|-m)	shift; beginMarker="$1"; endMarker="$1"; shift;;
+	--begin-marker|-b)	shift; beginMarker="$1"; isCustomBeginMarker='true'; shift;;
+	--end-marker|-e)	shift; endMarker="$1"; isCustomEndMarker='true'; shift;;
+	-*)		{ echo "ERROR: Unknown option \"$1\"!"; echo; printShortUsage "$0"; } >&2; exit 2;;
+	*)		break;;
+    esac
+done
+[ $# -eq 0 ] && { echo "ERROR: Must pass file(s) to process."; printUsage "$0"; exit 2; }
+[ "$updateFile" ] || { echo >&2 "ERROR: Must specify inputfile used for the update."; printUsage "$0"; exit 2; }
+[ "$isCustomBeginMarker" -a ! "$isCustomEndMarker" -o ! "$isCustomBeginMarker" -a "$isCustomEndMarker" ] && { echo >&2 "ERROR: Must specify both begin and end markers."; printUsage "$0"; exit 2; }
+
+
+TMPFILE=$(mktemp --tmpdir "$(basename -- "$0")-XXXXXX" 2>/dev/null | echo "${TEMP:-/tmp}/$(basename -- "$0").$$")
+cleanup()
+{
+	rm -f "$TMPFILE" 2>/dev/null
+}
+[ "$DEBUG" ] || trap 'cleanup' 0
+
+for file
+do
+    cp "$file" "$TMPFILE" || { echo >&2 "ERROR: Failed to process ${file}."; continue; }
+    sed -ne "
+/^${beginMarker}\$/{
+=
+h
+b
+}
+/^${endMarker}\$/{
+x
+/^${beginMarker}\$/=
+}
+" "$TMPFILE" | {
+set -x
+	read startLine
+	read endLine
+	if [ "$endLine" ]; then
+	    sed -i -e "${startLine},${endLine}d" "$TMPFILE"
+	    sed -i -e "
+${startLine}a\\
+${beginMarker}
+${startLine}r $updateFile
+${startLine}a\\
+${endMarker}
+" "$TMPFILE"
+	else
+	    sed -i -e "
+\$a\\
+${beginMarker}
+\$r $updateFile
+\$a\\
+${endMarker}
+" "$TMPFILE"
+	fi
+	cat "$TMPFILE" ;
+    }
+done
