@@ -1,4 +1,25 @@
 #!/bin/sh
+###############################################################################
+##
+# FILE: 	updateTextBlock
+# PRODUCT:	tools
+# AUTHOR: 	/^--
+# DATE CREATED:	30-May-2011
+#
+###############################################################################
+# CONTENTS: 
+#   
+# REMARKS: 
+#
+# TODO: 
+#   - Implement option to remove content and markers. 
+#   - Implement option where to place content when no marker yet. 
+#   
+# FILE_SCCS = "@(#)updateTextBlock	001	(30-May-2011)	tools";
+#
+# REVISION	DATE		REMARKS 
+#	001	30-May-2011	file creation
+###############################################################################
 
 printShortUsage()
 {
@@ -27,7 +48,7 @@ HELPDESCRIPTION
     cat <<HELPTEXT
     --update|-u	inputfile	Update with the contents of inputfile. 
     --marker|-m markertext	Contents are framed by lines containing markertext,
-    				with appended -BEGIN and -END. Default is 
+				with appended -BEGIN and -END. Default is 
 				# INCLUDED-CONTENT
     --begin-marker|-b text	Begin of contents is framed by a line containing text. 
     --end-marker|-e text	End of contents is framed by a line containing text. 
@@ -45,14 +66,14 @@ isCustomEndMarker=
 while [ $# -ne 0 ]
 do
     case "$1" in
-	--help|-h|-\?)	shift; printLongUsage "$0"; exit 0;;
-	--)		shift; break;;
-	--update|-u)	shift; updateFile="$1"; shift;;
-	--marker|-m)	shift; beginMarker="$1"; endMarker="$1"; shift;;
+	--help|-h|-\?)		shift; printLongUsage "$0"; exit 0;;
+	--)			shift; break;;
+	--update|-u)		shift; updateFile="$1"; shift;;
+	--marker|-m)		shift; beginMarker="$1"; endMarker="$1"; shift;;
 	--begin-marker|-b)	shift; beginMarker="$1"; isCustomBeginMarker='true'; shift;;
 	--end-marker|-e)	shift; endMarker="$1"; isCustomEndMarker='true'; shift;;
-	-*)		{ echo "ERROR: Unknown option \"$1\"!"; echo; printShortUsage "$0"; } >&2; exit 2;;
-	*)		break;;
+	-*)			{ echo "ERROR: Unknown option \"$1\"!"; echo; printShortUsage "$0"; } >&2; exit 2;;
+	*)			break;;
     esac
 done
 [ $# -eq 0 ] && { echo "ERROR: Must pass file(s) to process."; printUsage "$0"; exit 2; }
@@ -101,7 +122,9 @@ ${beginMarker}
 \$a\\
 ${endMarker}
 " "$TMPFILE"
-	fi || { isFailure='true'; echo >&2 "ERROR: Failed to process ${file} in the temporary location."; continue; } 
-	mv "$TMPFILE" "$file" || { isFailure='true'; echo >&2 "ERROR: Failed to update ${file}."; continue; }
-    }
+	fi || { echo >&2 "ERROR: Failed to process ${file} in the temporary location."; exit 1; } 
+	cp "$TMPFILE" "$file" || { echo >&2 "ERROR: Failed to update ${file}."; exit 1; }
+    } || { isFailure='true'; continue; }
 done
+
+[ ! "$isFailure" ]
