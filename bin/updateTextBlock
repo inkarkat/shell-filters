@@ -17,9 +17,11 @@
 #   - Allow to use stdin for either inputfile or file. 
 #   - Check that inputfile doesn't contain the end marker. 
 #   
-# FILE_SCCS = "@(#)updateTextBlock	002	(31-May-2011)	tools";
+# FILE_SCCS = "@(#)updateTextBlock	003	(22-Jun-2011)	tools";
 #
 # REVISION	DATE		REMARKS 
+#	003	22-Jun-2011	FIX: Typo in TMPFILE resolution make it always
+#				use the fallback. 
 #	002	31-May-2011	Correct help formatting. 
 #				Add check for existing inputfile, as sed
 #				silently ignores this. 
@@ -92,7 +94,7 @@ done
 [ "$isCustomBeginMarker" -a ! "$isCustomEndMarker" -o ! "$isCustomBeginMarker" -a "$isCustomEndMarker" ] && { echo >&2 "ERROR: Must specify both begin and end markers."; printUsage "$0"; exit 2; }
 
 
-TMPFILE=$(mktemp --tmpdir "$(basename -- "$0")-XXXXXX" 2>/dev/null | echo "${TEMP:-/tmp}/$(basename -- "$0").$$")
+TMPFILE=$(mktemp --tmpdir "$(basename -- "$0")-XXXXXX" 2>/dev/null || echo "${TEMP:-/tmp}/$(basename -- "$0").$$")
 cleanup()
 {
 	rm -f "$TMPFILE" 2>/dev/null
