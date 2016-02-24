@@ -1,0 +1,3 @@
+#!/bin/sh
+# Source: http://www.debian-administration.org/article/616/Hiding_comments_in_configuration_files
+exec grep -a -v -e '^[[:space:]]*#\|^[^[:print:]]*$' "$@"
