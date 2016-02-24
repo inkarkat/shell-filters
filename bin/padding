@@ -1,0 +1,6 @@
+#!/bin/sh
+# Add one line of padding before and after output when there is actually output.
+exec sed -e '1i\
+
+$a\
+'
