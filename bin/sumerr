@@ -1,0 +1,16 @@
+#!/bin/bash
+
+set -e
+
+TMPFILE=$(mktemp --tmpdir "$(basename -- "$0")-XXXXXX" 2>/dev/null || echo "${TEMP:-/tmp}/$(basename -- "$0").$$")
+finally()
+{
+    if [ -s "$TMPFILE" ]; then
+	echo -e "\\n\\e[01;31m=== ERRORS ==="
+	cat "$TMPFILE"
+    fi
+    rm -f "$TMPFILE" 2>/dev/null
+}
+trap 'finally' INT TERM EXIT
+
+"$@" 2> >(while read -r line; do echo -e "\\e[01;31m${line}\\e[0m"; done | tee "$TMPFILE")
