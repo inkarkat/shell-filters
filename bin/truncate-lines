@@ -49,7 +49,7 @@ consider=
 currentMatch=
 isElseDelete=
 typeset -a matches=()
-typeset -a allSedArgumens=()
+typeset -a allSedArguments=()
 typeset -A matchSedArgumentNum=
 typeset -A matchSedHasIArgument=
 typeset -A matchSedHasExpression=
@@ -59,17 +59,17 @@ do
 	--help|-h|-\?)	shift; printLongUsage "$0"; exit 0;;
 	--verbose|-v)	shift; isVerbose=t;;
 	--consider)	shift; consider="$1"; shift;;
-	--match)	shift; currentMatch="$1"; matches+=("$1"); matchSedArgumentNum["$1"]=0; shift;;
-	--else)		shift; currentMatch="$elseMatch"; matches+=("$elseMatch"); matchSedArgumentNum["$elseMatch"]=0;;
+	--match)	shift; matches+=("$1");         currentMatch="${1//\\/}";  matchSedArgumentNum["$currentMatch"]=0; shift;;  # XXX: Somehow need to remove backslashes from associative array keys.
+	--else)		shift; matches+=("$elseMatch"); currentMatch="$elseMatch"; matchSedArgumentNum["$elseMatch"]=0;;
 	--else-delete)	shift; isElseDelete=t;;
 	# sed arguments
-	-i*)					allSedArgumens+=("$1");      let matchSedArgumentNum["$currentMatch"]+=1; matchSedHasIArgument["$currentMatch"]=t; shift;;
-	-n|--regexp-extended|-r|--null-data|-z)	allSedArgumens+=("$1");      let matchSedArgumentNum["$currentMatch"]+=1; shift;;
-	-e|-f)					allSedArgumens+=("$1" "$2"); let matchSedArgumentNum["$currentMatch"]+=2; matchSedHasExpression["$currentMatch"]=t; shift; shift;;
+	-i*)					allSedArguments+=("$1");      let matchSedArgumentNum["$currentMatch"]+=1; matchSedHasIArgument["$currentMatch"]=t; shift;;
+	-n|--regexp-extended|-r|--null-data|-z)	allSedArguments+=("$1");      let matchSedArgumentNum["$currentMatch"]+=1; shift;;
+	-e|-f)					allSedArguments+=("$1" "$2"); let matchSedArgumentNum["$currentMatch"]+=2; matchSedHasExpression["$currentMatch"]=t; shift; shift;;
 	--)		shift; break;;
 	-*)		{ echo "ERROR: Unknown option \"$1\"!"; echo; printShortUsage "$0"; } >&2; exit 2;;
 	*)		if [ "$currentMatch" ] && [ ! "${matchSedHasExpression["$currentMatch"]}" ]; then
-			    allSedArgumens+=("$1")
+			    allSedArguments+=("$1")
 			    let matchSedArgumentNum["$currentMatch"]+=1
 			    matchSedHasExpression["$currentMatch"]=t
 			    shift
@@ -81,11 +81,21 @@ do
 done
 [ $# -eq 0 ] && { printUsage "$0"; exit 2; }
 
+
+
+sedWrapper()
+{
+#### echo >&2 "---- sed $*"
+    sed "$@" && return 0
+    local status=$?
+    printf '%s%s\n' "$PS4" "$*"
+    return $status
+}
 sedMatch()
 {
-    address=$1; shift
-    filespec=$1; shift
-    [ "$(sed -n "${address}p" "$filespec")" ]
+    local address=$1; shift
+    local filespec=$1; shift
+    [ "$(sedWrapper -n "${address}{p; q}" "$filespec")" ]
 }
 verbosePrintf()
 {
@@ -121,9 +131,12 @@ do
 	let allSedArgumentCnt=0
 	for match in "${matches[@]}"
 	do
-	    let sedArgumentNum=${matchSedArgumentNum["$match"]}
-
-	    if [ "$match" = "$elseMatch" ]; then
+	    let sedArgumentNum=${matchSedArgumentNum["${match//\\/}"]}
+#### echo "**** sedArgumentNum: $sedArgumentNum"
+#### echo "**** allSedArguments: ${allSedArguments[*]}"
+#### echo "**** match: $match"
+	    isElseMatch=; [ "$match" = "$elseMatch" ] && isElseMatch=t
+	    if [ "$isElseMatch" ]; then
 		cmp --quiet -- "$filespec" "$tempfile"
 		if [ $? -eq 1 ]; then
 		    isMatched=t
@@ -131,11 +144,12 @@ do
 		fi
 	    fi
 
-	    if [ "$match" = "$elseMatch" ] || sedMatch "$match" "$filespec"; then
-		[ "${matchSedHasIArgument["$match"]}" ] && typeset -a sedArguments=() || typeset -a sedArguments=(-i)
-		sedArguments+=("${allSedArgumens[@]:${allSedArgumentCnt}:${sedArgumentNum}}")
+	    if [ "$isElseMatch" ] || sedMatch "$match" "$filespec"; then
+		[ "${matchSedHasIArgument["${match//\\/}"]}" ] && typeset -a sedArguments=() || typeset -a sedArguments=(-i)
+		sedArguments+=("${allSedArguments[@]:${allSedArgumentCnt}:${sedArgumentNum}}")
 
-		sed "${sedArguments[@]}" "$filespec" || status=$?
+#### echo "**** sedArguments: ${sedArguments[*]}"
+		sedWrapper "${sedArguments[@]}" "$filespec" || status=$?
 	    fi
 
 	    let allSedArgumentCnt+=$sedArgumentNum
@@ -153,7 +167,7 @@ do
     elif [ $compare -eq 1 ]; then
 	modifiedFiles+=("$filespec")
 
-	if [ "$isMatched" ]; then
+	if [ ! "$isElseMatch" -o "$isMatched" ]; then
 	    let matchedFileCnt+=1
 	    verbosePrintf 'Matched:   %s\n' "$filespec"
 	else
@@ -164,5 +178,7 @@ do
     rm --force -- "$tempfile" 2>/dev/null
 done
 
-printf 'From %d files considered %d: matched %d, else %d, unchanged %d, deleted %d.\n' "$allFileCnt" "$consideredFileCnt" "$matchedFileCnt" "$elseFileCnt" "$unchangedFileCnt" "$deletedFileCnt"
+printf 'From %d files considered %d / skipped %d: matched %d, else %d, unchanged %d, deleted %d.\n' \
+    "$allFileCnt" "$consideredFileCnt" "$((allFileCnt - consideredFileCnt))" \
+    "$matchedFileCnt" "$elseFileCnt" "$unchangedFileCnt" "$deletedFileCnt"
 exit $status
