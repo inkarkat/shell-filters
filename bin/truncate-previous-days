@@ -10,8 +10,11 @@ only contain other dates are removed.
 HELPTEXT
 printf 'Usage: %q %s\n' "$(basename "$1")" 'YYYY-MM-DD FILE [...] [-?|-h|--help]'
 }
+
+typeset -a truncateLinesArguments=()
 case "$1" in
     --help|-h|-\?)	shift; printUsage "$0"; exit 0;;
+    --verbose-color|--verbose|-v)	truncateLinesArguments+=("$1"); shift;;
 esac
 
 typeset -a monthsList=(none Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec)
@@ -34,7 +37,8 @@ shift
 readonly beginWordBoundary='\(^\|[^0-9a-zA-Z_-]\)'
 readonly endWordBoundary='\($\|[^0-9a-zA-Z_-]\)'
 exec truncate-lines \
-    --consider "/${beginWordBoundary}\\([12][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]\\|${weekdays} ${months} [012][0-9]\\)${endWordBoundary}/" \
+    "${truncateLinesArguments[@]}" \
+    --consider "/${beginWordBoundary}\\([12][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]\\|${weekdays} ${months} [0123][0-9]\\)${endWordBoundary}/" \
     --match "/${beginWordBoundary}${date}${endWordBoundary}/" -n "/${beginWordBoundary}${date}${endWordBoundary}/,\$p" \
     --match "/${beginWordBoundary}${altDate}${endWordBoundary}/" -n "/${beginWordBoundary}${altDate}${endWordBoundary}/,\$p" \
     --else-delete \
