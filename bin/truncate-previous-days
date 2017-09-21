@@ -1,0 +1,41 @@
+#!/bin/bash
+
+printUsage()
+{
+    cat <<HELPTEXT
+Remove all lines from the passed FILEs that precede the passed date in
+YYYY-MM-DD format. Inside the FILEs, looks for date formats as 2017-09-22 and
+"Fri Sep 22". Files that do not contain any dates at all are skipped. Files that
+only contain other dates are removed.
+HELPTEXT
+printf 'Usage: %q %s\n' "$(basename "$1")" 'YYYY-MM-DD FILE [...] [-?|-h|--help]'
+}
+case "$1" in
+    --help|-h|-\?)	shift; printUsage "$0"; exit 0;;
+esac
+
+typeset -a monthsList=(none Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec)
+typeset months='\(Jan\|Feb\|Mar\|Apr\|May\|Jun\|Jul\|Aug\|Sep\|Oct\|Nov\|Dec\)'
+typeset weekdays='\(Mon\|Tue\|Wed\|Thu\|Fri\|Sat\|Sun\)'
+case "$1" in
+    [12][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9])
+	date="$1"
+	month="${1:5:2}"
+	day="${1:8:2}"
+	altDate="${weekdays} ${monthsList[${month#0}]} ${day}"
+	;;
+    '')	echo >&2 "ERROR: No date (YYYY-MM-DD) passed."; exit 2;;
+    *)	echo >&2 "ERROR: Wrong date format, must be YYYY-MM-DD."; exit 2;;
+esac
+shift
+
+[ $# -gt 0 ] || { printUsage "$0"; exit 2; }
+
+readonly beginWordBoundary='\(^\|[^0-9a-zA-Z_-]\)'
+readonly endWordBoundary='\($\|[^0-9a-zA-Z_-]\)'
+exec truncate-lines \
+    --consider "/${beginWordBoundary}\\([12][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]\\|${weekdays} ${months} [012][0-9]\\)${endWordBoundary}/" \
+    --match "/${beginWordBoundary}${date}${endWordBoundary}/" -n "/${beginWordBoundary}${date}${endWordBoundary}/,\$p" \
+    --match "/${beginWordBoundary}${altDate}${endWordBoundary}/" -n "/${beginWordBoundary}${altDate}${endWordBoundary}/,\$p" \
+    --else-delete \
+    -- "$@"
