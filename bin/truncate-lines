@@ -2,7 +2,7 @@
 
 printShortUsage()
 {
-    printf 'Usage: %q %s\n' "$(basename "$1")" '[-v|--verbose] [--consider ADDRESS] [--match ADDRESS] SED-EXPR [[--match ADDRESS] SED-EXPR ... [--else SED-EXPR]] [--] FILE [...] [-?|-h|--help]'
+    printf 'Usage: %q %s\n' "$(basename "$1")" '[-v|--verbose] [--consider ADDRESS] [--match ADDRESS] SED-EXPR [...] [--else SED-EXPR] [--else-delete] [--] FILE [...] [-?|-h|--help]'
 }
 printUsage()
 {
@@ -16,7 +16,11 @@ printLongUsage()
     # This is the long "man page" when launched with the help argument.
     # It is printed to stdout to allow paging with 'more'.
     cat <<HELPDESCRIPTION
-Short textual description.
+Apply sed expression(s) in-place over a list of files. There are two levels of
+guards before applying an expression: A general, per-file ADDRESS (commonly a
+/PATTERN/ check, but can be any valid sed address) as --consider, and a --match
+check per expression. There can be a fallback expression with --else, and the
+file can even be removed if nothing changed its contents.
 HELPDESCRIPTION
     echo
     printShortUsage "$1" cat <<HELPTEXT
@@ -27,7 +31,9 @@ HELPDESCRIPTION
 			Execute the following SED-EXPR if ADDRESS matches
 			anywhere in the FILE.
 --else SED-EXPR		Execute SED-EXPR if none of the --match ADDRESS actually
-			matched in the FILE.
+			changed the FILE.
+--else-delete		Remove the FILE if none of the --match ADDRESS (and
+			neither a --else) actually changed the FILE.
 Example:
 This searches all files that have lines starting with a year. It only keeps
 those lines that follow 2017. Files that only contain other years are completely
@@ -41,6 +47,7 @@ readonly elseMatch=$'\r'
 isVerbose=
 consider=
 currentMatch=
+isElseDelete=
 typeset -a matches=()
 typeset -a allSedArgumens=()
 typeset -A matchSedArgumentNum=
@@ -54,6 +61,7 @@ do
 	--consider)	shift; consider="$1"; shift;;
 	--match)	shift; currentMatch="$1"; matches+=("$1"); matchSedArgumentNum["$1"]=0; shift;;
 	--else)		shift; currentMatch="$elseMatch"; matches+=("$elseMatch"); matchSedArgumentNum["$elseMatch"]=0;;
+	--else-delete)	shift; isElseDelete=t;;
 	# sed arguments
 	-i*)					allSedArgumens+=("$1");      let matchSedArgumentNum["$currentMatch"]+=1; matchSedHasIArgument["$currentMatch"]=t; shift;;
 	-n|--regexp-extended|-r|--null-data|-z)	allSedArgumens+=("$1");      let matchSedArgumentNum["$currentMatch"]+=1; shift;;
@@ -92,6 +100,7 @@ let consideredFileCnt=0
 let unchangedFileCnt=0
 let matchedFileCnt=0
 let elseFileCnt=0
+let deletedFileCnt=0
 for filespec
 do
     if [ ! -r "$filespec" ]; then
@@ -134,8 +143,13 @@ do
 
     cmp --quiet -- "$filespec" "$tempfile"; compare=$?
     if [ $compare -eq 0 ]; then
-	let unchangedFileCnt+=1
-	verbosePrintf 'Unchanged: %s\n' "$filespec"
+	if [ "$isElseDelete" ] && rm -- "$filespec"; then
+	    let deletedFileCnt+=1
+	    verbosePrintf 'Deleted:   %s\n' "$filespec"
+	else
+	    let unchangedFileCnt+=1
+	    verbosePrintf 'Unchanged: %s\n' "$filespec"
+	fi
     elif [ $compare -eq 1 ]; then
 	modifiedFiles+=("$filespec")
 
@@ -150,5 +164,5 @@ do
     rm --force -- "$tempfile" 2>/dev/null
 done
 
-printf 'From %d files considered %d: matched %d, else %d, unchanged %d.\n' "$allFileCnt" "$consideredFileCnt" "$matchedFileCnt" "$elseFileCnt" "$unchangedFileCnt"
+printf 'From %d files considered %d: matched %d, else %d, unchanged %d, deleted %d.\n' "$allFileCnt" "$consideredFileCnt" "$matchedFileCnt" "$elseFileCnt" "$unchangedFileCnt" "$deletedFileCnt"
 exit $status
