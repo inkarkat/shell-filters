@@ -4,9 +4,12 @@ printUsage()
 {
     cat <<HELPTEXT
 Remove all lines from the passed FILEs that precede the passed date in
-YYYY-MM-DD format. Inside the FILEs, looks for date formats as 2017-09-22 and
-"Fri Sep 22". Files that do not contain any dates at all are skipped. Files that
-only contain other dates are removed.
+YYYY-MM-DD format. Inside the FILEs, looks for the following date formats:
+- 2017-09-22
+- Fri Sep 22
+- 09/22/2017
+Files that do not contain any dates at all are skipped. Files that only contain
+other dates are removed.
 HELPTEXT
 printf 'Usage: %q %s\n' "$(basename "$1")" 'YYYY-MM-DD FILE [...] [-?|-h|--help]'
 }
@@ -18,13 +21,21 @@ case "$1" in
 esac
 
 typeset -a monthsList=(none Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec)
-typeset months='\(Jan\|Feb\|Mar\|Apr\|May\|Jun\|Jul\|Aug\|Sep\|Oct\|Nov\|Dec\)'
-typeset weekdays='\(Mon\|Tue\|Wed\|Thu\|Fri\|Sat\|Sun\)'
+readonly months='\(Jan\|Feb\|Mar\|Apr\|May\|Jun\|Jul\|Aug\|Sep\|Oct\|Nov\|Dec\)'
+readonly weekdays='\(Mon\|Tue\|Wed\|Thu\|Fri\|Sat\|Sun\)'
+
+readonly isoPattern='[12][0-9][0-9][0-9]-[01][0-9]-[0123][0-9]'
+readonly weekDayMonthDayPattern="${weekdays} ${months} [ 0123][0-9]"
+readonly americanPattern='[01][0-9]\/[0123][0-9]\/[12][0-9][0-9][0-9]'
+
 case "$1" in
     [12][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9])
-	date="$1"
+	isoDate="$1"
+	year="${1:0:4}"
 	month="${1:5:2}"
 	day="${1:8:2}"
+
+	americanDate="${month}\\/${day}\\/${year}"
 	weekDayMonthDayDate="${weekdays} ${monthsList[${month#0}]} ${day/#0/[0 ]}"
 	;;
     '')	echo >&2 "ERROR: No date (YYYY-MM-DD) passed."; exit 2;;
@@ -38,8 +49,9 @@ readonly beginWordBoundary='\(^\|[^0-9a-zA-Z_-]\)'
 readonly endWordBoundary='\($\|[^0-9a-zA-Z_-]\)'
 exec truncate-lines \
     "${truncateLinesArguments[@]}" \
-    --consider "/${beginWordBoundary}\\([12][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]\\|${weekdays} ${months} [0123][0-9]\\)${endWordBoundary}/" \
-    --match "/${beginWordBoundary}${date}${endWordBoundary}/" -n "/${beginWordBoundary}${date}${endWordBoundary}/,\$p" \
+    --consider "/${beginWordBoundary}\\(${isoPattern}\\|${americanPattern}\\|${weekDayMonthDayPattern}\\)${endWordBoundary}/" \
+    --match "/${beginWordBoundary}${isoDate}${endWordBoundary}/" -n "/${beginWordBoundary}${isoDate}${endWordBoundary}/,\$p" \
+    --match "/${beginWordBoundary}${americanDate}${endWordBoundary}/" -n "/${beginWordBoundary}${americanDate}${endWordBoundary}/,\$p" \
     --match "/${beginWordBoundary}${weekDayMonthDayDate}${endWordBoundary}/" -n "/${beginWordBoundary}${weekDayMonthDayDate}${endWordBoundary}/,\$p" \
     --else-delete \
     -- "$@"
