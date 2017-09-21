@@ -1,5 +1,21 @@
 #!/bin/bash
 
+typeset -a monthsList=(none Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec)
+readonly months='\(Jan\|Feb\|Mar\|Apr\|May\|Jun\|Jul\|Aug\|Sep\|Oct\|Nov\|Dec\)'
+readonly weekdays='\(Mon\|Tue\|Wed\|Thu\|Fri\|Sat\|Sun\)'
+
+readonly yearPattern='[12][0-9][0-9][0-9]'
+readonly monthPattern='[01][0-9]'
+readonly zeroedDayPattern='[0123][0-9]'
+readonly dayPattern='[ 0123][0-9]'
+
+typeset -A patterns=
+patterns[iso]="${yearPattern}-${monthPattern}-${zeroedDayPattern}"
+patterns[weekDayMonthDay]="${weekdays} ${months} ${dayPattern}"
+patterns[american]="${monthPattern}\\/${zeroedDayPattern}\\/${yearPattern}"
+
+
+
 printUsage()
 {
     cat <<HELPTEXT
@@ -20,20 +36,6 @@ case "$1" in
     --verbose-color|--verbose|-v)	truncateLinesArguments+=("$1"); shift;;
 esac
 
-typeset -a monthsList=(none Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec)
-readonly months='\(Jan\|Feb\|Mar\|Apr\|May\|Jun\|Jul\|Aug\|Sep\|Oct\|Nov\|Dec\)'
-readonly weekdays='\(Mon\|Tue\|Wed\|Thu\|Fri\|Sat\|Sun\)'
-
-readonly yearPattern='[12][0-9][0-9][0-9]'
-readonly monthPattern='[01][0-9]'
-readonly zeroedDayPattern='[0123][0-9]'
-readonly dayPattern='[ 0123][0-9]'
-
-typeset -A patterns=
-patterns[iso]="${yearPattern}-${monthPattern}-${zeroedDayPattern}"
-patterns[weekDayMonthDay]="${weekdays} ${months} ${dayPattern}"
-patterns[american]="${monthPattern}\\/${zeroedDayPattern}\\/${yearPattern}"
-
 case "$1" in
     ${yearPattern}-${monthPattern}-${zeroedDayPattern})
 	year="${1:0:4}"
@@ -52,13 +54,22 @@ shift
 
 [ $# -gt 0 ] || { printUsage "$0"; exit 2; }
 
+
+
 readonly bs='\(^\|[^0-9a-zA-Z_-]\)' # keyword boundary start
 readonly be='\($\|[^0-9a-zA-Z_-]\)' # keyword boundary end
+
+considerArg=
+typeset -a matchArgs=()
+for format in iso american weekDayMonthDay
+do
+    considerArg="${considerArg}${considerArg:+\\}${patterns[$format]}"
+    matchArgs+=('--match' "/${bs}${date[$format]}${be}/" -n "/${bs}${date[$format]}${be}/,\$p")
+done
+
 exec truncate-lines \
     "${truncateLinesArguments[@]}" \
-    --consider "/${bs}\\(${patterns[iso]}\\|${patterns[american]}\\|${patterns[weekDayMonthDay]}\\)${be}/" \
-    --match "/${bs}${date[iso]}${be}/" -n "/${bs}${date[iso]}${be}/,\$p" \
-    --match "/${bs}${date[american]}${be}/" -n "/${bs}${date[american]}${be}/,\$p" \
-    --match "/${bs}${date[weekDayMonthDay]}${be}/" -n "/${bs}${date[weekDayMonthDay]}${be}/,\$p" \
+    --consider "/${bs}\\(${considerArg}\\)${be}/" \
+    "${matchArgs[@]}" \
     --else-delete \
     -- "$@"
