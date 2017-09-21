@@ -1,0 +1,147 @@
+#!/bin/bash
+
+printShortUsage()
+{
+    printf 'Usage: %q %s\n' "$(basename "$1")" '[--consider ADDRESS] [--match ADDRESS] SED-EXPR [[--match ADDRESS] SED-EXPR ... [--else SED-EXPR]] [--] FILE [...] [-?|-h|--help]'
+}
+printUsage()
+{
+    # This is the short help when launched with no or incorrect arguments.
+    # It is printed to stderr to avoid accidental processing.
+    printShortUsage "$1" >&2
+    printf >&2 'Try %q --help for more information.\n' "$(basename "$1")"
+}
+printLongUsage()
+{
+    # This is the long "man page" when launched with the help argument.
+    # It is printed to stdout to allow paging with 'more'.
+    cat <<HELPDESCRIPTION
+Short textual description.
+HELPDESCRIPTION
+    echo
+    printShortUsage "$1" cat <<HELPTEXT
+--consider ADDRESS	If the FILE does not match ADDRESS (which often is a sed
+			/PATTERN/), it is skipped.
+--match ADDRESS	SED-EXPR
+			Execute the following SED-EXPR if ADDRESS matches
+			anywhere in the FILE.
+--else SED-EXPR		Execute SED-EXPR if none of the --match ADDRESS actually
+			matched in the FILE.
+Example:
+This searches all files that have lines starting with a year. It only keeps
+those lines that follow 2017. Files that only contain other years are completely
+cleared.
+HELPTEXT
+    printf '%q %s\n' "$(basename "$1")" "--consider '/^20[0-9][0-9]/' --match '/^2017/' -n '/^2017/,\$p' --else -n '' -- /tmp/foobar"
+}
+
+
+readonly elseMatch=$'\r'
+consider=
+currentMatch=
+typeset -a matches=()
+typeset -a allSedArgumens=()
+typeset -A matchSedArgumentNum=
+typeset -A matchSedHasIArgument=
+typeset -A matchSedHasExpression=
+while [ $# -ne 0 ]
+do
+    case "$1" in
+	--help|-h|-\?)	shift; printLongUsage "$0"; exit 0;;
+	--consider)	shift; consider="$1"; shift;;
+	--match)	shift; currentMatch="$1"; matches+=("$1"); matchSedArgumentNum["$1"]=0; shift;;
+	--else)		shift; currentMatch="$elseMatch"; matches+=("$elseMatch"); matchSedArgumentNum["$elseMatch"]=0;;
+	# sed arguments
+	-i*)					allSedArgumens+=("$1");      let matchSedArgumentNum["$currentMatch"]+=1; matchSedHasIArgument["$currentMatch"]=t; shift;;
+	-n|--regexp-extended|-r|--null-data|-z)	allSedArgumens+=("$1");      let matchSedArgumentNum["$currentMatch"]+=1; shift;;
+	-e|-f)					allSedArgumens+=("$1" "$2"); let matchSedArgumentNum["$currentMatch"]+=2; matchSedHasExpression["$currentMatch"]=t; shift; shift;;
+	--)		shift; break;;
+	-*)		{ echo "ERROR: Unknown option \"$1\"!"; echo; printShortUsage "$0"; } >&2; exit 2;;
+	*)		if [ "$currentMatch" ] && [ ! "${matchSedHasExpression["$currentMatch"]}" ]; then
+			    allSedArgumens+=("$1")
+			    let matchSedArgumentNum["$currentMatch"]+=1
+			    matchSedHasExpression["$currentMatch"]=t
+			    shift
+			else
+			    break
+			fi
+			;;
+    esac
+done
+[ $# -eq 0 ] && { printUsage "$0"; exit 2; }
+
+sedMatch()
+{
+    address=$1; shift
+    filespec=$1; shift
+    [ "$(sed -n "${address}p" "$filespec")" ]
+}
+
+tempfile=$(mktemp --tmpdir "$(basename -- "$0")-XXXXXX" 2>/dev/null || echo "${TEMP:-/tmp}/$(basename -- "$0").$$$RANDOM")
+status=0
+typeset -a modifiedFiles=()
+let allFileCnt=0
+let consideredFileCnt=0
+let unchangedFileCnt=0
+let matchedFileCnt=0
+let elseFileCnt=0
+for filespec
+do
+    if [ ! -r "$filespec" ]; then
+	printf >&2 "Can't read %s: No such file\n" "$filespec"
+	status=1
+	continue
+    fi
+    let allFileCnt+=1
+    if ! sedMatch "$consider" "$filespec"; then
+	printf 'Skip:      %s\n' "$filespec"
+	continue
+    fi
+    let consideredFileCnt+=1
+
+    isMatched=
+    cp --force --no-preserve=all -- "$filespec" "$tempfile" 2>/dev/null
+
+	let allSedArgumentCnt=0
+	for match in "${matches[@]}"
+	do
+	    let sedArgumentNum=${matchSedArgumentNum["$match"]}
+
+	    if [ "$match" = "$elseMatch" ]; then
+		cmp --quiet -- "$filespec" "$tempfile"
+		if [ $? -eq 1 ]; then
+		    isMatched=t
+		    continue
+		fi
+	    fi
+
+	    if [ "$match" = "$elseMatch" ] || sedMatch "$match" "$filespec"; then
+		[ "${matchSedHasIArgument["$match"]}" ] && typeset -a sedArguments=() || typeset -a sedArguments=(-i)
+		sedArguments+=("${allSedArgumens[@]:${allSedArgumentCnt}:${sedArgumentNum}}")
+
+		sed "${sedArguments[@]}" "$filespec" || status=$?
+	    fi
+
+	    let allSedArgumentCnt+=$sedArgumentNum
+	done
+
+    cmp --quiet -- "$filespec" "$tempfile"; compare=$?
+    if [ $compare -eq 0 ]; then
+	let unchangedFileCnt+=1
+	printf 'Unchanged: %s\n' "$filespec"
+    elif [ $compare -eq 1 ]; then
+	modifiedFiles+=("$filespec")
+
+	if [ "$isMatched" ]; then
+	    let matchedFileCnt+=1
+	    printf 'Matched:   %s\n' "$filespec"
+	else
+	    let elseFileCnt+=1
+	    printf 'Else:      %s\n' "$filespec"
+	fi
+    fi
+    rm --force -- "$tempfile" 2>/dev/null
+done
+
+printf 'From %d files considered %d: matched %d, else %d, unchanged %d.\n' "$allFileCnt" "$consideredFileCnt" "$matchedFileCnt" "$elseFileCnt" "$unchangedFileCnt"
+exit $status
