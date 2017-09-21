@@ -29,9 +29,10 @@ readonly monthPattern='[01][0-9]'
 readonly zeroedDayPattern='[0123][0-9]'
 readonly dayPattern='[ 0123][0-9]'
 
-readonly isoPattern="${yearPattern}-${monthPattern}-${zeroedDayPattern}"
-readonly weekDayMonthDayPattern="${weekdays} ${months} ${dayPattern}"
-readonly americanPattern="${monthPattern}\\/${zeroedDayPattern}\\/${yearPattern}"
+typeset -A patterns=
+patterns[iso]="${yearPattern}-${monthPattern}-${zeroedDayPattern}"
+patterns[weekDayMonthDay]="${weekdays} ${months} ${dayPattern}"
+patterns[american]="${monthPattern}\\/${zeroedDayPattern}\\/${yearPattern}"
 
 case "$1" in
     ${yearPattern}-${monthPattern}-${zeroedDayPattern})
@@ -39,9 +40,10 @@ case "$1" in
 	month="${1:5:2}"
 	day="${1:8:2}"
 
-	isoDate="$1"
-	americanDate="${month}\\/${day}\\/${year}"
-	weekDayMonthDayDate="${weekdays} ${monthsList[${month#0}]} ${day/#0/[0 ]}"
+	typeset -A date=
+	date[iso]="$1"
+	date[american]="${month}\\/${day}\\/${year}"
+	date[weekDayMonthDay]="${weekdays} ${monthsList[${month#0}]} ${day/#0/[0 ]}"
 	;;
     '')	echo >&2 "ERROR: No date (YYYY-MM-DD) passed."; exit 2;;
     *)	echo >&2 "ERROR: Wrong date format, must be YYYY-MM-DD."; exit 2;;
@@ -54,9 +56,9 @@ readonly bs='\(^\|[^0-9a-zA-Z_-]\)' # keyword boundary start
 readonly be='\($\|[^0-9a-zA-Z_-]\)' # keyword boundary end
 exec truncate-lines \
     "${truncateLinesArguments[@]}" \
-    --consider "/${bs}\\(${isoPattern}\\|${americanPattern}\\|${weekDayMonthDayPattern}\\)${be}/" \
-    --match "/${bs}${isoDate}${be}/" -n "/${bs}${isoDate}${be}/,\$p" \
-    --match "/${bs}${americanDate}${be}/" -n "/${bs}${americanDate}${be}/,\$p" \
-    --match "/${bs}${weekDayMonthDayDate}${be}/" -n "/${bs}${weekDayMonthDayDate}${be}/,\$p" \
+    --consider "/${bs}\\(${patterns[iso]}\\|${patterns[american]}\\|${patterns[weekDayMonthDay]}\\)${be}/" \
+    --match "/${bs}${date[iso]}${be}/" -n "/${bs}${date[iso]}${be}/,\$p" \
+    --match "/${bs}${date[american]}${be}/" -n "/${bs}${date[american]}${be}/,\$p" \
+    --match "/${bs}${date[weekDayMonthDay]}${be}/" -n "/${bs}${date[weekDayMonthDay]}${be}/,\$p" \
     --else-delete \
     -- "$@"
