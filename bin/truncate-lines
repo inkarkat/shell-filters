@@ -2,7 +2,7 @@
 
 printShortUsage()
 {
-    printf 'Usage: %q %s\n' "$(basename "$1")" '[--consider ADDRESS] [--match ADDRESS] SED-EXPR [[--match ADDRESS] SED-EXPR ... [--else SED-EXPR]] [--] FILE [...] [-?|-h|--help]'
+    printf 'Usage: %q %s\n' "$(basename "$1")" '[-v|--verbose] [--consider ADDRESS] [--match ADDRESS] SED-EXPR [[--match ADDRESS] SED-EXPR ... [--else SED-EXPR]] [--] FILE [...] [-?|-h|--help]'
 }
 printUsage()
 {
@@ -20,6 +20,7 @@ Short textual description.
 HELPDESCRIPTION
     echo
     printShortUsage "$1" cat <<HELPTEXT
+--verbose|-v		Show detailed results for each file.
 --consider ADDRESS	If the FILE does not match ADDRESS (which often is a sed
 			/PATTERN/), it is skipped.
 --match ADDRESS	SED-EXPR
@@ -37,6 +38,7 @@ HELPTEXT
 
 
 readonly elseMatch=$'\r'
+isVerbose=
 consider=
 currentMatch=
 typeset -a matches=()
@@ -48,6 +50,7 @@ while [ $# -ne 0 ]
 do
     case "$1" in
 	--help|-h|-\?)	shift; printLongUsage "$0"; exit 0;;
+	--verbose|-v)	shift; isVerbose=t;;
 	--consider)	shift; consider="$1"; shift;;
 	--match)	shift; currentMatch="$1"; matches+=("$1"); matchSedArgumentNum["$1"]=0; shift;;
 	--else)		shift; currentMatch="$elseMatch"; matches+=("$elseMatch"); matchSedArgumentNum["$elseMatch"]=0;;
@@ -76,6 +79,10 @@ sedMatch()
     filespec=$1; shift
     [ "$(sed -n "${address}p" "$filespec")" ]
 }
+verbosePrintf()
+{
+    [ "$isVerbose" ] && printf "$@"
+}
 
 tempfile=$(mktemp --tmpdir "$(basename -- "$0")-XXXXXX" 2>/dev/null || echo "${TEMP:-/tmp}/$(basename -- "$0").$$$RANDOM")
 status=0
@@ -94,7 +101,7 @@ do
     fi
     let allFileCnt+=1
     if ! sedMatch "$consider" "$filespec"; then
-	printf 'Skip:      %s\n' "$filespec"
+	verbosePrintf 'Skip:      %s\n' "$filespec"
 	continue
     fi
     let consideredFileCnt+=1
@@ -128,16 +135,16 @@ do
     cmp --quiet -- "$filespec" "$tempfile"; compare=$?
     if [ $compare -eq 0 ]; then
 	let unchangedFileCnt+=1
-	printf 'Unchanged: %s\n' "$filespec"
+	verbosePrintf 'Unchanged: %s\n' "$filespec"
     elif [ $compare -eq 1 ]; then
 	modifiedFiles+=("$filespec")
 
 	if [ "$isMatched" ]; then
 	    let matchedFileCnt+=1
-	    printf 'Matched:   %s\n' "$filespec"
+	    verbosePrintf 'Matched:   %s\n' "$filespec"
 	else
 	    let elseFileCnt+=1
-	    printf 'Else:      %s\n' "$filespec"
+	    verbosePrintf 'Else:      %s\n' "$filespec"
 	fi
     fi
     rm --force -- "$tempfile" 2>/dev/null
