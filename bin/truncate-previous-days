@@ -30,11 +30,11 @@ readonly americanPattern='[01][0-9]\/[0123][0-9]\/[12][0-9][0-9][0-9]'
 
 case "$1" in
     [12][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9])
-	isoDate="$1"
 	year="${1:0:4}"
 	month="${1:5:2}"
 	day="${1:8:2}"
 
+	isoDate="$1"
 	americanDate="${month}\\/${day}\\/${year}"
 	weekDayMonthDayDate="${weekdays} ${monthsList[${month#0}]} ${day/#0/[0 ]}"
 	;;
@@ -45,13 +45,13 @@ shift
 
 [ $# -gt 0 ] || { printUsage "$0"; exit 2; }
 
-readonly beginWordBoundary='\(^\|[^0-9a-zA-Z_-]\)'
-readonly endWordBoundary='\($\|[^0-9a-zA-Z_-]\)'
+readonly bs='\(^\|[^0-9a-zA-Z_-]\)' # keyword boundary start
+readonly be='\($\|[^0-9a-zA-Z_-]\)' # keyword boundary end
 exec truncate-lines \
     "${truncateLinesArguments[@]}" \
-    --consider "/${beginWordBoundary}\\(${isoPattern}\\|${americanPattern}\\|${weekDayMonthDayPattern}\\)${endWordBoundary}/" \
-    --match "/${beginWordBoundary}${isoDate}${endWordBoundary}/" -n "/${beginWordBoundary}${isoDate}${endWordBoundary}/,\$p" \
-    --match "/${beginWordBoundary}${americanDate}${endWordBoundary}/" -n "/${beginWordBoundary}${americanDate}${endWordBoundary}/,\$p" \
-    --match "/${beginWordBoundary}${weekDayMonthDayDate}${endWordBoundary}/" -n "/${beginWordBoundary}${weekDayMonthDayDate}${endWordBoundary}/,\$p" \
+    --consider "/${bs}\\(${isoPattern}\\|${americanPattern}\\|${weekDayMonthDayPattern}\\)${be}/" \
+    --match "/${bs}${isoDate}${be}/" -n "/${bs}${isoDate}${be}/,\$p" \
+    --match "/${bs}${americanDate}${be}/" -n "/${bs}${americanDate}${be}/,\$p" \
+    --match "/${bs}${weekDayMonthDayDate}${be}/" -n "/${bs}${weekDayMonthDayDate}${be}/,\$p" \
     --else-delete \
     -- "$@"
