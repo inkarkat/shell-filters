@@ -3,14 +3,19 @@
 # append COMMANDLINE	Capture output from stdin, pipe that through COMMANDLINE
 #			and output that output afterwards, too.
 #			Example: diff -u orig new | append diffstat -C
-set -e
-
-typeset -a ARGS=("$@")
+typeset -a commandLine=("$@")
 TMPFILE=$(mktemp --tmpdir "$(basename -- "$0")-XXXXXX" 2>/dev/null || echo "${TEMP:-/tmp}/$(basename -- "$0").$$")
 finally()
 {
     if [ -s "$TMPFILE" ]; then
-	cat -- "$TMPFILE" | eval "${ARGS[@]//[${IFS-$' \t\n'}\\]/\\ }"
+	typeset -a commandLineEscaped=("${commandLine[@]}")
+	typeset escapeChars="\\${IFS-$' \t\n'}"
+	typeset escapeCharIdx
+	for ((escapeCharIdx = 0; escapeCharIdx < ${#escapeChars}; escapeCharIdx++))
+	do
+	    commandLineEscaped=("${commandLineEscaped[@]//"${escapeChars:$escapeCharIdx:1}"/\\"${escapeChars:$escapeCharIdx:1}"}")
+	done
+	cat -- "$TMPFILE" | eval "${commandLineEscaped[@]}"
     fi
     rm -f -- "$TMPFILE" 2>/dev/null
 }
