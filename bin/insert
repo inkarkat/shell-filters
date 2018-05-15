@@ -1,0 +1,20 @@
+#!/bin/bash
+
+# insert COMMAND	Capture output from stdin, pipe that through COMMAND,
+#			and output that, and then the original output.
+#			Example: diff -u orig new | insert diffstat -C
+set -e
+
+typeset -a ARGS=("$@")
+TMPFILE=$(mktemp --tmpdir "$(basename -- "$0")-XXXXXX" 2>/dev/null || echo "${TEMP:-/tmp}/$(basename -- "$0").$$")
+finally()
+{
+    if [ -s "$TMPFILE" ]; then
+	cat "$TMPFILE" | eval "${ARGS[@]}"
+	cat "$TMPFILE"
+    fi
+    rm -f "$TMPFILE" 2>/dev/null
+}
+trap 'finally' INT TERM EXIT
+
+cat > "$TMPFILE"
