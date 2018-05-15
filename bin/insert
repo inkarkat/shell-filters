@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# insert COMMAND	Capture output from stdin, pipe that through COMMAND,
+# insert COMMANDLINE	Capture output from stdin, pipe that through COMMANDLINE
 #			and output that, and then the original output.
 #			Example: diff -u orig new | insert diffstat -C
 set -e
@@ -10,10 +10,10 @@ TMPFILE=$(mktemp --tmpdir "$(basename -- "$0")-XXXXXX" 2>/dev/null || echo "${TE
 finally()
 {
     if [ -s "$TMPFILE" ]; then
-	cat "$TMPFILE" | eval "${ARGS[@]}"
-	cat "$TMPFILE"
+	cat -- "$TMPFILE" | eval "${ARGS[@]//[${IFS-$' \t\n'}]/\\ }"
+	cat -- "$TMPFILE"
     fi
-    rm -f "$TMPFILE" 2>/dev/null
+    rm -f -- "$TMPFILE" 2>/dev/null
 }
 trap 'finally' INT TERM EXIT
 
