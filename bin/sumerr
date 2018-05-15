@@ -1,7 +1,18 @@
 #!/bin/bash
 
-# summerr COMMAND	Execute COMMAND, then separately summarize the stderr
-#			output after COMMAND's execution (and normal output).
+printUsage()
+{
+    cat <<HELPTEXT
+Execute COMMANDLINE, then separately summarize the stderr output after
+COMMANDLINE's execution (and normal output).
+HELPTEXT
+printf 'Usage: %q %s\n' "$(basename "$1")" 'COMMANDLINE [...] [-?|-h|--help]'
+}
+case "$1" in
+    --help|-h|-\?)	shift; printUsage "$0"; exit 0;;
+esac
+[ $# -eq 0 ] && { printUsage "$0"; exit 2; }
+
 
 set -e
 
