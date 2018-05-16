@@ -14,9 +14,20 @@ esac
 [ $# -eq 0 ] && { printUsage "$0"; exit 2; }
 
 
-set -e
-
 TMPFILE=$(mktemp --tmpdir "$(basename -- "$0")-XXXXXX" 2>/dev/null || echo "${TEMP:-/tmp}/$(basename -- "$0").$$")
+
+commandLineEscape()
+{
+    eval "typeset -a result=(\"\${${1:?}[@]}\")"
+    typeset escapeChars="\\${IFS-$' \t\n'}"
+    typeset escapeCharIdx
+    for ((escapeCharIdx = 0; escapeCharIdx < ${#escapeChars}; escapeCharIdx++))
+    do
+	result=("${result[@]//"${escapeChars:$escapeCharIdx:1}"/\\"${escapeChars:$escapeCharIdx:1}"}")
+    done
+    eval "${1}Escaped=(\"\${result[@]}\")"
+}
+
 finally()
 {
     if [ -s "$TMPFILE" ]; then
@@ -27,4 +38,6 @@ finally()
 }
 trap 'finally' INT TERM EXIT
 
-eval "${@//[${IFS-$' \t\n'}]/\\ }" 2> >(while read -r line; do echo -e "\\e[01;31m${line}\\e[0m"; done | tee -- "$TMPFILE")
+typeset -a commandLine=("$@")
+commandLineEscape commandLine
+eval "${commandLineEscaped[@]}" 2> >(while read -r line; do echo -e "\\e[01;31m${line}\\e[0m"; done | tee -- "$TMPFILE")
