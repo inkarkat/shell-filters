@@ -36,7 +36,7 @@ finally()
     fi
     rm -f -- "$TMPFILE" 2>/dev/null
 }
-trap 'finally' INT TERM EXIT
+trap 'finally' EXIT
 
 typeset -a commandLine=("$@")
 commandLineEscape commandLine
