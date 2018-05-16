@@ -3,14 +3,28 @@
 # insert COMMANDLINE	Capture output from stdin, pipe that through COMMANDLINE
 #			and output that, and then the original output.
 #			Example: diff -u orig new | insert diffstat -C
-set -e
 
-typeset -a ARGS=("$@")
+typeset -a commandLine=("$@")
+
 TMPFILE=$(mktemp --tmpdir "$(basename -- "$0")-XXXXXX" 2>/dev/null || echo "${TEMP:-/tmp}/$(basename -- "$0").$$")
+
+commandLineEscape()
+{
+    eval "typeset -a result=(\"\${${1:?}[@]}\")"
+    typeset escapeChars="\\${IFS-$' \t\n'}"
+    typeset escapeCharIdx
+    for ((escapeCharIdx = 0; escapeCharIdx < ${#escapeChars}; escapeCharIdx++))
+    do
+	result=("${result[@]//"${escapeChars:$escapeCharIdx:1}"/\\"${escapeChars:$escapeCharIdx:1}"}")
+    done
+    eval "${1}Escaped=(\"\${result[@]}\")"
+}
+
 finally()
 {
     if [ -s "$TMPFILE" ]; then
-	cat -- "$TMPFILE" | eval "${ARGS[@]//[${IFS-$' \t\n'}]/\\ }"
+	commandLineEscape commandLine
+	cat -- "$TMPFILE" | eval "${commandLineEscaped[@]}"
 	cat -- "$TMPFILE"
     fi
     rm -f -- "$TMPFILE" 2>/dev/null
