@@ -1,32 +1,52 @@
 #!/bin/bash
 
-# append COMMANDLINE	Capture output from stdin, pipe that through COMMANDLINE
-#			and output that output afterwards, too.
-#			Example: diff -u orig new | append diffstat -C
-
-typeset -a commandLine=("$@")
-TMPFILE=$(mktemp --tmpdir "$(basename -- "$0")-XXXXXX" 2>/dev/null || echo "${TEMP:-/tmp}/$(basename -- "$0").$$")
-
-commandLineEscape()
+printUsage()
 {
-    eval "typeset -a result=(\"\${${1:?}[@]}\")"
-    typeset escapeChars="\\${IFS-$' \t\n'}"
-    typeset escapeCharIdx
-    for ((escapeCharIdx = 0; escapeCharIdx < ${#escapeChars}; escapeCharIdx++))
-    do
-	result=("${result[@]//"${escapeChars:$escapeCharIdx:1}"/\\"${escapeChars:$escapeCharIdx:1}"}")
-    done
-    eval "${1}Escaped=(\"\${result[@]}\")"
+    cat <<HELPTEXT
+Capture output from stdin, pipe that through COMMAND and output that output
+afterwards, too.
+HELPTEXT
+printf 'Usage: %q %s\n' "$(basename "$1")" '[-c|--command "COMMANDLINE" | [--] SIMPLECOMMAND [...]] [...] [-?|-h|--help]'
+printf 'Example: diff -u orig new | %q diffstat -C\n' "$(basename -- "$1")"
 }
+
+isNeedEval=
+typeset -a commands=()
+while [ $# -ne 0 ]
+do
+    case "$1" in
+	--command|-c)	shift; commands+=(${commands:+;} "$1"); isNeedEval=t; shift;;
+	--)		shift; break;;
+	*)		break;;
+    esac
+done
+if [ $# -ne 0 ]; then
+    if [ "$isNeedEval" ]; then
+	# Combine --command and SIMPLECOMMAND; need to quote SIMPLECOMMAND to
+	# undo the effects of eval.
+	commands+=(${commands:+;} $(printf '%q ' "$@"))
+    else
+	commands=("$@")
+    fi
+fi
+
+TMPFILE=$(mktemp --tmpdir "$(basename -- "$0")-XXXXXX" 2>/dev/null || echo "${TEMP:-/tmp}/$(basename -- "$0").$$")
 
 finally()
 {
+    status=0
     if [ -s "$TMPFILE" ]; then
-	commandLineEscape commandLine
-	cat -- "$TMPFILE" | eval "${commandLineEscaped[@]}"
+	cat -- "$TMPFILE" | \
+	    if [ "$isNeedEval" ]; then
+		eval "${commands[@]}"
+	    else
+		"${commands[@]}"
+	    fi
+	    status=$?
     fi
     rm -f -- "$TMPFILE" 2>/dev/null
+    exit $status
 }
-trap 'finally' INT TERM EXIT
+trap 'finally' EXIT
 
 tee -- "$TMPFILE"
