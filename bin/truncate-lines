@@ -2,7 +2,7 @@
 
 printShortUsage()
 {
-    printf 'Usage: %q %s\n' "$(basename "$1")" '[-v|--verbose] [--consider ADDRESS] [--match ADDRESS] SED-EXPR [...] [--else SED-EXPR] [--else-delete] [--] FILE [...] [-?|-h|--help]'
+    printf 'Usage: %q %s\n' "$(basename "$1")" '[-v|--verbose|--verbose-color] [--consider ADDRESS] [--match ADDRESS] SED-EXPR [...] [--else SED-EXPR] [--else-delete] [--] FILE [...] [-?|-h|--help]'
 }
 printUsage()
 {
@@ -25,6 +25,7 @@ HELPDESCRIPTION
     echo
     printShortUsage "$1" cat <<HELPTEXT
 --verbose|-v		Show detailed results for each file.
+--verbose-color		Same, but with different colors depending on action taken.
 --consider ADDRESS	If the FILE does not match ADDRESS (which often is a sed
 			/PATTERN/), it is skipped.
 --match ADDRESS	SED-EXPR
@@ -42,6 +43,12 @@ HELPTEXT
     printf '%q %s\n' "$(basename "$1")" "--consider '/^20[0-9][0-9]/' --match '/^2017/' -n '/^2017/,\$p' --else -n '' -- /tmp/foobar"
 }
 
+: ${COLOR_SKIP:='[37m'}
+: ${COLOR_DELETED:='[31m'}
+: ${COLOR_UNCHANGED:='[0m'}
+: ${COLOR_MATCHED:='[01m'}
+: ${COLOR_ELSE:='[01;35m'}
+: ${COLOR_RESET:='[0m'}
 
 readonly elseMatch=$'\r'
 isVerbose=
@@ -57,7 +64,8 @@ while [ $# -ne 0 ]
 do
     case "$1" in
 	--help|-h|-\?)	shift; printLongUsage "$0"; exit 0;;
-	--verbose|-v)	shift; isVerbose=t;;
+	--verbose|-v)	shift; isVerbose=t; COLOR_SKIP= COLOR_DELETED= COLOR_UNCHANGED= COLOR_MATCHED= COLOR_ELSE= COLOR_RESET=;;
+	--verbose-color)	shift; isVerbose=t;;
 	--consider)	shift; consider="$1"; shift;;
 	--match)	shift; matches+=("$1");         currentMatch="${1//\\/}";  matchSedArgumentNum["$currentMatch"]=0; shift;;  # XXX: Somehow need to remove backslashes from associative array keys.
 	--else)		shift; matches+=("$elseMatch"); currentMatch="$elseMatch"; matchSedArgumentNum["$elseMatch"]=0;;
@@ -120,7 +128,7 @@ do
     fi
     let allFileCnt+=1
     if ! sedMatch "$consider" "$filespec"; then
-	verbosePrintf 'Skip:      %s\n' "$filespec"
+	verbosePrintf '%sSkip:      %s%s\n' "$COLOR_SKIP" "$filespec" "$COLOR_RESET"
 	continue
     fi
     let consideredFileCnt+=1
@@ -159,20 +167,20 @@ do
     if [ $compare -eq 0 ]; then
 	if [ "$isElseDelete" ] && rm -- "$filespec"; then
 	    let deletedFileCnt+=1
-	    verbosePrintf 'Deleted:   %s\n' "$filespec"
+	    verbosePrintf '%sDeleted:   %s%s\n' "$COLOR_DELETED" "$filespec" "$COLOR_RESET"
 	else
 	    let unchangedFileCnt+=1
-	    verbosePrintf 'Unchanged: %s\n' "$filespec"
+	    verbosePrintf '%sUnchanged: %s%s\n' "$COLOR_UNCHANGED" "$filespec" "$COLOR_RESET"
 	fi
     elif [ $compare -eq 1 ]; then
 	modifiedFiles+=("$filespec")
 
 	if [ ! "$isElseMatch" -o "$isMatched" ]; then
 	    let matchedFileCnt+=1
-	    verbosePrintf 'Matched:   %s\n' "$filespec"
+	    verbosePrintf '%sMatched:   %s%s\n' "$COLOR_MATCHED" "$filespec" "$COLOR_RESET"
 	else
 	    let elseFileCnt+=1
-	    verbosePrintf 'Else:      %s\n' "$filespec"
+	    verbosePrintf '%sElse:      %s%s\n' "$COLOR_ELSE" "$filespec" "$COLOR_RESET"
 	fi
     fi
     rm --force -- "$tempfile" 2>/dev/null
