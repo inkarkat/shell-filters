@@ -87,7 +87,7 @@ do
 			;;
     esac
 done
-[ $# -eq 0 ] && { printUsage "$0"; exit 2; }
+[ $# -eq 0 ] && { printUsage "$0" >&2; exit 2; }
 
 
 
