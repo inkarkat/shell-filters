@@ -99,7 +99,7 @@ cleanup()
 {
 	rm -f "$TMPFILE" 2>/dev/null
 }
-[ "$DEBUG" ] || trap 'cleanup' 0
+[ "$DEBUG" ] || trap 'cleanup' EXIT
 
 escapeSedPattern()
 {
