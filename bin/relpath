@@ -34,7 +34,7 @@ do
 	*)		break;;
     esac
 done
-[ $# -gt 1 ] && { printUsage "$0"; exit 2; }
+[ $# -gt 1 ] && { printUsage "$0" >&2; exit 2; }
 [ $# -eq 1 ] && pathspec="${1%/}"
 
 homeAlternativeBranch=
