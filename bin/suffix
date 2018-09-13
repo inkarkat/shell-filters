@@ -5,18 +5,26 @@ printUsage()
     cat <<HELPTEXT
 Append SUFFIX to each individual line.
 HELPTEXT
-    printf 'Usage: %q %s\n' "$(basename "$1")" 'SUFFIX [FILE, ...] [-?|-h|--help]'
+    printf 'Usage: %q %s\n' "$(basename "$1")" '[-k|--keep-whitespace] SUFFIX [FILE, ...] [-?|-h|--help]'
 }
-case "$1" in
-    --help|-h|-\?)	shift; printUsage "$0"; exit 0;;
-esac
+isKeepWhitespace=
+while [ $# -ne 0 ]
+do
+    case "$1" in
+	--help|-h|-\?)	shift; printUsage "$0"; exit 0;;
+	--keep-whitespace|-k)	shift; isKeepWhitespace=t;;
+	--)		shift; break;;
+	-*)		{ echo "ERROR: Unknown option \"$1\"!"; echo; printUsage "$0"; } >&2; exit 2;;
+	*)		break;;
+    esac
+done
 if [ $# -eq 0 ]; then
     printUsage "$0" >&2
     exit 2
 fi
 
 suffix=$1; shift
-literalReplacement=$suffix
-literalReplacement=${literalReplacement//\/\\}
-literalReplacement=${literalReplacement//&/\&}
-exec sed -e "s#\$#${literalReplacement//#/\\#}#" "$@"
+literalSuffix=$suffix
+literalSuffix=${literalSuffix//\/\\}
+literalSuffix=${literalSuffix//&/\&}
+exec sed -e "s#\\(${isKeepWhitespace:+[[:space:]]*}\\r\\?\$\\)#${literalSuffix//#/\\#}\\1#" "$@"
