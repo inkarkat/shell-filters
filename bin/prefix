@@ -1,0 +1,22 @@
+#!/bin/bash
+
+printUsage()
+{
+    cat <<HELPTEXT
+Prefix each individual line with PREFIX.
+HELPTEXT
+    printf 'Usage: %q %s\n' "$(basename "$1")" 'PREFIX [FILE, ...] [-?|-h|--help]'
+}
+case "$1" in
+    --help|-h|-\?)	shift; printUsage "$0"; exit 0;;
+esac
+if [ $# -eq 0 ]; then
+    printUsage "$0" >&2
+    exit 2
+fi
+
+prefix=$1; shift
+literalReplacement=$prefix
+literalReplacement=${literalReplacement//\/\\}
+literalReplacement=${literalReplacement//&/\&}
+exec sed -e "s#^#${literalReplacement//#/\\#}#" "$@"
