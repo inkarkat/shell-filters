@@ -6,7 +6,7 @@ printUsage()
 Capture output from stdin, pipe that through COMMAND and output that, and then
 the original output.
 HELPTEXT
-printf 'Usage: %q %s\n' "$(basename "$1")" '[-c|--command "COMMANDLINE" | [--] SIMPLECOMMAND [...]] [...] [-?|-h|--help]'
+printf 'Usage: %q %s\n' "$(basename "$1")" '-c|--command "COMMANDLINE" [-c ...] | [--] SIMPLECOMMAND [...] [-?|-h|--help]'
 printf 'Example: diff -u orig new | %q diffstat -C\n' "$(basename -- "$1")"
 }
 
@@ -18,6 +18,7 @@ do
 	--help|-h|-\?)	shift; printUsage "$0"; exit 0;;
 	--command|-c)	shift; commands+=(${commands:+;} "$1"); isNeedEval=t; shift;;
 	--)		shift; break;;
+	-*)		    { echo "ERROR: Unknown option \"$1\"!"; echo; printUsage "$0"; } >&2; exit 2;;
 	*)		break;;
     esac
 done
@@ -29,6 +30,10 @@ if [ $# -ne 0 ]; then
     else
 	commands=("$@")
     fi
+fi
+if [ ${#commands[@]} -eq 0 ]; then
+    echo >&2 'ERROR: No COMMAND(s) specified; need to pass -c|--command "COMMANDLINE", or SIMPLECOMMAND.'
+    exit 2
 fi
 
 TMPFILE=$(mktemp --tmpdir "$(basename -- "$0")-XXXXXX" 2>/dev/null || echo "${TEMP:-/tmp}/$(basename -- "$0").$$")
