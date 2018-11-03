@@ -6,7 +6,7 @@ printUsage()
 Capture output from stdin, pipe that through COMMAND and output that, and then
 the original output.
 HELPTEXT
-printf 'Usage: %q %s\n' "$(basename "$1")" '-c|--command "COMMANDLINE" [-c ...] | [--] SIMPLECOMMAND [...] [-?|-h|--help]'
+printf 'Usage: cat FILE [...] | %q %s\n' "$(basename "$1")" '-c|--command "COMMANDLINE" [-c ...] | [--] SIMPLECOMMAND [...] [-?|-h|--help]'
 printf 'Example: diff -u orig new | %q diffstat -C\n' "$(basename -- "$1")"
 }
 
