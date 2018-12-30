@@ -27,6 +27,6 @@ fi
 
 suffix=$1; shift
 literalSuffix=$suffix
-literalSuffix=${literalSuffix//\/\\}
-literalSuffix=${literalSuffix//&/\&}
+literalSuffix=${literalSuffix//\\/\\\\}
+literalSuffix=${literalSuffix//&/\\&}
 exec sed "${additionalSedProcessing[@]}" -e "s#\\(${isKeepWhitespace:+[[:space:]]*}\\r\\?\$\\)#${literalSuffix//#/\\#}\\1#" "$@"
