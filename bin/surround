@@ -27,12 +27,12 @@ fi
 
 prefix=$1; shift
 literalPrefix=$prefix
-literalPrefix=${literalPrefix//\/\\}
-literalPrefix=${literalPrefix//&/\&}
+literalPrefix=${literalPrefix//\\/\\\\}
+literalPrefix=${literalPrefix//&/\\&}
 
 suffix=$1; shift
 literalSuffix=$suffix
-literalSuffix=${literalSuffix//\/\\}
-literalSuffix=${literalSuffix//&/\&}
+literalSuffix=${literalSuffix//\\/\\\\}
+literalSuffix=${literalSuffix//&/\\&}
 
 exec sed "${additionalSedProcessing[@]}" -e "s#\\(^${isKeepWhitespace:+[[:space:]]*}\\)\\(.*[^${isKeepWhitespace:+^[:space:]}\\r]\\|\\)\\(${isKeepWhitespace:+[[:space:]]*}\\r\\?\$\\)#\\1${literalPrefix//#/\\#}\\2${literalSuffix//#/\\#}\\3#" "$@"
