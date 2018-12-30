@@ -5,14 +5,16 @@ printUsage()
     cat <<HELPTEXT
 Prefix each individual line with PREFIX.
 HELPTEXT
-    printf 'Usage: %q %s\n' "$(basename "$1")" '[-k|--keep-indent] PREFIX [FILE, ...] [-?|-h|--help]'
+    printf 'Usage: %q %s\n' "$(basename "$1")" '[-k|--keep-indent] [-s|--skip-empty] PREFIX [FILE, ...] [-?|-h|--help]'
 }
 isKeepIndent=
+additionalSedProcessing=()
 while [ $# -ne 0 ]
 do
     case "$1" in
 	--help|-h|-\?)	shift; printUsage "$0"; exit 0;;
 	--keep-indent|-k)	shift; isKeepIndent=t;;
+	--skip-empty|-s)	shift; additionalSedProcessing+=(-e '/^[[:space:]]*\r\?$/b');;
 	--)		shift; break;;
 	-*)		{ echo "ERROR: Unknown option \"$1\"!"; echo; printUsage "$0"; } >&2; exit 2;;
 	*)		break;;
@@ -27,4 +29,4 @@ prefix=$1; shift
 literalPrefix=$prefix
 literalPrefix=${literalPrefix//\/\\}
 literalPrefix=${literalPrefix//&/\&}
-exec sed -e "s#\\(^${isKeepIndent:+[[:space:]]*}\\)#\\1${literalPrefix//#/\\#}#" "$@"
+exec sed "${additionalSedProcessing[@]}" -e "s#\\(^${isKeepIndent:+[[:space:]]*}\\)#\\1${literalPrefix//#/\\#}#" "$@"
