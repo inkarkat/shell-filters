@@ -27,6 +27,6 @@ fi
 
 prefix=$1; shift
 literalPrefix=$prefix
-literalPrefix=${literalPrefix//\/\\}
-literalPrefix=${literalPrefix//&/\&}
+literalPrefix=${literalPrefix//\\/\\\\}
+literalPrefix=${literalPrefix//&/\\&}
 exec sed "${additionalSedProcessing[@]}" -e "s#\\(^${isKeepIndent:+[[:space:]]*}\\)#\\1${literalPrefix//#/\\#}#" "$@"
