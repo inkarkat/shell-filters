@@ -1,0 +1,76 @@
+#!/bin/bash
+
+sed --unbuffered -e '
+# Only show a single line of stack traces.
+/^\tat /b deleteStackTraceLocations
+
+# Delete the header line that sometimes occurs before a Grails stack trace.
+/^    Line | Method$/D
+# Only show a single line of Grails stack traces.
+/^->> \+[0-9]\+ | / {
+    # Delete the separator after the exception source
+    N
+    s/\n\(- \)\+$//
+
+    b deleteGrailsStackTraceLocations
+}
+
+b
+#-------------------------------------------------------------------------------
+
+:deleteStackTraceLocations
+N;/\n\tat [^\n]*$/{
+    # Test framework does not count as "us".
+    /\n\tat com\.hpe\?\.opr\.qa\.framework\.runner\./ {
+	s/\n[^\n]*$//
+	b deleteStackTraceLocations
+    }
+    # When a following location is from us ...
+    /\n\tat com\.hpe\?\./ {
+	# ... and we do not have another one from us yet ...
+	/\(^\|\n\)\tat com\.hpe\?\..*\n/! {
+	    # Keep it.
+	    b deleteStackTraceLocations
+	}
+    }
+    # Else delete it (and all following locations).
+    s/\n[^\n]*$//
+    b deleteStackTraceLocations
+}
+:deleteStackTraceLine
+:printStackTraceLocations
+/^\tat /{
+    P
+    s/^[^\n]*\n//
+    b printStackTraceLocations
+}
+
+# Remove any following summary of omitted frames; due to our deletions, the number is wrong, anyway.
+/\t\.\.\. [0-9]\+ common frames omitted/D
+
+b
+#-------------------------------------------------------------------------------
+
+:deleteGrailsStackTraceLocations
+N;/ in \+[^ \n]*$/{
+    # Condense the formatting.
+    s/ \([0-9]\+\) | \([^ \n]\+\) \+in \+\([^ \n]\+\)/ \2() in \3:\1/g
+
+    # Test framework does not count as "us".
+    /\n.* in com\.hpe\?\.opr\.qa\.framework\.runner\./ {
+	s/\n[^\n]*$//
+	b deleteGrailsStackTraceLocations
+    }
+    # When a following location is from us ...
+    /\n.* in com\.hpe\?\./ {
+	# ... and we do not have another one from us yet ...
+	/\(^\|\n\).* in com\.hpe\?\..*\n/! {
+	    # Keep it.
+	    b deleteGrailsStackTraceLocations
+	}
+    }
+    # Else delete it and all following locations.
+    s/\n[^\n]*$//
+    b deleteGrailsStackTraceLocations
+}
+' "$@"
