@@ -50,7 +50,7 @@ exec $SED --unbuffered \
 ' \
     -e '
 # Groovy exception message
-/^Message: [a-z]\+\.[a-zA-Z_.]*\(Exception\|Error\): \|^Caused by / {
+/^Message: \|^Caused by / {
     s/; \(nested exception is \)/\n    '"${DELETESTACKTRACELOCATIONS_INTRO_PREFIX//\//\\/}"'\1'"${DELETESTACKTRACELOCATIONS_INTRO_SUFFIX//\//\\/}"'/g
     s/\(^\|\n\)\(Message: \|Caused by \)\([^:]\+: \)\([^\n]\+\)/\1'"${DELETESTACKTRACELOCATIONS_INTRO_PREFIX//\//\\/}"'\2'"${DELETESTACKTRACELOCATIONS_INTRO_SUFFIX//\//\\/}"'\3'"${DELETESTACKTRACELOCATIONS_REASON_PREFIX//\//\\/}"'\4'"${DELETESTACKTRACELOCATIONS_REASON_SUFFIX//\//\\/}"'/g
 }
