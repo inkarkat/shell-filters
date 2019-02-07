@@ -3,7 +3,7 @@
 : ${DELETESTACKTRACELOCATIONS_IGNORE_PATTERN='com\.hpe\?\.opr\.qa\.framework\.runner\.'}
 : ${DELETESTACKTRACELOCATIONS_OUR_PATTERN='com\.hpe\?\.'}
 
-sed --unbuffered -e '
+exec sed --unbuffered -e '
 # Only show a single line of stack traces.
 /^\tat /b deleteStackTraceLocations
 
@@ -24,14 +24,14 @@ b
 :deleteStackTraceLocations
 N;/\n\tat [^\n]*$/{
     # Test framework does not count as "us".
-    /\n\tat '"$DELETESTACKTRACELOCATIONS_IGNORE_PATTERN"'/ {
+    /\n\tat '"${DELETESTACKTRACELOCATIONS_IGNORE_PATTERN}"'/ {
 	s/\n[^\n]*$//
 	b deleteStackTraceLocations
     }
     # When a following location is from us ...
-    /\n\tat '"$DELETESTACKTRACELOCATIONS_OUR_PATTERN"'/ {
+    /\n\tat '"${DELETESTACKTRACELOCATIONS_OUR_PATTERN//\//\\/}"'/ {
 	# ... and we do not have another one from us yet ...
-	/\(^\|\n\)\tat '"$DELETESTACKTRACELOCATIONS_OUR_PATTERN"'.*\n/! {
+	/\(^\|\n\)\tat '"${DELETESTACKTRACELOCATIONS_OUR_PATTERN//\//\\/}"'.*\n/! {
 	    # Keep it.
 	    b deleteStackTraceLocations
 	}
@@ -60,14 +60,14 @@ N;/ in \+[^ \n]*$/{
     s/ \([0-9]\+\) | \([^ \n]\+\) \+in \+\([^ \n]\+\)/ \2() in \3:\1/g
 
     # Test framework does not count as "us".
-    /\n.* in '"$DELETESTACKTRACELOCATIONS_IGNORE_PATTERN"'/ {
+    /\n.* in '"${DELETESTACKTRACELOCATIONS_IGNORE_PATTERN//\//\\/}"'/ {
 	s/\n[^\n]*$//
 	b deleteGrailsStackTraceLocations
     }
     # When a following location is from us ...
-    /\n.* in '"$DELETESTACKTRACELOCATIONS_OUR_PATTERN"'/ {
+    /\n.* in '"${DELETESTACKTRACELOCATIONS_OUR_PATTERN//\//\\/}"'/ {
 	# ... and we do not have another one from us yet ...
-	/\(^\|\n\).* in '"$DELETESTACKTRACELOCATIONS_OUR_PATTERN"'.*\n/! {
+	/\(^\|\n\).* in '"${DELETESTACKTRACELOCATIONS_OUR_PATTERN//\//\\/}"'.*\n/! {
 	    # Keep it.
 	    b deleteGrailsStackTraceLocations
 	}
