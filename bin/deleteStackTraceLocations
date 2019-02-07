@@ -1,16 +1,50 @@
 #!/bin/bash
 
+: ${SED:=sed}
+
 : ${DELETESTACKTRACELOCATIONS_IGNORE_PATTERN='com\.hpe\?\.opr\.qa\.framework\.runner\.'}
 : ${DELETESTACKTRACELOCATIONS_OUR_PATTERN='com\.hpe\?\.'}
 
-: ${DELETESTACKTRACELOCATIONS_REASON_PREFIX=[0;01;38;5;124m}
+: ${DELETESTACKTRACELOCATIONS_REASON_PREFIX=[48;5;224m}
 : ${DELETESTACKTRACELOCATIONS_REASON_SUFFIX=[0m}
 
-exec sed --unbuffered \
+: ${DELETESTACKTRACELOCATIONS_FILELOCATION_PREFIX=[04;38;5;62m}
+: ${DELETESTACKTRACELOCATIONS_FILELOCATION_SUFFIX=[0m}
+
+: ${DELETESTACKTRACELOCATIONS_FUNCTIONNAME_PREFIX=[01;38;5;19m}
+: ${DELETESTACKTRACELOCATIONS_FUNCTIONNAME_SUFFIX=[0m}
+
+: ${DELETESTACKTRACELOCATIONS_INTRO_PREFIX=[38;5;145m}
+: ${DELETESTACKTRACELOCATIONS_INTRO_SUFFIX=[0m}
+
+printUsage()
+{
+    cat <<HELPTEXT
+Truncate long stack traces after showing the first location that belongs to one
+of "our" classes (as defined by \$DELETESTACKTRACELOCATIONS_OUR_PATTERN,
+skipping matches of \$DELETESTACKTRACELOCATIONS_IGNORE_PATTERN).
+Also, do additional pretty printing (like putting the "nested exception is" on a
+new line, and removing uninteresting fluff) and highlighting of various syntax
+elements (unless --no-color is given; customizable via
+\$DELETESTACKTRACELOCATIONS_*_{PRE,SUF}FIX environment variables).
+HELPTEXT
+    printf 'Usage: %q %s\n' "$(basename "$1")" '[--no-color] [SED-OPTIONS ...] INPUT-FILE [...] [-?|-h|--help]'
+    printf 'Usage: cat FILE [...] | %q %s\n' "$(basename "$1")" '[--no-color] [SED-OPTIONS ...]'
+}
+case "$1" in
+    --help|-h|-\?)	shift; printUsage "$0"; exit 0;;
+    --no-color)		shift; unset ${!DELETESTACKTRACELOCATIONS_@};;
+esac
+
+
+exec $SED --unbuffered \
+    -e '
+:begin
+' \
     -e '
 /^[a-z]\+\.[a-zA-Z_.]*\(Exception\|Error\): \|^Caused by: / {
-    s/; \(nested exception is \)/\n    \1/g
-    s/\(\(^\|\n\)\(Caused by: \)\?[^:]\+: \)\([^\n]\+\)/\1'"${DELETESTACKTRACELOCATIONS_REASON_PREFIX//\//\\/}"'\4'"${DELETESTACKTRACELOCATIONS_REASON_SUFFIX//\//\\/}"'/g
+    s/; \(nested exception is \)/\n    '"${DELETESTACKTRACELOCATIONS_INTRO_PREFIX//\//\\/}"'\1'"${DELETESTACKTRACELOCATIONS_INTRO_SUFFIX//\//\\/}"'/g
+    s/\(^\|\n\)\(Caused by: \)\?\([^:]\+: \)\([^\n]\+\)/\1'"${DELETESTACKTRACELOCATIONS_INTRO_PREFIX//\//\\/}"'\2'"${DELETESTACKTRACELOCATIONS_INTRO_SUFFIX//\//\\/}"'\3'"${DELETESTACKTRACELOCATIONS_REASON_PREFIX//\//\\/}"'\4'"${DELETESTACKTRACELOCATIONS_REASON_SUFFIX//\//\\/}"'/g
 }
 ' \
     -e '
@@ -34,7 +68,7 @@ b
 :deleteStackTraceLocations
 N;/\n\tat [^\n]*$/{
     # Test framework does not count as "us".
-    /\n\tat '"${DELETESTACKTRACELOCATIONS_IGNORE_PATTERN}"'/ {
+    /\n\tat '"${DELETESTACKTRACELOCATIONS_IGNORE_PATTERN//\//\\/}"'/ {
 	s/\n[^\n]*$//
 	b deleteStackTraceLocations
     }
@@ -52,6 +86,10 @@ N;/\n\tat [^\n]*$/{
 }
 :printStackTraceLocations
 /^\tat /{
+    s/(\([^)]\+:[0-9]\+\))\(\n\|$\)/('"${DELETESTACKTRACELOCATIONS_FILELOCATION_PREFIX//\//\\/}"'\1'"${DELETESTACKTRACELOCATIONS_FILELOCATION_SUFFIX//\//\\/}"')\2/
+    s/\([a-zA-Z0-9_]\+\)(/'"${DELETESTACKTRACELOCATIONS_FUNCTIONNAME_PREFIX//\//\\/}"'\1'"${DELETESTACKTRACELOCATIONS_FUNCTIONNAME_SUFFIX//\//\\/}"'(/
+    s/\tat /\t'"${DELETESTACKTRACELOCATIONS_INTRO_PREFIX//\//\\/}"'at'"${DELETESTACKTRACELOCATIONS_INTRO_SUFFIX//\//\\/}"' /
+
     P
     s/^[^\n]*\n//
     b printStackTraceLocations
@@ -60,7 +98,7 @@ N;/\n\tat [^\n]*$/{
 # Remove any following summary of omitted frames; due to our deletions, the number is wrong, anyway.
 /\(^\|\n\)\t\.\.\. [0-9]\+ common frames omitted$/D
 
-b
+b begin
 #-------------------------------------------------------------------------------
 
 :deleteGrailsStackTraceLocations
@@ -85,4 +123,6 @@ N;/ in \+[^ \n]*$/{
     s/\n[^\n]*$//
     b deleteGrailsStackTraceLocations
 }
+
+b begin
 ' "$@"
