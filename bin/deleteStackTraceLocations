@@ -3,7 +3,17 @@
 : ${DELETESTACKTRACELOCATIONS_IGNORE_PATTERN='com\.hpe\?\.opr\.qa\.framework\.runner\.'}
 : ${DELETESTACKTRACELOCATIONS_OUR_PATTERN='com\.hpe\?\.'}
 
-exec sed --unbuffered -e '
+: ${DELETESTACKTRACELOCATIONS_REASON_PREFIX=[0;01;38;5;124m}
+: ${DELETESTACKTRACELOCATIONS_REASON_SUFFIX=[0m}
+
+exec sed --unbuffered \
+    -e '
+/^[a-z]\+\.[a-zA-Z_.]*\(Exception\|Error\): \|^Caused by: / {
+    s/; \(nested exception is \)/\n    \1/g
+    s/\(\(^\|\n\)\(Caused by: \)\?[^:]\+: \)\([^\n]\+\)/\1'"${DELETESTACKTRACELOCATIONS_REASON_PREFIX//\//\\/}"'\4'"${DELETESTACKTRACELOCATIONS_REASON_SUFFIX//\//\\/}"'/g
+}
+' \
+    -e '
 # Only show a single line of stack traces.
 /^\tat /b deleteStackTraceLocations
 
@@ -40,7 +50,6 @@ N;/\n\tat [^\n]*$/{
     s/\n[^\n]*$//
     b deleteStackTraceLocations
 }
-:deleteStackTraceLine
 :printStackTraceLocations
 /^\tat /{
     P
@@ -49,7 +58,7 @@ N;/\n\tat [^\n]*$/{
 }
 
 # Remove any following summary of omitted frames; due to our deletions, the number is wrong, anyway.
-/\t\.\.\. [0-9]\+ common frames omitted/D
+/\(^\|\n\)\t\.\.\. [0-9]\+ common frames omitted$/D
 
 b
 #-------------------------------------------------------------------------------
