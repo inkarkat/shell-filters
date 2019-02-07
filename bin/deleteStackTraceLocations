@@ -1,5 +1,8 @@
 #!/bin/bash
 
+: ${DELETESTACKTRACELOCATIONS_IGNORE_PATTERN='com\.hpe\?\.opr\.qa\.framework\.runner\.'}
+: ${DELETESTACKTRACELOCATIONS_OUR_PATTERN='com\.hpe\?\.'}
+
 sed --unbuffered -e '
 # Only show a single line of stack traces.
 /^\tat /b deleteStackTraceLocations
@@ -21,14 +24,14 @@ b
 :deleteStackTraceLocations
 N;/\n\tat [^\n]*$/{
     # Test framework does not count as "us".
-    /\n\tat com\.hpe\?\.opr\.qa\.framework\.runner\./ {
+    /\n\tat '"$DELETESTACKTRACELOCATIONS_IGNORE_PATTERN"'/ {
 	s/\n[^\n]*$//
 	b deleteStackTraceLocations
     }
     # When a following location is from us ...
-    /\n\tat com\.hpe\?\./ {
+    /\n\tat '"$DELETESTACKTRACELOCATIONS_OUR_PATTERN"'/ {
 	# ... and we do not have another one from us yet ...
-	/\(^\|\n\)\tat com\.hpe\?\..*\n/! {
+	/\(^\|\n\)\tat '"$DELETESTACKTRACELOCATIONS_OUR_PATTERN"'.*\n/! {
 	    # Keep it.
 	    b deleteStackTraceLocations
 	}
@@ -57,14 +60,14 @@ N;/ in \+[^ \n]*$/{
     s/ \([0-9]\+\) | \([^ \n]\+\) \+in \+\([^ \n]\+\)/ \2() in \3:\1/g
 
     # Test framework does not count as "us".
-    /\n.* in com\.hpe\?\.opr\.qa\.framework\.runner\./ {
+    /\n.* in '"$DELETESTACKTRACELOCATIONS_IGNORE_PATTERN"'/ {
 	s/\n[^\n]*$//
 	b deleteGrailsStackTraceLocations
     }
     # When a following location is from us ...
-    /\n.* in com\.hpe\?\./ {
+    /\n.* in '"$DELETESTACKTRACELOCATIONS_OUR_PATTERN"'/ {
 	# ... and we do not have another one from us yet ...
-	/\(^\|\n\).* in com\.hpe\?\..*\n/! {
+	/\(^\|\n\).* in '"$DELETESTACKTRACELOCATIONS_OUR_PATTERN"'.*\n/! {
 	    # Keep it.
 	    b deleteGrailsStackTraceLocations
 	}
