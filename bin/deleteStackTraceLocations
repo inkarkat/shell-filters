@@ -42,24 +42,32 @@ exec $SED --unbuffered \
 :begin
 ' \
     -e '
+# Java exception message
 /^[a-z]\+\.[a-zA-Z_.]*\(Exception\|Error\): \|^Caused by: / {
     s/; \(nested exception is \)/\n    '"${DELETESTACKTRACELOCATIONS_INTRO_PREFIX//\//\\/}"'\1'"${DELETESTACKTRACELOCATIONS_INTRO_SUFFIX//\//\\/}"'/g
     s/\(^\|\n\)\(Caused by: \)\?\([^:]\+: \)\([^\n]\+\)/\1'"${DELETESTACKTRACELOCATIONS_INTRO_PREFIX//\//\\/}"'\2'"${DELETESTACKTRACELOCATIONS_INTRO_SUFFIX//\//\\/}"'\3'"${DELETESTACKTRACELOCATIONS_REASON_PREFIX//\//\\/}"'\4'"${DELETESTACKTRACELOCATIONS_REASON_SUFFIX//\//\\/}"'/g
 }
 ' \
     -e '
+# Groovy exception message
+/^Message: [a-z]\+\.[a-zA-Z_.]*\(Exception\|Error\): \|^Caused by / {
+    s/; \(nested exception is \)/\n    '"${DELETESTACKTRACELOCATIONS_INTRO_PREFIX//\//\\/}"'\1'"${DELETESTACKTRACELOCATIONS_INTRO_SUFFIX//\//\\/}"'/g
+    s/\(^\|\n\)\(Message: \|Caused by \)\([^:]\+: \)\([^\n]\+\)/\1'"${DELETESTACKTRACELOCATIONS_INTRO_PREFIX//\//\\/}"'\2'"${DELETESTACKTRACELOCATIONS_INTRO_SUFFIX//\//\\/}"'\3'"${DELETESTACKTRACELOCATIONS_REASON_PREFIX//\//\\/}"'\4'"${DELETESTACKTRACELOCATIONS_REASON_SUFFIX//\//\\/}"'/g
+}
+' \
+    -e '
 # Only show a single line of stack traces.
 /^\tat /b deleteStackTraceLocations
 
-# Delete the header line that sometimes occurs before a Grails stack trace.
+# Delete the header line that sometimes occurs before a Groovy stack trace.
 /^    Line | Method$/D
-# Only show a single line of Grails stack traces.
+# Only show a single line of Groovy stack traces.
 /^->> \+[0-9]\+ | / {
     # Delete the separator after the exception source
     N
     s/\n\(- \)\+$//
 
-    b deleteGrailsStackTraceLocations
+    b deleteGroovyStackTraceLocations
 }
 
 b
@@ -101,7 +109,7 @@ N;/\n\tat [^\n]*$/{
 b begin
 #-------------------------------------------------------------------------------
 
-:deleteGrailsStackTraceLocations
+:deleteGroovyStackTraceLocations
 N;/ in \+[^ \n]*$/{
     # Condense the formatting.
     s/ \([0-9]\+\) | \([^ \n]\+\) \+in \+\([^ \n]\+\)/ \2() in \3:\1/g
@@ -109,19 +117,30 @@ N;/ in \+[^ \n]*$/{
     # Test framework does not count as "us".
     /\n.* in '"${DELETESTACKTRACELOCATIONS_IGNORE_PATTERN//\//\\/}"'/ {
 	s/\n[^\n]*$//
-	b deleteGrailsStackTraceLocations
+	b deleteGroovyStackTraceLocations
     }
     # When a following location is from us ...
     /\n.* in '"${DELETESTACKTRACELOCATIONS_OUR_PATTERN//\//\\/}"'/ {
 	# ... and we do not have another one from us yet ...
 	/\(^\|\n\).* in '"${DELETESTACKTRACELOCATIONS_OUR_PATTERN//\//\\/}"'.*\n/! {
 	    # Keep it.
-	    b deleteGrailsStackTraceLocations
+	    b deleteGroovyStackTraceLocations
 	}
     }
     # Else delete it and all following locations.
     s/\n[^\n]*$//
-    b deleteGrailsStackTraceLocations
+    b deleteGroovyStackTraceLocations
+}
+
+:printGroovyStackTraceLocations
+/^->>   \|^|    /{
+    s/\([^ ]\+:[0-9]\+\)\(\n\|$\)/'"${DELETESTACKTRACELOCATIONS_FILELOCATION_PREFIX//\//\\/}"'\1'"${DELETESTACKTRACELOCATIONS_FILELOCATION_SUFFIX//\//\\/}"'\2/
+    s/\([a-zA-Z0-9_]\+\)()/'"${DELETESTACKTRACELOCATIONS_FUNCTIONNAME_PREFIX//\//\\/}"'\1'"${DELETESTACKTRACELOCATIONS_FUNCTIONNAME_SUFFIX//\//\\/}"'()/
+    s/^->>   \|^|/'"${DELETESTACKTRACELOCATIONS_INTRO_PREFIX//\//\\/}"'&'"${DELETESTACKTRACELOCATIONS_INTRO_SUFFIX//\//\\/}"'/
+
+    P
+    s/^[^\n]*\n//
+    b printGroovyStackTraceLocations
 }
 
 b begin
