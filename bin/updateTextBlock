@@ -7,27 +7,27 @@
 # DATE CREATED:	30-May-2011
 #
 ###############################################################################
-# CONTENTS: 
-#   
-# REMARKS: 
+# CONTENTS:
 #
-# TODO: 
-#   - Implement option to remove content and markers. 
-#   - Implement option where to place content when no marker yet. 
-#   - Allow to use stdin for either inputfile or file. 
-#   - Check that inputfile doesn't contain the end marker. 
-#   
+# REMARKS:
+#
+# TODO:
+#   - Implement option to remove content and markers.
+#   - Implement option where to place content when no marker yet.
+#   - Allow to use stdin for either inputfile or file.
+#   - Check that inputfile doesn't contain the end marker.
+#
 # FILE_SCCS = "@(#)updateTextBlock	003	(22-Jun-2011)	tools";
 #
-# REVISION	DATE		REMARKS 
+# REVISION	DATE		REMARKS
 #	003	22-Jun-2011	FIX: Typo in TMPFILE resolution make it always
-#				use the fallback. 
-#	002	31-May-2011	Correct help formatting. 
+#				use the fallback.
+#	002	31-May-2011	Correct help formatting.
 #				Add check for existing inputfile, as sed
-#				silently ignores this. 
+#				silently ignores this.
 #				Add sed escaping for pattern and inserted
-#				markers, to allow / and \ inside of them. 
-#				Add warning for multiple text blocks. 
+#				markers, to allow / and \ inside of them.
+#				Add warning for multiple text blocks.
 #	001	30-May-2011	file creation
 ###############################################################################
 
@@ -39,8 +39,8 @@ SHORTHELPTEXT
 }
 printUsage()
 {
-    # This is the short help when launched with no or incorrect arguments. 
-    # It is printed to stderr to avoid accidental processing. 
+    # This is the short help when launched with no or incorrect arguments.
+    # It is printed to stderr to avoid accidental processing.
     printShortUsage "$1" >&2
     cat >&2 <<MOREHELP
 Try "$(basename "$1")" --help for more information.
@@ -48,22 +48,22 @@ MOREHELP
 }
 printLongUsage()
 {
-    # This is the long "man page" when launched with the help argument. 
-    # It is printed to stdout to allow paging with 'more'. 
+    # This is the long "man page" when launched with the help argument.
+    # It is printed to stdout to allow paging with 'more'.
     cat <<HELPDESCRIPTION
-Update a block of text delimited by markers with text read from an inputfile. 
+Update a block of text delimited by markers with text read from an inputfile.
 HELPDESCRIPTION
     echo
     printShortUsage "$1"
     cat <<HELPTEXT
-    --update|-u	inputfile	Update with the contents of inputfile. 
+    --update|-u	inputfile	Update with the contents of inputfile.
     --marker|-m markertext	Contents are framed by lines containing
 				markertext, with appended -BEGIN and -END.
 				Default is # INCLUDED-CONTENT
     --begin-marker|-b text	Begin of contents is framed by a line
-				containing text. 
+				containing text.
     --end-marker|-e text	End of contents is framed by a line containing
-				text. 
+				text.
 
 Example:
 "$(basename "$1")" -u myinput /tmp/foobar
@@ -88,10 +88,10 @@ do
 	*)			break;;
     esac
 done
-[ $# -eq 0 ] && { echo >&2 "ERROR: Must pass file(s) to process."; printUsage "$0"; exit 2; }
-[ "$updateFile" ] || { echo >&2 "ERROR: Must specify inputfile used for the update."; printUsage "$0"; exit 2; }
-[ -r "$updateFile" ] || { echo >&2 "ERROR: inputfile \"${updateFile}\" does not exist."; printUsage "$0"; exit 2; }
-[ "$isCustomBeginMarker" -a ! "$isCustomEndMarker" -o ! "$isCustomBeginMarker" -a "$isCustomEndMarker" ] && { echo >&2 "ERROR: Must specify both begin and end markers."; printUsage "$0"; exit 2; }
+[ $# -eq 0 ] && { echo >&2 "ERROR: Must pass file(s) to process."; printUsage "$0" >&2; exit 2; }
+[ "$updateFile" ] || { echo >&2 "ERROR: Must specify inputfile used for the update."; printUsage "$0" >&2; exit 2; }
+[ -r "$updateFile" ] || { echo >&2 "ERROR: inputfile \"${updateFile}\" does not exist."; printUsage "$0" >&2; exit 2; }
+[ "$isCustomBeginMarker" -a ! "$isCustomEndMarker" -o ! "$isCustomBeginMarker" -a "$isCustomEndMarker" ] && { echo >&2 "ERROR: Must specify both begin and end markers."; printUsage "$0" >&2; exit 2; }
 
 
 TMPFILE=$(mktemp --tmpdir "$(basename -- "$0")-XXXXXX" 2>/dev/null || echo "${TEMP:-/tmp}/$(basename -- "$0").$$")
@@ -121,10 +121,10 @@ do
     # spoiling the file in case of intermediate failures. The modification is
     # susceptible to intermediate changes of the file, because the first
     # processing step extracts the line numbers of the markers, and a second
-    # step then does the update based on those numbers. 
+    # step then does the update based on those numbers.
     cp "$file" "$TMPFILE" || { isFailure='true'; echo >&2 "ERROR: Failed to process ${file}."; continue; }
 
-    # Find and extract the line numbers of the markers. 
+    # Find and extract the line numbers of the markers.
     sed -ne "
 /^$(escapeSedPattern "$beginMarker")\$/{
 =
@@ -143,11 +143,11 @@ x
 	    echo >&2 "Warning: Multiple text blocks detected in \"$file\"; ignoring all expect the first."
 	fi
 	if [ "$endLine" ]; then
-	    # Replace the existing text block with the inputfile. 
+	    # Replace the existing text block with the inputfile.
 	    # The way to do this with absolute addressing is to delete the
 	    # existing range and append the new text block at the end line.
 	    # However, the delete command must come last to that the new end
-	    # line is not deleted, too. 
+	    # line is not deleted, too.
 	    sed -i -e "
 ${endLine}a\\
 $(escapeSedInsert "$beginMarker")
@@ -157,7 +157,7 @@ $(escapeSedInsert "$endMarker")
 ${startLine},${endLine}d
 " "$TMPFILE"
 	else
-	    # Append the text block with the inputfile at the end of the file. 
+	    # Append the text block with the inputfile at the end of the file.
 	    sed -i -e "
 \$a\\
 $(escapeSedInsert "$beginMarker")
@@ -165,7 +165,7 @@ $(escapeSedInsert "$beginMarker")
 \$a\\
 $(escapeSedInsert "$endMarker")
 " "$TMPFILE"
-	fi || { echo >&2 "ERROR: Failed to process ${file} in the temporary location."; exit 1; } 
+	fi || { echo >&2 "ERROR: Failed to process ${file} in the temporary location."; exit 1; }
 	cp "$TMPFILE" "$file" || { echo >&2 "ERROR: Failed to update ${file}."; exit 1; }
     } || { isFailure='true'; continue; }
 done
