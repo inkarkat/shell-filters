@@ -1,2 +1,40 @@
-#!/bin/sh
-exec ~/.vim/noeol "$@"
+#!/bin/bash
+
+printUsage()
+{
+    cat <<HELPTEXT
+Remove the final newline (<EOL>) at the end of the input / passed FILE(s).
+With -s|--single-line, do this only for text that consists of a single line.
+HELPTEXT
+    printf 'Usage: %q %s\n' "$(basename "$1")" '[-s|--single-line] FILE [...] [-?|-h|--help]'
+    printf 'Usage: cat FILE [...] %q %s\n' "$(basename "$1")" '[...] [-?|-h|--help]'
+}
+isSingleLineLimitation=
+case "$1" in
+    --help|-h|-\?)	shift; printUsage "$0"; exit 0;;
+    --single-line|-s)	shift; isSingleLineLimitation=t;;
+esac
+
+if [ $# -eq 0 -o -n "$isSingleLineLimitation" ]; then
+    # As one-liners:
+    # awk '{q=p;p=$0}NR>1{print q}END{ORS = ""; print p}'
+    # awk '{q=p;p=$0}NR>1{print q}END{if (NR<=1) ORS = ""; print p}'
+
+    : ${isSingleLineLimitation:=1}
+    exec awk -v "isAllLines=${isSingleLineLimitation//t/0}" '
+{
+    q = p
+    p = $0
+}
+NR > 1 {
+    print q
+    fflush()
+}
+END {
+if (isAllLines || NR <= 1) ORS = ""
+    print p
+}
+    ' "$@"
+else
+    exec ~/.vim/noeol "$@"
+fi
