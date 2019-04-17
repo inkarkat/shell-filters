@@ -4,7 +4,7 @@ printShortUsage()
 {
     # Note: short followed by long option; if the user knows the short one, she can
     # skim the long one.
-    printf 'Usage: %q %s\n' "$(basename "$1")" '[-s|--separator SEP] [-e|--empty-line-separator EMPTY-SEP] [-a|--break-after|-b|--break-before PATTERN] [-t|--break-timeout SECONDS] [-?|-h|--help]'
+    printf 'Usage: %q %s\n' "$(basename "$1")" '[-s|--separator SEP] [-e|--empty-line-separator EMPTY-SEP] [-a|--break-after|-b|--break-before PATTERN] [-t|--break-timeout SECONDS] [-w|--wrap COL] [-W|--hard-wrap COL] [-?|-h|--help]'
     printf 'Usage: cat FILE [...] | %q %s\n' "$(basename "$1")" '[...]'
 }
 printUsage()
@@ -34,6 +34,11 @@ HELPDESCRIPTION
 			create a new line after / before it.
     --break-timeout|-t SECONDS
 			If no new line arrives within SECONDS, create new line.
+    --wrap|-w COL	Wrap (entire input lines) before the accumulated number
+			of characters exceeds COL.
+    --hard-wrap|-W COL	Don't let the output exceed COL number of characters. In
+			contrast to --wrap, this will also wrap inside input
+			lines if necessary.
 HELPTEXT
     printf '%q %s\n' "$(basename "$1")" '--foo bar /tmp/foobar'
 }
