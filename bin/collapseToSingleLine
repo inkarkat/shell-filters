@@ -35,7 +35,7 @@ HELPDESCRIPTION
     --break-timeout|-t SECONDS
 			If no new line arrives within SECONDS, create new line.
     --wrap|-w COL	Wrap (entire input lines) before the accumulated number
-			of characters exceeds COL.
+			of characters exceeds COL. No separator is printed then.
     --hard-wrap|-W COL	Don't let the output exceed COL number of characters. In
 			contrast to --wrap, this will also wrap inside input
 			lines if necessary.
@@ -70,6 +70,12 @@ done
 s=
 isEmptyLine=
 lastUpdateEpoch=2147483647
+currentLine=
+newline()
+{
+    printf '\n'
+    currentLine=''
+}
 cat "$@" | while IFS=$'\n' read -r line || [ -n "$line" ]
 do
     if [ -z "$line" -a -n "${emptyLineSeparator+t}" ]; then
@@ -78,19 +84,32 @@ do
 	if [ -z "$isEmptyLine" ]; then
 	    isEmptyLine=t
 	    printf '%s' "$emptyLineSeparator"
+	    currentLine="${currentLine}${emptyLineSeparator}"; currentLine="${currentLine##*$'\n'}"
 	fi
     else
 	if [ "$breakTimeout" ]; then
 	    now="$(date +%s)"
-	    [ $((now - lastUpdateEpoch)) -gt $breakTimeout ] && printf '\n'
+	    [ $((now - lastUpdateEpoch)) -gt $breakTimeout ] && newline
 	    lastUpdateEpoch="$now"
 	fi
 
-	[ "$breakBefore" ] && [[ "$line" =~ $breakBefore ]] && printf '\n'
+	[ "$breakBefore" ] && [[ "$line" =~ $breakBefore ]] && newline
 
-	printf '%s%s' "$s" "$line"
+	if [ "$wrapCol" ]; then
+	    fullLine="${currentLine}${s}${line}"
+	    wrappedLine="$(printf '%s\n' "$fullLine" | nowrap --column "$wrapCol")"
+	    if [ "$wrappedLine" = "$fullLine" ]; then
+		printf '%s%s' "$s" "$line"
+		currentLine="${currentLine}${s}${line}"
+	    else
+		printf '\n%s' "$line"
+		currentLine="${line}"
+	    fi
+	else
+	    printf '%s%s' "$s" "$line"
+	fi
 
-	[ "$breakAfter" ] && [[ "$line" =~ $breakAfter ]] && printf '\n'
+	[ "$breakAfter" ] && [[ "$line" =~ $breakAfter ]] && newline
 
 	s="$separator"
 	isEmptyLine=
