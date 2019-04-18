@@ -4,7 +4,7 @@ printShortUsage()
 {
     # Note: short followed by long option; if the user knows the short one, she can
     # skim the long one.
-    printf 'Usage: %q %s\n' "$(basename "$1")" '[-s|--separator SEP] [-e|--empty-line-separator EMPTY-SEP] [-a|--break-after|-b|--break-before PATTERN] [-t|--break-timeout SECONDS] [-w|--wrap COL] [-W|--hard-wrap COL] [-?|-h|--help]'
+    printf 'Usage: %q %s\n' "$(basename "$1")" '[-s|--separator SEP] [-e|--empty-line-separator EMPTY-SEP] [-a|--break-after|-b|--break-before PATTERN] [-t|--break-timeout SECONDS] [-w|--wrap COL] [-W|--hard-wrap COL] FILE [...] [-?|-h|--help]'
     printf 'Usage: cat FILE [...] | %q %s\n' "$(basename "$1")" '[...]'
 }
 printUsage()
@@ -40,16 +40,47 @@ HELPDESCRIPTION
 			contrast to --wrap, this will also wrap inside input
 			lines if necessary.
 HELPTEXT
-    printf '%q %s\n' "$(basename "$1")" '--foo bar /tmp/foobar'
 }
 
+separator=' '
+unset emptyLineSeparator
+breakAfter=
+breakBefore=
+breakTimeout=
+wrapCol=
+hardWrapCol=
 while [ $# -ne 0 ]
 do
     case "$1" in
-	--help|-h|-\?)	shift; printLongUsage "$0"; exit 0;;
-	--)		shift; break;;
-	-*)		{ echo "ERROR: Unknown option \"$1\"!"; echo; printUsage "$0"; } >&2; exit 2;;
-	*)		break;;
+	--help|-h|-\?)	    shift; printLongUsage "$0"; exit 0;;
+	--separator|-s)	    shift; separator="$1"; shift;;
+	--empty-line-separator|-e)
+			    shift; emptyLineSeparator="$1"; shift;;
+	--break-after|-a)   shift; breakAfter="$1"; shift;;
+	--break-before|-b)  shift; breakBefore="$1"; shift;;
+	--break-timeout|-t) shift; breakTimeout="$1"; shift;;
+	--wrap|-w)	    shift; wrapCol="$1"; shift;;
+	--hard-wrap|-W)	    shift; hardWrapCol="$1"; shift;;
+	--)		    shift; break;;
+	-*)		    { echo "ERROR: Unknown option \"$1\"!"; echo; printUsage "$0"; } >&2; exit 2;;
+	*)		    break;;
     esac
 done
 
+s=
+isEmptyLine=
+cat "$@" | while IFS=$'\n' read -r line || [ -n "$line" ]
+do
+    if [ -z "$line" -a -n "${emptyLineSeparator+t}" ]; then
+	# Print separator on the first empty line; do nothing on subsequent
+	# ones.
+	if [ -z "$isEmptyLine" ]; then
+	    isEmptyLine=t
+	    printf '%s' "$emptyLineSeparator"
+	fi
+    else
+	printf '%s%s' "$s" "$line"
+	s="$separator"
+	isEmptyLine=
+    fi
+done
