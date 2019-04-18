@@ -69,6 +69,7 @@ done
 
 s=
 isEmptyLine=
+lastUpdateEpoch=2147483647
 cat "$@" | while IFS=$'\n' read -r line || [ -n "$line" ]
 do
     if [ -z "$line" -a -n "${emptyLineSeparator+t}" ]; then
@@ -79,6 +80,12 @@ do
 	    printf '%s' "$emptyLineSeparator"
 	fi
     else
+	if [ "$breakTimeout" ]; then
+	    now="$(date +%s)"
+	    [ $((now - lastUpdateEpoch)) -gt $breakTimeout ] && printf '\n'
+	    lastUpdateEpoch="$now"
+	fi
+
 	[ "$breakBefore" ] && [[ "$line" =~ $breakBefore ]] && printf '\n'
 
 	printf '%s%s' "$s" "$line"
@@ -89,3 +96,4 @@ do
 	isEmptyLine=
     fi
 done
+printf '\n'
