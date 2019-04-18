@@ -30,7 +30,7 @@ HELPDESCRIPTION
 			Convert (subsequent runs of) empty line(s) to EMPTY-SEP.
     --break-after|-a PATTERN
     --break-before|-b PATTERN
-			If the current line matches (basic regexp) PATTERN,
+			If the current line matches (extended regexp) PATTERN,
 			create a new line after / before it.
     --break-timeout|-t SECONDS
 			If no new line arrives within SECONDS, create new line.
@@ -79,7 +79,12 @@ do
 	    printf '%s' "$emptyLineSeparator"
 	fi
     else
+	[ "$breakBefore" ] && [[ "$line" =~ $breakBefore ]] && printf '\n'
+
 	printf '%s%s' "$s" "$line"
+
+	[ "$breakAfter" ] && [[ "$line" =~ $breakAfter ]] && printf '\n'
+
 	s="$separator"
 	isEmptyLine=
     fi
