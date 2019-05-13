@@ -1,8 +1,0 @@
-#!/bin/bash
-exec sed --unbuffered -e 's/\d027\[[0-9;]\+[mK]//g'
-
-# Bash version: ${1//\[+([0-9;])[mK]/}
-# uncolor()
-# {
-#     eval "$1=\"\${2//\\[+([0-9;])[mK]/}\""
-# }
