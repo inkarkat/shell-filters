@@ -23,16 +23,17 @@ formatExample[american]='09/22/2017'
 
 printUsage()
 {
-    local IFS='|'
+    local IFS=$'\t'
     cat <<HELPTEXT
 Remove all lines from the passed FILEs that precede the passed date in
 YYYY-MM-DD format. Inside the FILEs, looks for the following date FORMATs:
-${!formatExample[*]}
-${formatExample[*]}
+HELPTEXT
+    printf '    %s\n' "${!formatExample[*]}" "${formatExample[*]}" | column -s $'\t' -t
+    cat <<HELPTEXT
 Files that do not contain any dates at all are skipped. Files that only contain
 other dates are removed.
 HELPTEXT
-printf 'Usage: %q %s\n' "$(basename "$1")" '[-v|--verbose|--verbose-color] [--format FORMAT [--format ...]] YYYY-MM-DD FILE [...] [-?|-h|--help]'
+    printf 'Usage: %q %s\n' "$(basename "$1")" '[-v|--verbose|--verbose-color] [--format FORMAT [--format ...]] YYYY-MM-DD FILE [...] [-?|-h|--help]'
 }
 
 typeset -a truncateLinesArguments=()
