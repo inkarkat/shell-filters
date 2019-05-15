@@ -4,7 +4,7 @@ printShortUsage()
 {
     # Note: short followed by long option; if the user knows the short one, she can
     # skim the long one.
-    printf 'Usage: %q %s\n' "$(basename "$1")" '[-s|--separator SEP] [-e|--empty-line-separator EMPTY-SEP] [-a|--break-after|-b|--break-before PATTERN] [-t|--break-timeout SECONDS] [-w|--wrap COL] [-W|--hard-wrap COL] FILE [...] [-?|-h|--help]'
+    printf 'Usage: %q %s\n' "$(basename "$1")" '[-s|--separator SEP] [-e|--empty-line-separator EMPTY-SEP] [-a|--break-after|-b|--break-before PATTERN] [-t|--break-timeout SECONDS] [-w|--wrap COL] FILE [...] [-?|-h|--help]'
     printf 'Usage: cat FILE [...] | %q %s\n' "$(basename "$1")" '[...]'
 }
 printUsage()
@@ -36,9 +36,6 @@ HELPDESCRIPTION
 			If no new line arrives within SECONDS, create new line.
     --wrap|-w COL	Wrap (entire input lines) before the accumulated number
 			of characters exceeds COL. No separator is printed then.
-    --hard-wrap|-W COL	Don't let the output exceed COL number of characters. In
-			contrast to --wrap, this will also wrap inside input
-			lines if necessary.
 HELPTEXT
 }
 
@@ -48,7 +45,6 @@ breakAfter=
 breakBefore=
 breakTimeout=
 wrapCol=
-hardWrapCol=
 while [ $# -ne 0 ]
 do
     case "$1" in
@@ -60,7 +56,6 @@ do
 	--break-before|-b)  shift; breakBefore="$1"; shift;;
 	--break-timeout|-t) shift; breakTimeout="$1"; shift;;
 	--wrap|-w)	    shift; wrapCol="$1"; shift;;
-	--hard-wrap|-W)	    shift; hardWrapCol="$1"; shift;;
 	--)		    shift; break;;
 	-*)		    { echo "ERROR: Unknown option \"$1\"!"; echo; printUsage "$0"; } >&2; exit 2;;
 	*)		    break;;
@@ -76,43 +71,48 @@ newline()
     printf '\n'
     currentLine=''
 }
-cat "$@" | while IFS=$'\n' read -r line || [ -n "$line" ]
-do
-    if [ -z "$line" -a -n "${emptyLineSeparator+t}" ]; then
-	# Print separator on the first empty line; do nothing on subsequent
-	# ones.
-	if [ -z "$isEmptyLine" ]; then
-	    isEmptyLine=t
-	    printf '%s' "$emptyLineSeparator"
-	    currentLine="${currentLine}${emptyLineSeparator}"; currentLine="${currentLine##*$'\n'}"
-	fi
-    else
-	if [ "$breakTimeout" ]; then
-	    now="$(date +%s)"
-	    [ $((now - lastUpdateEpoch)) -gt $breakTimeout ] && newline
-	    lastUpdateEpoch="$now"
-	fi
+cat "$@" | {
+    [ "$wrapCol" ] && coproc NOWRAP { nowrap --unbuffered --column "$wrapCol"; }    # Start a coproc to filter individual lines; this is much more efficient than starting a new process for each line.
 
-	[ "$breakBefore" ] && [[ "$line" =~ $breakBefore ]] && newline
-
-	if [ "$wrapCol" ]; then
-	    fullLine="${currentLine}${s}${line}"
-	    wrappedLine="$(printf '%s\n' "$fullLine" | nowrap --column "$wrapCol")"
-	    if [ "$wrappedLine" = "$fullLine" ]; then
-		printf '%s%s' "$s" "$line"
-		currentLine="${currentLine}${s}${line}"
-	    else
-		printf '\n%s' "$line"
-		currentLine="${line}"
+    while IFS=$'\n' read -r line || [ -n "$line" ]
+    do
+	if [ -z "$line" -a -n "${emptyLineSeparator+t}" ]; then
+	    # Print separator on the first empty line; do nothing on subsequent
+	    # ones.
+	    if [ -z "$isEmptyLine" ]; then
+		isEmptyLine=t
+		printf '%s' "$emptyLineSeparator"
+		currentLine="${currentLine}${emptyLineSeparator}"; currentLine="${currentLine##*$'\n'}"
 	    fi
 	else
-	    printf '%s%s' "$s" "$line"
+	    if [ "$breakTimeout" ]; then
+		now="$(date +%s)"
+		[ $((now - lastUpdateEpoch)) -gt $breakTimeout ] && newline
+		lastUpdateEpoch="$now"
+	    fi
+
+	    [ "$breakBefore" ] && [[ "$line" =~ $breakBefore ]] && newline
+
+	    if [ "$wrapCol" ]; then
+		fullLine="${currentLine}${s}${line}"
+		printf '%s\n' "$fullLine" >&"${NOWRAP[1]}"
+		read -ru "${NOWRAP[0]}" wrappedLine
+		if [ "$wrappedLine" = "$fullLine" ]; then
+		    printf '%s%s' "$s" "$line"
+		    currentLine="${currentLine}${s}${line}"
+		else
+		    printf '\n%s' "$line"
+		    currentLine="${line}"
+		fi
+	    else
+		printf '%s%s' "$s" "$line"
+	    fi
+
+	    [ "$breakAfter" ] && [[ "$line" =~ $breakAfter ]] && newline
+
+	    s="$separator"
+	    isEmptyLine=
 	fi
-
-	[ "$breakAfter" ] && [[ "$line" =~ $breakAfter ]] && newline
-
-	s="$separator"
-	isEmptyLine=
-    fi
-done
-printf '\n'
+    done
+    printf '\n'
+}
