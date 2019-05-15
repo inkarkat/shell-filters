@@ -9,50 +9,73 @@ readonly monthPattern='[01][0-9]'
 readonly zeroedDayPattern='[0123][0-9]'
 readonly dayPattern='[ 0123][0-9]'
 
-typeset -A patterns=
+typeset -A patterns=()
 patterns[iso]="${yearPattern}-${monthPattern}-${zeroedDayPattern}"
 patterns[weekDayMonthDay]="${weekdays} ${months} ${dayPattern}"
 patterns[american]="${monthPattern}\\/${zeroedDayPattern}\\/${yearPattern}"
+
+typeset -A formatExample=()
+formatExample[iso]='2017-09-22'
+formatExample[weekDayMonthDay]='Fri Sep 22'
+formatExample[american]='09/22/2017'
 
 
 
 printUsage()
 {
+    local IFS='|'
     cat <<HELPTEXT
 Remove all lines from the passed FILEs that precede the passed date in
-YYYY-MM-DD format. Inside the FILEs, looks for the following date formats:
-- 2017-09-22
-- Fri Sep 22
-- 09/22/2017
+YYYY-MM-DD format. Inside the FILEs, looks for the following date FORMATs:
+${!formatExample[*]}
+${formatExample[*]}
 Files that do not contain any dates at all are skipped. Files that only contain
 other dates are removed.
 HELPTEXT
-printf 'Usage: %q %s\n' "$(basename "$1")" 'YYYY-MM-DD FILE [...] [-?|-h|--help]'
+printf 'Usage: %q %s\n' "$(basename "$1")" '[-v|--verbose|--verbose-color] [--format FORMAT [--format ...]] YYYY-MM-DD FILE [...] [-?|-h|--help]'
 }
 
 typeset -a truncateLinesArguments=()
-case "$1" in
-    --help|-h|-\?)	shift; printUsage "$0"; exit 0;;
-    --verbose-color|--verbose|-v)	truncateLinesArguments+=("$1"); shift;;
-esac
+typeset -A date=()
+typeset -a formats=()
+while [ $# -ne 0 ]
+do
+    case "$1" in
+	--help|-h|-\?)	shift; printUsage "$0"; exit 0;;
+	--verbose-color|--verbose|-v)	truncateLinesArguments+=("$1"); shift;;
+	--format)	shift
+			if contains "$1" "${!patterns[@]}"; then
+			    formats+=("$1")
+			else
+			    printf >&2 'ERROR: Unknown format "%s"; must be one of: %s\n' "$1" "${!patterns[*]}"
+			    exit 2
+			fi
+			shift
+			;;
+	--)		shift; break;;
+	-*)		{ echo "ERROR: Unknown option \"$1\"!"; echo; printUsage "$0"; } >&2; exit 2;;
+	${yearPattern}-${monthPattern}-${zeroedDayPattern})
+	    year="${1:0:4}"
+	    month="${1:5:2}"
+	    day="${1:8:2}"
 
-case "$1" in
-    ${yearPattern}-${monthPattern}-${zeroedDayPattern})
-	year="${1:0:4}"
-	month="${1:5:2}"
-	day="${1:8:2}"
+	    date[iso]="$1"
+	    date[american]="${month}\\/${day}\\/${year}"
+	    date[weekDayMonthDay]="${weekdays} ${monthsList[${month#0}]} ${day/#0/[0 ]}"
+	    shift
+	    break
+	    ;;
+	*)  break;;
+    esac
+done
 
-	typeset -A date=
-	date[iso]="$1"
-	date[american]="${month}\\/${day}\\/${year}"
-	date[weekDayMonthDay]="${weekdays} ${monthsList[${month#0}]} ${day/#0/[0 ]}"
-	;;
-    '')	echo >&2 "ERROR: No date (YYYY-MM-DD) passed."; exit 2;;
-    *)	echo >&2 "ERROR: Wrong date format, must be YYYY-MM-DD."; exit 2;;
-esac
-shift
-
-[ $# -gt 0 ] || { printUsage "$0"; exit 2; }
+if [ ! "${!date[*]}" ]; then
+    echo >&2 "ERROR: No date (YYYY-MM-DD) passed."
+    exit 2
+elif [ $# -eq 0 ]; then
+    printUsage "$0"
+    exit 2
+fi
 
 
 
@@ -61,9 +84,9 @@ readonly be='\($\|[^0-9a-zA-Z_-]\)' # keyword boundary end
 
 considerArg=
 typeset -a matchArgs=()
-for format in iso american weekDayMonthDay
+for format in "${formats[@]:-${!patterns[@]}}"
 do
-    considerArg="${considerArg}${considerArg:+\\}${patterns[$format]}"
+    considerArg="${considerArg}${considerArg:+\\|}${patterns[$format]}"
     matchArgs+=('--match' "/${bs}${date[$format]}${be}/" -n "/${bs}${date[$format]}${be}/,\$p")
 done
 
