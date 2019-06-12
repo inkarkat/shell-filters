@@ -11,14 +11,18 @@ discard additional lines.
     --clear|-c		Also clear the single-line output after all input has
 			been processed (so nothing remains to be seen, all
 			samples were temporary only).
+    --summarize|-s WHAT	Instead of printing selected output, just summarize the
+			amount of lines (characterized as WHAT, e.g. "lines",
+			"files").
 HELPTEXT
-    printf 'Usage: %q %s\n' "$(basename "$1")" '[-i|--inline [-c|--clear]] [-t|--timespan TIMESPAN[SUFFIX]] [-?|-h|--help]'
+    printf 'Usage: %q %s\n' "$(basename "$1")" '[-i|--inline [-c|--clear]] [-s|--summarize WHAT] [-t|--timespan TIMESPAN[SUFFIX]] [-?|-h|--help]'
 }
 
 prefix=
 suffix='\n'
 finalizer=
 isClear=
+summarizeWhat=
 timespan=1
 while [ $# -ne 0 ]
 do
@@ -26,6 +30,7 @@ do
 	--help|-h|-\?)	shift; printUsage "$0"; exit 0;;
 	--inline|-i)	shift; prefix='[1G[2K'; suffix=; finalizer='\n';;
 	--clear|-c)	shift; isClear=t;;
+	--summarize|-s)	shift; summarizeWhat="$1"; shift;;
 	--timespan|-t)	shift
 			case "$1" in
 			    +([0-9])?(s))   timespan="${1%s}";;
@@ -43,12 +48,19 @@ done
 [ "$isClear" ] && finalizer='[1G[2K'
 
 SECONDS=0
+let c=0
 
 while IFS=$'\n' read -r line || { suffix=; [ -n "$line" ]; }
 do
+    let c+=1
     if [ $SECONDS -ge $timespan ]; then
-	printf "${prefix}%s${suffix}" "$line"
+	sample="$line"
+	[ "$summarizeWhat" ] && sample="$c $summarizeWhat"
+
+	printf "${prefix}%s${suffix}" "$sample"
+
 	SECONDS=0
+	let c=0
     fi
 done
 if [ "$finalizer" ]; then
