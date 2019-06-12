@@ -8,17 +8,24 @@ Select and print a line from standard input only once every second / TIMESPAN;
 discard additional lines.
     --inline|-i		Overwrite the existing terminal line instead of
 			accumulating the sampled lines in the output.
+    --clear|-c		Also clear the single-line output after all input has
+			been processed (so nothing remains to be seen, all
+			samples were temporary only).
 HELPTEXT
-    printf 'Usage: %q %s\n' "$(basename "$1")" '[-i|--inline] [-t|--timespan TIMESPAN[SUFFIX]] [-?|-h|--help]'
+    printf 'Usage: %q %s\n' "$(basename "$1")" '[-i|--inline [-c|--clear]] [-t|--timespan TIMESPAN[SUFFIX]] [-?|-h|--help]'
 }
 
-isInline=
+prefix=
+suffix='\n'
+finalizer=
+isClear=
 timespan=1
 while [ $# -ne 0 ]
 do
     case "$1" in
 	--help|-h|-\?)	shift; printUsage "$0"; exit 0;;
-	--inline|-i)	shift; isInline=t;;
+	--inline|-i)	shift; prefix='[1G[2K'; suffix=; finalizer='\n';;
+	--clear|-c)	shift; isClear=t;;
 	--timespan|-t)	shift
 			case "$1" in
 			    +([0-9])?(s))   timespan="${1%s}";;
@@ -33,13 +40,17 @@ do
 	*)		break;;
     esac
 done
+[ "$isClear" ] && finalizer='[1G[2K'
 
 SECONDS=0
-eol='\n'
-while IFS=$'\n' read -r line || { eol=; [ -n "$line" ]; }
+
+while IFS=$'\n' read -r line || { suffix=; [ -n "$line" ]; }
 do
     if [ $SECONDS -ge $timespan ]; then
-	printf "%s$eol" "$line"
+	printf "${prefix}%s${suffix}" "$line"
 	SECONDS=0
     fi
 done
+if [ "$finalizer" ]; then
+    printf "$finalizer"
+fi
