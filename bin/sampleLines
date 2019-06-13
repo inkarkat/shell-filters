@@ -21,6 +21,7 @@ HELPTEXT
 prefix=
 suffix='\n'
 finalizer=
+isInline=
 isClear=
 summarizeWhat=
 timespan=1
@@ -28,7 +29,7 @@ while [ $# -ne 0 ]
 do
     case "$1" in
 	--help|-h|-\?)	shift; printUsage "$0"; exit 0;;
-	--inline|-i)	shift; prefix='[1G[2K'; suffix=; finalizer='\n';;
+	--inline|-i)	shift; isInline=t; prefix='[1G[2K'; suffix=; finalizer='\n';;
 	--clear|-c)	shift; isClear=t;;
 	--summarize|-s)	shift; summarizeWhat="$1"; shift;;
 	--timespan|-t)	shift
@@ -48,18 +49,34 @@ done
 [ "$isClear" ] && finalizer='[1G[2K'
 
 SECONDS=0
+let prevC=-1
 let c=0
+isAgain=
 
 while IFS=$'\n' read -r line || { suffix=; [ -n "$line" ]; }
 do
     let c+=1
     if [ $SECONDS -ge $timespan ]; then
 	sample="$line"
-	[ "$summarizeWhat" ] && sample="$c $summarizeWhat"
+	if [ "$summarizeWhat" ]; then
+	    sample="$c $summarizeWhat"
+
+	    if [ -n "$isInline" -a $prevC -eq $c -a -z "$isAgain" ]; then
+		# As the current line is overwritten, updates with the same
+		# count could not be distinguished. For better usability, append
+		# the word "again" on every other update with the same count, so
+		# that it toggles on and off for successive same counts.
+		isAgain=t
+		sample="$sample again"
+	    else
+		isAgain=
+	    fi
+	fi
 
 	printf "${prefix}%s${suffix}" "$sample"
 
 	SECONDS=0
+	let prevC=$c
 	let c=0
     fi
 done
