@@ -5,7 +5,7 @@ printShortUsage()
 {
     # Note: short followed by long option; if the user knows the short one, she can
     # skim the long one.
-    printf 'Usage: %q %s\n' "$(basename "$1")" '[-r|--reset-on PATTERN] [-i|--inline [-c|--clear] [-k|--keep-reset]] [-s|--summarize WHAT[,PLURAL-WHAT] --summary-only] [-t|--timespan TIMESPAN[SUFFIX]] [-?|-h|--help]'
+    printf 'Usage: %q %s\n' "$(basename "$1")" '[-r|--reset-on PATTERN] [-i|--inline [-c|--clear] [-a|--append-reset|-k|--keep-reset]] [-s|--summarize WHAT[,PLURAL-WHAT] --summary-only] [-t|--timespan TIMESPAN[SUFFIX]] [-?|-h|--help]'
 }
 printUsage()
 {
@@ -33,6 +33,8 @@ HELPDESCRIPTION
     --clear|-c		Also clear the single-line output after all input has
 			been processed (so nothing remains to be seen, all
 			samples were temporary only).
+    --append-reset|-a	Append the reset line to all following inline updates,
+			as a kind of context.
     --keep-reset|-k	Do not overwrite the existing sample line for reset
 			lines. This has the effect of keeping a log of all reset
 			lines (which could be informative headers or some other
@@ -53,7 +55,7 @@ prefix=
 suffix='\n'
 finalizer=
 resetPattern=
-isKeepReset=
+resetAction=
 isInline=
 isClear=
 summarizeWhat=
@@ -66,8 +68,10 @@ do
 	--help|-h|-\?)	shift; printLongUsage "$0"; exit 0;;
 	--reset-pattern|-r)
 			shift; resetPattern="$1"; shift;;
+	--append-reset|-a)
+			shift; resetAction=append;;
 	--keep-reset|-k)
-			shift; isKeepReset=t;;
+			shift; resetAction=keep;;
 	--inline|-i)	shift; isInline=t; prefix='[1G[2K'; suffix=; finalizer='\n';;
 	--clear|-c)	shift; isClear=t;;
 	--summarize|-s)	shift
@@ -104,6 +108,7 @@ let total=0
 let count=0
 isAgain=
 
+keepResetPrefix=
 while IFS=$'\n' read -r line || { suffix=; [ -n "$line" ]; }
 do
     let count+=1
@@ -112,9 +117,11 @@ do
     keepResetSuffix=
     if [ "$resetPattern" ] && [[ "$line" =~ $resetPattern ]]; then
 	isTakeThisLine=t
-	if [ -n "$isInline" -a -n "$isKeepReset" ]; then
-	    keepResetSuffix='\n'
-	fi
+	[ -n "$isInline" ] && case "$resetAction" in
+	    append) keepResetPrefix=;;	# The current iteration already has the header in the line. Only prepend the header to subsequent samples.
+	    keep)   keepResetSuffix='\n';;
+	    *)
+	esac
     fi
 
     if [ -n "$isTakeThisLine" -o $SECONDS -ge $timespan ]; then
@@ -153,11 +160,12 @@ do
 	    fi
 	fi
 
-	printf "${prefix}%s${suffix}${keepResetSuffix}" "$sample"
+	printf "${prefix}%s%s${suffix}${keepResetSuffix}" "$keepResetPrefix" "$sample"
 
 	SECONDS=0
 	let previousCount=$count
 	let count=0
+	[ -n "$isInline" -a -n "$isTakeThisLine" -a "$resetAction" = append ] && keepResetPrefix="$line"    # Prepend the header to subsequent samples now.
     fi
 done
 
