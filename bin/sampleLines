@@ -5,7 +5,7 @@ printShortUsage()
 {
     # Note: short followed by long option; if the user knows the short one, she can
     # skim the long one.
-    printf 'Usage: %q %s\n' "$(basename "$1")" '[-i|--inline [-c|--clear]] [-s|--summarize WHAT[,PLURAL-WHAT] --summary-only] [-t|--timespan TIMESPAN[SUFFIX]] [-?|-h|--help]'
+    printf 'Usage: %q %s\n' "$(basename "$1")" '[-r|--reset-on PATTERN] [-i|--inline [-c|--clear] [-k|--keep-reset]] [-s|--summarize WHAT[,PLURAL-WHAT] --summary-only] [-t|--timespan TIMESPAN[SUFFIX]] [-?|-h|--help]'
 }
 printUsage()
 {
@@ -25,11 +25,19 @@ HELPDESCRIPTION
     echo
     printShortUsage "$1"
     cat <<HELPTEXT
+    --reset-on|-r PATTERN
+			Reset the sampling interval on lines matching PATTERN,
+			and and unconditionally print these lines.
     --inline|-i		Overwrite the existing terminal line instead of
 			accumulating the sampled lines in the output.
     --clear|-c		Also clear the single-line output after all input has
 			been processed (so nothing remains to be seen, all
 			samples were temporary only).
+    --keep-reset|-k	Do not overwrite the existing sample line for reset
+			lines. This has the effect of keeping a log of all reset
+			lines (which could be informative headers or some other
+			crucial context), and continuing the inline sampling
+			below.
     --summarize|-s WHAT[,PLURAL-WHAT]
 			Before printing selected output, also summarize the
 			amount of lines (characterized as WHAT, e.g. "line",
@@ -44,6 +52,8 @@ HELPTEXT
 prefix=
 suffix='\n'
 finalizer=
+resetPattern=
+isKeepReset=
 isInline=
 isClear=
 summarizeWhat=
@@ -54,6 +64,10 @@ while [ $# -ne 0 ]
 do
     case "$1" in
 	--help|-h|-\?)	shift; printLongUsage "$0"; exit 0;;
+	--reset-pattern|-r)
+			shift; resetPattern="$1"; shift;;
+	--keep-reset|-k)
+			shift; isKeepReset=t;;
 	--inline|-i)	shift; isInline=t; prefix='[1G[2K'; suffix=; finalizer='\n';;
 	--clear|-c)	shift; isClear=t;;
 	--summarize|-s)	shift
@@ -94,7 +108,16 @@ while IFS=$'\n' read -r line || { suffix=; [ -n "$line" ]; }
 do
     let count+=1
     let total+=1
-    if [ $SECONDS -ge $timespan ]; then
+    isTakeThisLine=''
+    keepResetSuffix=
+    if [ "$resetPattern" ] && [[ "$line" =~ $resetPattern ]]; then
+	isTakeThisLine=t
+	if [ -n "$isInline" -a -n "$isKeepReset" ]; then
+	    keepResetSuffix='\n'
+	fi
+    fi
+
+    if [ -n "$isTakeThisLine" -o $SECONDS -ge $timespan ]; then
 	sample="$line"
 	if [ "$summarizeWhat" ]; then
 	    if [ "$isSummaryOnly" ]; then
@@ -104,13 +127,15 @@ do
 		let count-=1    # Don't include the current line (that is printed) in the count.
 	    fi
 
-	    if [ $count -eq 1 ]; then
+	    if [ $count -eq 0 ]; then
+		summary=
+	    elif [ $count -eq 1 ]; then
 		summary="$count ${summarizeWhat}$summarySuffix"
 	    else
 		summary="$count ${summarizeWhatPlural}$summarySuffix"
 	    fi
 
-	    if [ -n "$isInline" -a $previousCount -eq $count -a -z "$isAgain" ]; then
+	    if [ -n "$summary" -a -n "$isInline" -a $previousCount -eq $count -a -z "$isAgain" ]; then
 		# As the current line is overwritten, updates with the same
 		# count could not be distinguished. For better usability, append
 		# the word "again" on every other update with the same count, so
@@ -123,12 +148,12 @@ do
 
 	    if [ "$isSummaryOnly" ]; then
 		sample="$summary"
-	    else
-		sample="($summary) $line"
+	    elif [ ! "$isTakeThisLine" ]; then
+		sample="${summary:+"(${summary}) "}$line"
 	    fi
 	fi
 
-	printf "${prefix}%s${suffix}" "$sample"
+	printf "${prefix}%s${suffix}${keepResetSuffix}" "$sample"
 
 	SECONDS=0
 	let previousCount=$count
