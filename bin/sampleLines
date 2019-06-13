@@ -11,11 +11,14 @@ discard additional lines.
     --clear|-c		Also clear the single-line output after all input has
 			been processed (so nothing remains to be seen, all
 			samples were temporary only).
-    --summarize|-s WHAT	Instead of printing selected output, just summarize the
-			amount of lines (characterized as WHAT, e.g. "lines",
-			"files").
+    --summarize|-s WHAT[,PLURAL-WHAT]
+			Instead of printing selected output, just summarize the
+			amount of lines (characterized as WHAT, e.g. "line",
+			"file", you can also pass a separate (non-regular)
+			plural form:
+			"entry,entries").
 HELPTEXT
-    printf 'Usage: %q %s\n' "$(basename "$1")" '[-i|--inline [-c|--clear]] [-s|--summarize WHAT] [-t|--timespan TIMESPAN[SUFFIX]] [-?|-h|--help]'
+    printf 'Usage: %q %s\n' "$(basename "$1")" '[-i|--inline [-c|--clear]] [-s|--summarize WHAT[,PLURAL-WHAT] [-t|--timespan TIMESPAN[SUFFIX]] [-?|-h|--help]'
 }
 
 prefix=
@@ -24,6 +27,7 @@ finalizer=
 isInline=
 isClear=
 summarizeWhat=
+summarizeWhatPlural=
 timespan=1
 while [ $# -ne 0 ]
 do
@@ -31,7 +35,17 @@ do
 	--help|-h|-\?)	shift; printUsage "$0"; exit 0;;
 	--inline|-i)	shift; isInline=t; prefix='[1G[2K'; suffix=; finalizer='\n';;
 	--clear|-c)	shift; isClear=t;;
-	--summarize|-s)	shift; summarizeWhat="$1"; shift;;
+	--summarize|-s)	shift
+			case "$1" in
+			    *,*)    summarizeWhat="${1%%,*}"
+				    summarizeWhatPlural="${1#*,}"
+				    ;;
+			    *)	    summarizeWhat="$1"
+				    summarizeWhatPlural="${1}s"
+				    ;;
+			    esac
+			shift
+			;;
 	--timespan|-t)	shift
 			case "$1" in
 			    +([0-9])?(s))   timespan="${1%s}";;
@@ -59,7 +73,11 @@ do
     if [ $SECONDS -ge $timespan ]; then
 	sample="$line"
 	if [ "$summarizeWhat" ]; then
-	    sample="$c $summarizeWhat"
+	    if [ $c -eq 1 ]; then
+		sample="$c $summarizeWhat"
+	    else
+		sample="$c $summarizeWhatPlural"
+	    fi
 
 	    if [ -n "$isInline" -a $prevC -eq $c -a -z "$isAgain" ]; then
 		# As the current line is overwritten, updates with the same
