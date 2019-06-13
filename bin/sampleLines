@@ -5,7 +5,7 @@ printShortUsage()
 {
     # Note: short followed by long option; if the user knows the short one, she can
     # skim the long one.
-    printf 'Usage: %q %s\n' "$(basename "$1")" '[-i|--inline [-c|--clear]] [-s|--summarize WHAT[,PLURAL-WHAT]] [-t|--timespan TIMESPAN[SUFFIX]] [-?|-h|--help]'
+    printf 'Usage: %q %s\n' "$(basename "$1")" '[-i|--inline [-c|--clear]] [-s|--summarize WHAT[,PLURAL-WHAT] --summary-only] [-t|--timespan TIMESPAN[SUFFIX]] [-?|-h|--help]'
 }
 printUsage()
 {
@@ -31,11 +31,13 @@ HELPDESCRIPTION
 			been processed (so nothing remains to be seen, all
 			samples were temporary only).
     --summarize|-s WHAT[,PLURAL-WHAT]
-			Instead of printing selected output, just summarize the
+			Before printing selected output, also summarize the
 			amount of lines (characterized as WHAT, e.g. "line",
 			"file", you can also pass a separate (non-regular)
-			plural form:
-			"entry,entries").
+			plural form: "entry,entries") that were skipped before
+			the current sample.
+    --summary-only	Instead of printing summary and selected output, just
+			summarize the amount of lines.
 HELPTEXT
 }
 
@@ -46,6 +48,7 @@ isInline=
 isClear=
 summarizeWhat=
 summarizeWhatPlural=
+isSummaryOnly=
 timespan=1
 while [ $# -ne 0 ]
 do
@@ -64,6 +67,7 @@ do
 			    esac
 			shift
 			;;
+	--summary-only)	shift; isSummaryOnly=t;;
 	--timespan|-t)	shift
 			case "$1" in
 			    +([0-9])?(s))   timespan="${1%s}";;
@@ -81,39 +85,52 @@ done
 [ "$isClear" ] && finalizer='[1G[2K'
 
 SECONDS=0
-let prevC=-1
-let c=0
+let previousCount=-1
+let count=0
 isAgain=
 
 while IFS=$'\n' read -r line || { suffix=; [ -n "$line" ]; }
 do
-    let c+=1
+    let count+=1
     if [ $SECONDS -ge $timespan ]; then
 	sample="$line"
 	if [ "$summarizeWhat" ]; then
-	    if [ $c -eq 1 ]; then
-		sample="$c $summarizeWhat"
+	    if [ "$isSummaryOnly" ]; then
+		summarySuffix=
 	    else
-		sample="$c $summarizeWhatPlural"
+		summarySuffix=' omitted'
+		let count-=1    # Don't include the current line (that is printed) in the count.
 	    fi
 
-	    if [ -n "$isInline" -a $prevC -eq $c -a -z "$isAgain" ]; then
+	    if [ $count -eq 1 ]; then
+		summary="$count ${summarizeWhat}$summarySuffix"
+	    else
+		summary="$count ${summarizeWhatPlural}$summarySuffix"
+	    fi
+
+	    if [ -n "$isInline" -a $previousCount -eq $count -a -z "$isAgain" ]; then
 		# As the current line is overwritten, updates with the same
 		# count could not be distinguished. For better usability, append
 		# the word "again" on every other update with the same count, so
 		# that it toggles on and off for successive same counts.
 		isAgain=t
-		sample="$sample again"
+		summary="$summary again"
 	    else
 		isAgain=
+	    fi
+
+	    if [ "$isSummaryOnly" ]; then
+		sample="$summary"
+	    else
+		sample="($summary) $line"
 	    fi
 	fi
 
 	printf "${prefix}%s${suffix}" "$sample"
 
 	SECONDS=0
-	let prevC=$c
-	let c=0
+	let previousCount=$count
+	let count=0
     fi
 done
 if [ "$finalizer" ]; then
