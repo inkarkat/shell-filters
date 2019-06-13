@@ -86,12 +86,14 @@ done
 
 SECONDS=0
 let previousCount=-1
+let total=0
 let count=0
 isAgain=
 
 while IFS=$'\n' read -r line || { suffix=; [ -n "$line" ]; }
 do
     let count+=1
+    let total+=1
     if [ $SECONDS -ge $timespan ]; then
 	sample="$line"
 	if [ "$summarizeWhat" ]; then
@@ -133,6 +135,15 @@ do
 	let count=0
     fi
 done
+
+if [ "$summarizeWhat" ]; then
+    if [ $total -eq 1 ]; then
+	summary="$total $summarizeWhat"
+    else
+	summary="$total $summarizeWhatPlural"
+    fi
+    printf "${prefix}%s${suffix}" "$summary in total"
+fi
 if [ "$finalizer" ]; then
     printf "$finalizer"
 fi
