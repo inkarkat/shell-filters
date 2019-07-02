@@ -133,10 +133,11 @@ N;/ in \+[^ \n]*$/{
 }
 
 :printGroovyStackTraceLocations
-/^->>   \|^|    /{
+/^->> \+\|^| \+/{
     s/\([^ ]\+:[0-9]\+\)\(\n\|$\)/'"${DELETESTACKTRACELOCATIONS_FILELOCATION_PREFIX//\//\\/}"'\1'"${DELETESTACKTRACELOCATIONS_FILELOCATION_SUFFIX//\//\\/}"'\2/
     s/\([a-zA-Z0-9_]\+\)()/'"${DELETESTACKTRACELOCATIONS_FUNCTIONNAME_PREFIX//\//\\/}"'\1'"${DELETESTACKTRACELOCATIONS_FUNCTIONNAME_SUFFIX//\//\\/}"'()/
-    s/^->>   \|^|/'"${DELETESTACKTRACELOCATIONS_INTRO_PREFIX//\//\\/}"'&'"${DELETESTACKTRACELOCATIONS_INTRO_SUFFIX//\//\\/}"'/
+    s/ in / '"${DELETESTACKTRACELOCATIONS_INTRO_PREFIX//\//\\/}"'in'"${DELETESTACKTRACELOCATIONS_INTRO_SUFFIX//\//\\/}"' /
+    s/^->> \+\|^|/'"${DELETESTACKTRACELOCATIONS_INTRO_PREFIX//\//\\/}"'&'"${DELETESTACKTRACELOCATIONS_INTRO_SUFFIX//\//\\/}"'/
 
     P
     s/^[^\n]*\n//
