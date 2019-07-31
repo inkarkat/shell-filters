@@ -1,0 +1,66 @@
+#!/bin/bash
+
+printUsage()
+{
+    cat <<HELPTEXT
+Only print the first and last [N] line(s) of adjacent lines where PATTERN
+(extended regular expression) has an identical match (or does not match at all,
+unless --no-match-separated is given).
+HELPTEXT
+    printf 'Usage: %q %s\n' "$(basename "$1")" '-m|--match PATTERN [-M|--no-match-separated] [-c|--count N] FILE [...] [-?|-h|--help]'
+    printf 'Usage: cat FILE [...] | %q %s\n' "$(basename "$1")" '[...] [-?|-h|--help]'
+}
+
+match=
+isNoMatchSeparated=
+count=1
+while [ $# -ne 0 ]
+do
+    case "$1" in
+	--help|-h|-\?)	shift; printUsage "$0"; exit 0;;
+	--match|-m)	shift; match="$1"; shift;;
+	--no-match-separated|-M)
+			shift; isNoMatchSeparated=t;;
+	--count|-c)	shift; count="$1"; shift;;
+	--)		shift; break;;
+	-*)		{ echo "ERROR: Unknown option \"$1\"!"; echo; printUsage "$0"; } >&2; exit 2;;
+	*)		break;;
+    esac
+done
+if [ -z "$match" ]; then
+    echo >&2 'ERROR: No -m|--match PATTERN passed.'
+    echo >&2
+    printUsage "$0" >&2
+    exit 2
+fi
+
+: ${isNoMatchSeparated:=0}
+awk -v "pattern=$match" -v "isNoMatchSeparated=${isNoMatchSeparated//t/1}" -v "count=$count" '
+function printLastMatches(      firstIndex, i) {
+    firstIndex = endMatchCount - count
+    firstIndex = (firstIndex < 0 ? 0 : firstIndex)
+    for (i = firstIndex; i < endMatchCount; i++) {
+	print endMatches[i]
+    }
+}
+match($0, pattern) {
+    matchText = substr($0, RSTART, RLENGTH)
+    if (matchText != previousMatchText) {
+	printLastMatches()
+
+	previousMatchText = matchText
+	matchCount = 0
+	endMatchCount = 0
+	delete endMatches
+    }
+
+    if (++matchCount <= count) {
+	print $0
+    } else {
+	endMatches[endMatchCount++] = $0
+    }
+}
+END {
+    printLastMatches()
+}
+'
