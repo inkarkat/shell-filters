@@ -34,8 +34,7 @@ if [ -z "$match" ]; then
     exit 2
 fi
 
-: ${isNoMatchSeparated:=0}
-awk -v "pattern=$match" -v "isNoMatchSeparated=${isNoMatchSeparated//t/1}" -v "count=$count" '
+exec awk -v "pattern=$match" -v "isNoMatchSeparated=$isNoMatchSeparated" -v "count=$count" '
 function printLastMatches(      firstIndex, i) {
     firstIndex = endMatchCount - count
     firstIndex = (firstIndex < 0 ? 0 : firstIndex)
@@ -43,8 +42,14 @@ function printLastMatches(      firstIndex, i) {
 	print endMatches[i]
     }
 }
-match($0, pattern) {
-    matchText = substr($0, RSTART, RLENGTH)
+function processMatch() {
+    if (++matchCount <= count) {
+	print $0
+    } else {
+	endMatches[endMatchCount++] = $0
+    }
+}
+function compareMatch(matchText) {
     if (matchText != previousMatchText) {
 	printLastMatches()
 
@@ -53,11 +58,17 @@ match($0, pattern) {
 	endMatchCount = 0
 	delete endMatches
     }
-
-    if (++matchCount <= count) {
-	print $0
+    processMatch()
+}
+{
+    if (match($0, pattern)) {
+	compareMatch(substr($0, RSTART, RLENGTH))
+    } else if (isNoMatchSeparated) {
+	# Treat unmatched lines as a separate range on its own.
+	compareMatch("")
     } else {
-	endMatches[endMatchCount++] = $0
+	# Unmatched lines belong to the current range.
+	processMatch()
     }
 }
 END {
