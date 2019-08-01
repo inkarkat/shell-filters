@@ -1,14 +1,40 @@
 #!/bin/bash
 
-printUsage()
+printShortUsage()
 {
-    cat <<HELPTEXT
-Only print the first and last [N] line(s) of adjacent lines where PATTERN
-(extended regular expression) has an identical match (or does not match at all,
-unless --no-match-separated is given).
-HELPTEXT
+    # Note: short followed by long option; if the user knows the short one, she can
+    # skim the long one.
     printf 'Usage: %q %s\n' "$(basename "$1")" '-m|--match PATTERN [-M|--no-match-separated] [-v|--verbose] [-c|--count N|-s|--start-count N|-e|--end-count N] FILE [...] [-?|-h|--help]'
     printf 'Usage: cat FILE [...] | %q %s\n' "$(basename "$1")" '[...] [-?|-h|--help]'
+}
+printUsage()
+{
+    # This is the short help when launched with no or incorrect arguments.
+    # It is printed to stderr to avoid accidental processing.
+    printShortUsage "$1" >&2
+    printf >&2 'Try %q --help for more information.\n' "$(basename "$1")"
+}
+printLongUsage()
+{
+    # This is the long "man page" when launched with the help argument.
+    # It is printed to stdout to allow paging with 'more'.
+    cat <<HELPDESCRIPTION
+Only print the first and last [N] line(s) of adjacent lines where PATTERN
+(extended regular expression) has an identical match (or does not match at all).
+    -M|--no-match-separated no matches form a distinct group and are not put
+			    together with the current PATTERN match.
+    -v|--verbose	    Insert a summary line between first and last
+			    occurrences that tells how many inner lines of the
+			    block have been filtered away.
+    -c|--count N	    Include more than one first and last lines.
+    -s|--start-count N	    Separately influence the number of included first
+    -e|--end-count N	    and last lines.
+HELPDESCRIPTION
+    echo
+    printShortUsage "$1"
+    cat <<HELPTEXT
+
+HELPTEXT
 }
 
 match=
@@ -19,7 +45,7 @@ endCount=1
 while [ $# -ne 0 ]
 do
     case "$1" in
-	--help|-h|-\?)	shift; printUsage "$0"; exit 0;;
+	--help|-h|-\?)	shift; printLongUsage "$0"; exit 0;;
 	--match|-m)	shift; match="$1"; shift;;
 	--no-match-separated|-M)
 			shift; isNoMatchSeparated=t;;
@@ -74,10 +100,10 @@ function compareMatch(matchText) {
     if (match($0, pattern)) {
 	compareMatch(substr($0, RSTART, RLENGTH))
     } else if (isNoMatchSeparated) {
-	# Treat unmatched lines as a separate range on its own.
+	# Treat unmatched lines as a separate group on its own.
 	compareMatch("")
     } else {
-	# Unmatched lines belong to the current range.
+	# Unmatched lines belong to the current group.
 	processMatch()
     }
 }
