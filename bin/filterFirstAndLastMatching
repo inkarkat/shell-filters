@@ -7,12 +7,13 @@ Only print the first and last [N] line(s) of adjacent lines where PATTERN
 (extended regular expression) has an identical match (or does not match at all,
 unless --no-match-separated is given).
 HELPTEXT
-    printf 'Usage: %q %s\n' "$(basename "$1")" '-m|--match PATTERN [-M|--no-match-separated] [-c|--count N|-s|--start-count N|-e|--end-count N] FILE [...] [-?|-h|--help]'
+    printf 'Usage: %q %s\n' "$(basename "$1")" '-m|--match PATTERN [-M|--no-match-separated] [-v|--verbose] [-c|--count N|-s|--start-count N|-e|--end-count N] FILE [...] [-?|-h|--help]'
     printf 'Usage: cat FILE [...] | %q %s\n' "$(basename "$1")" '[...] [-?|-h|--help]'
 }
 
 match=
 isNoMatchSeparated=
+isVerbose=
 startCount=1
 endCount=1
 while [ $# -ne 0 ]
@@ -22,6 +23,7 @@ do
 	--match|-m)	shift; match="$1"; shift;;
 	--no-match-separated|-M)
 			shift; isNoMatchSeparated=t;;
+	--verbose|-v)	shift; isVerbose=t;;
 	--count|-c)	shift; startCount="$1"; endCount="$1"; shift;;
 	--start-count|-s)	shift; startCount="$1"; shift;;
 	--end-count|-e)	shift; endCount="$1"; shift;;
@@ -37,10 +39,15 @@ if [ -z "$match" ]; then
     exit 2
 fi
 
-exec awk -v "pattern=$match" -v "isNoMatchSeparated=$isNoMatchSeparated" -v "startCount=$startCount" -v "endCount=$endCount" '
+exec awk -v "pattern=$match" -v "isNoMatchSeparated=$isNoMatchSeparated" -v "isVerbose=$isVerbose" -v "startCount=$startCount" -v "endCount=$endCount" '
 function printLastMatches(      firstIndex, i) {
     firstIndex = endMatchCount - endCount
     firstIndex = (firstIndex < 0 ? 0 : firstIndex)
+
+    if (firstIndex > 0 && isVerbose) {
+	printf "(%s: %d line%s omitted)\n", previousMatchText, firstIndex, (firstIndex == 1 ? "" : "s")
+    }
+
     for (i = firstIndex; i < endMatchCount; i++) {
 	print endMatches[i]
     }
