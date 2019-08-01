@@ -7,13 +7,14 @@ Only print the first and last [N] line(s) of adjacent lines where PATTERN
 (extended regular expression) has an identical match (or does not match at all,
 unless --no-match-separated is given).
 HELPTEXT
-    printf 'Usage: %q %s\n' "$(basename "$1")" '-m|--match PATTERN [-M|--no-match-separated] [-c|--count N] FILE [...] [-?|-h|--help]'
+    printf 'Usage: %q %s\n' "$(basename "$1")" '-m|--match PATTERN [-M|--no-match-separated] [-c|--count N|-s|--start-count N|-e|--end-count N] FILE [...] [-?|-h|--help]'
     printf 'Usage: cat FILE [...] | %q %s\n' "$(basename "$1")" '[...] [-?|-h|--help]'
 }
 
 match=
 isNoMatchSeparated=
-count=1
+startCount=1
+endCount=1
 while [ $# -ne 0 ]
 do
     case "$1" in
@@ -21,7 +22,9 @@ do
 	--match|-m)	shift; match="$1"; shift;;
 	--no-match-separated|-M)
 			shift; isNoMatchSeparated=t;;
-	--count|-c)	shift; count="$1"; shift;;
+	--count|-c)	shift; startCount="$1"; endCount="$1"; shift;;
+	--start-count|-s)	shift; startCount="$1"; shift;;
+	--end-count|-e)	shift; endCount="$1"; shift;;
 	--)		shift; break;;
 	-*)		{ echo "ERROR: Unknown option \"$1\"!"; echo; printUsage "$0"; } >&2; exit 2;;
 	*)		break;;
@@ -34,16 +37,16 @@ if [ -z "$match" ]; then
     exit 2
 fi
 
-exec awk -v "pattern=$match" -v "isNoMatchSeparated=$isNoMatchSeparated" -v "count=$count" '
+exec awk -v "pattern=$match" -v "isNoMatchSeparated=$isNoMatchSeparated" -v "startCount=$startCount" -v "endCount=$endCount" '
 function printLastMatches(      firstIndex, i) {
-    firstIndex = endMatchCount - count
+    firstIndex = endMatchCount - endCount
     firstIndex = (firstIndex < 0 ? 0 : firstIndex)
     for (i = firstIndex; i < endMatchCount; i++) {
 	print endMatches[i]
     }
 }
 function processMatch() {
-    if (++matchCount <= count) {
+    if (++matchCount <= startCount) {
 	print $0
     } else {
 	endMatches[endMatchCount++] = $0
