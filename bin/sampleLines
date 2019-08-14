@@ -1,6 +1,23 @@
 #!/bin/bash
 shopt -qs extglob
 
+if [ -t 1 ]; then
+    : ${SAMPLELINES_RESET_PREFIX=[01m}
+    : ${SAMPLELINES_RESET_SUFFIX=[0m}
+    : ${SAMPLELINES_APPEND_RESET_PREFIX=[01m}
+    : ${SAMPLELINES_APPEND_RESET_SUFFIX='[0m '}
+    : ${SAMPLELINES_SUMMARY_PREFIX=[36m}
+    : ${SAMPLELINES_SUMMARY_SUFFIX='[0m '}
+else
+    : ${SAMPLELINES_RESET_PREFIX=}
+    : ${SAMPLELINES_RESET_SUFFIX=}
+    : ${SAMPLELINES_APPEND_RESET_PREFIX=}
+    : ${SAMPLELINES_APPEND_RESET_SUFFIX=' '}
+    : ${SAMPLELINES_SUMMARY_PREFIX=}
+    : ${SAMPLELINES_SUMMARY_SUFFIX=' '}
+fi
+
+
 printShortUsage()
 {
     # Note: short followed by long option; if the user knows the short one, she can
@@ -109,7 +126,7 @@ let count=0
 isAgain=
 
 keepResetPrefix=
-while IFS=$'\n' read -r line || { suffix=; [ -n "$line" ]; }
+while IFS=$'\n' read -r line || { [ "$summarizeWhat" ] || suffix=; [ -n "$line" ]; }
 do
     let count+=1
     let total+=1
@@ -117,10 +134,10 @@ do
     keepResetSuffix=
     if [ "$resetPattern" ] && [[ "$line" =~ $resetPattern ]]; then
 	isTakeThisLine=t
+	line="${SAMPLELINES_RESET_PREFIX}${line}${SAMPLELINES_RESET_SUFFIX}"
 	[ -n "$isInline" ] && case "$resetAction" in
 	    append) keepResetPrefix=;;	# The current iteration already has the header in the line. Only prepend the header to subsequent samples.
 	    keep)   keepResetSuffix='\n';;
-	    *)
 	esac
     fi
 
@@ -156,7 +173,7 @@ do
 	    if [ "$isSummaryOnly" ]; then
 		sample="$summary"
 	    elif [ ! "$isTakeThisLine" ]; then
-		sample="${summary:+"(${summary}) "}$line"
+		sample="${summary:+"${SAMPLELINES_SUMMARY_PREFIX}(${summary})${SAMPLELINES_SUMMARY_SUFFIX}"}$line"
 	    fi
 	fi
 
@@ -165,7 +182,7 @@ do
 	SECONDS=0
 	let previousCount=$count
 	let count=0
-	[ -n "$isInline" -a -n "$isTakeThisLine" -a "$resetAction" = append ] && keepResetPrefix="$line"    # Prepend the header to subsequent samples now.
+	[ -n "$isInline" -a -n "$isTakeThisLine" -a "$resetAction" = append ] && keepResetPrefix="${SAMPLELINES_APPEND_RESET_PREFIX}${line}${SAMPLELINES_APPEND_RESET_SUFFIX}"    # Prepend the header to subsequent samples now.
     fi
 done
 
@@ -175,7 +192,7 @@ if [ "$summarizeWhat" ]; then
     else
 	summary="$total $summarizeWhatPlural"
     fi
-    printf "${prefix}%s${suffix}" "$summary in total"
+    printf "${prefix}${SAMPLELINES_SUMMARY_PREFIX}%s${SAMPLELINES_SUMMARY_SUFFIX}${suffix}" "$summary in total"
 fi
 if [ "$finalizer" ]; then
     printf "$finalizer"
