@@ -2,7 +2,7 @@
 
 : ${SED:=sed}
 
-: ${DELETESTACKTRACELOCATIONS_IGNORE_PATTERN='com\.hpe\?\.opr\.qa\.framework\.runner\.'}
+: ${DELETESTACKTRACELOCATIONS_IGNORE_PATTERN='com\.\(hpe\?\|mf\)\.opr\.qa\.framework\.runner\.'}
 : ${DELETESTACKTRACELOCATIONS_OUR_PATTERN='com\.\(hpe\?\|mf\)\.'}
 
 : ${DELETESTACKTRACELOCATIONS_REASON_PREFIX=[48;5;224m}
