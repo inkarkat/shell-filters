@@ -2,4 +2,4 @@
 
 call unix --quiet
 
-sed -f "%TOOLBOXHOME%\Unixhome\bin\ingo\shell-filters\wbin\%~n0.sed" %*
+sed -f "%~dpn0.sed" %*
