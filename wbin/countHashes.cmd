@@ -2,4 +2,4 @@
 
 call unix --quiet
 
-sed -f "%TOOLBOXHOME%\Unixhome\bin\ingo\shell-filters\bin\%~n0" %*
+sed -f "%~dp0\..\bin\%~n0" %*
