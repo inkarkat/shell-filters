@@ -106,13 +106,36 @@ BEGIN {
 	exit 3
     }
 }
-function collapse(current, replacement, count)
+function finishLine()
 {
-    return
+    if (hold != "") {
+	print hold
+	hold = ""
+    }
+}
+function collapse(isFirst, current, replacement, count,		previousHold)
+{
+    if (isFirst) finishLine()
+
+    previousHold = hold
+    # TODO: replacement
+    hold = current
+
+    switch (render) {
+	case "":
+	    if (! isFirst) hold = previousHold
+	    break
+	case "count":
+	    if (count > 1) hold = hold " (" count ")"
+	    break
+    }
+
+    next
 }
 function recall(current, replacement, count)
 {
-    return
+    finishLine()
+    next
 }
 {
     for (i = 1; i <= patternCount; i++) {
@@ -121,12 +144,12 @@ function recall(current, replacement, count)
 		if ($0 ~ patterns[i]) {
 		    previousMatch = $0
 		    if (patterns[i] == previousPattern) {
-			collapse($0, replacements[i], count++)
-			next
+			collapse(0, $0, replacements[i], ++count)
+		    } else {
+			count = 1
+			previousPattern = patterns[i]
+			collapse(1, $0, replacements[i], count)
 		    }
-
-		    count = 1
-		    previousPattern = patterns[i]
 		}
 		break
 	    case "accumulate":
@@ -136,7 +159,7 @@ function recall(current, replacement, count)
 		    if (patternCount[patterns[i]] > 1) {
 			if (patterns[i] == previousPattern) {
 			    # Consecutive occurrence, collapse.
-			    collapse($0, replacements[i], patternCount[patterns[i]])
+			    collapse(0, $0, replacements[i], patternCount[patterns[i]])
 			} else {
 			    # Occurrence that is different from previous one,
 			    # recall with count.
@@ -144,19 +167,18 @@ function recall(current, replacement, count)
 			    recall($0, replacements[i], patternCount[patterns[i]])
 			}
 		    }
-		    next
 		}
 		break
 	    case "match":
 		if ($0 ~ patterns[i]) {
 		    previousPattern = patterns[i]
 		    if ($0 == previousMatch) {
-			collapse($0, replacements[i], count++)
-			next
+			collapse(0, $0, replacements[i], ++count)
+		    } else {
+			count = 1
+			previousMatch = $0
+			collapse(1, $0, replacements[i], count)
 		    }
-
-		    count = 1
-		    previousMatch = $0
 		}
 		break
 	    case "match-accumulate":
@@ -167,6 +189,10 @@ function recall(current, replacement, count)
 	}
     }
 
+    finishLine()
     print
+}
+END {
+    finishLine()
 }
 ' "$@"
