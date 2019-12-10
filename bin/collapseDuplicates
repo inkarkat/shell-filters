@@ -96,12 +96,12 @@ awk \
 '
 BEGIN {
     FS = "\n"
-    patternCount = split(typeList, types)
-    if (split(patternList, patterns) != patternCount) {
+    N = split(typeList, types)
+    if (split(patternList, patterns) != N) {
 	print "Assert: Mismatch in number of types and patterns." > "/dev/stderr"
 	exit 3
     }
-    if (split(replacementList, replacements) != patternCount) {
+    if (split(replacementList, replacements) != N) {
 	print "Assert: Mismatch in number of replacements and patterns." > "/dev/stderr"
 	exit 3
     }
@@ -139,10 +139,20 @@ function collapse(isBelongsToDifferentSet, current, pattern, replacement, count)
 function recall(current, pattern, replacement, count)
 {
     finishLine()
+
+    hold = replace(previousMatch, pattern, replacement) # Use the first match, but replace.
+    switch (render) {
+	case "":
+	    break
+	case "count":
+	    hold = hold " (" count ")"
+	    break
+    }
+
     next
 }
 {
-    for (i = 1; i <= patternCount; i++) {
+    for (i = 1; i <= N; i++) {
 	switch (types[i]) {
 	    case "reset":
 		if ($0 ~ patterns[i]) {
@@ -158,17 +168,17 @@ function recall(current, pattern, replacement, count)
 		break
 	    case "accumulate":
 		if ($0 ~ patterns[i]) {
-		    patternCount[patterns[i]] += 1
-		    if (patternCount[patterns[i]] > 1) {
+		    patternCounts[patterns[i]] += 1
+		    if (patternCounts[patterns[i]] > 1) {
 			if (patterns[i] == previousPattern) {
 			    # Consecutive occurrence, collapse.
-			    collapse(0, $0, patterns[i], replacements[i], patternCount[patterns[i]])
+			    collapse(0, $0, patterns[i], replacements[i], patternCounts[patterns[i]])
 			} else {
 			    # Occurrence that is different from previous one,
 			    # recall with count.
 			    previousMatch = $0
 			    previousPattern = patterns[i]
-			    recall($0, patterns[i], replacements[i], patternCount[patterns[i]])
+			    recall($0, patterns[i], replacements[i], patternCounts[patterns[i]])
 			}
 		    }
 		}
@@ -186,6 +196,23 @@ function recall(current, pattern, replacement, count)
 		}
 		break
 	    case "match-accumulate":
+		if ($0 ~ patterns[i]) {
+		    previousPattern = patterns[i]
+		    matchCounts[$0] += 1
+		    if ($0 == previousMatch) {
+			collapse(0, $0, patterns[i], replacements[i], matchCounts[$0])
+		    } else {
+			previousMatch = $0
+			previousPattern = patterns[i]
+			if (matchCounts[$0] == 1) {
+			    collapse(1, $0, patterns[i], replacements[i], 1)
+			} else {
+			    # Occurrence that is different from previous one, recall
+			    # with count.
+			    recall($0, patterns[i], replacements[i], matchCounts[$0])
+			}
+		    }
+		}
 		break
 	    default:
 		print "Assert: Invalid type: " types[i] > "/dev/stderr"
