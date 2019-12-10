@@ -123,7 +123,7 @@ function collapse(isBelongsToDifferentSet, current, pattern, replacement, count)
     if (isBelongsToDifferentSet) finishLine()
 # if (isBuffered) {
     if (count == 1) {
-	hold = current
+	hold = current	# First (tentative) match, take as-is; no replacement yet.
     } else {
 	hold = replace(previousMatch, pattern, replacement) # Use the first match, but replace.
 	switch (render) {
@@ -193,6 +193,8 @@ function recall(current, pattern, replacement, count)
 	}
     }
 
+    previousMatch = ""
+    previousPattern = ""
     finishLine()
     print
 }
