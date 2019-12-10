@@ -106,7 +106,11 @@ BEGIN {
 	exit 3
     }
 }
-function collapse(current, replacement)
+function collapse(current, replacement, count)
+{
+    return
+}
+function recall(current, replacement, count)
 {
     return
 }
@@ -115,21 +119,43 @@ function collapse(current, replacement)
 	switch (types[i]) {
 	    case "reset":
 		if ($0 ~ patterns[i]) {
+		    previousMatch = $0
 		    if (patterns[i] == previousPattern) {
-			collapse($0, replacements[i])
+			collapse($0, replacements[i], count++)
 			next
 		    }
+
+		    count = 1
 		    previousPattern = patterns[i]
 		}
 		break
 	    case "accumulate":
+		if ($0 ~ patterns[i]) {
+		    previousMatch = $0
+		    patternCount[patterns[i]] += 1
+		    if (patternCount[patterns[i]] > 1) {
+			if (patterns[i] == previousPattern) {
+			    # Consecutive occurrence, collapse.
+			    collapse($0, replacements[i], patternCount[patterns[i]])
+			} else {
+			    # Occurrence that is different from previous one,
+			    # recall with count.
+			    previousPattern = patterns[i]
+			    recall($0, replacements[i], patternCount[patterns[i]])
+			}
+		    }
+		    next
+		}
 		break
 	    case "match":
 		if ($0 ~ patterns[i]) {
+		    previousPattern = patterns[i]
 		    if ($0 == previousMatch) {
-			collapse($0, replacements[i])
+			collapse($0, replacements[i], count++)
 			next
 		    }
+
+		    count = 1
 		    previousMatch = $0
 		}
 		break
