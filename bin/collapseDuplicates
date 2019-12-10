@@ -118,6 +118,18 @@ function replace(line, pattern, replacement)
     # TODO
     return line
 }
+function renderCount( text, count )
+{
+    switch (render) {
+	case "":
+	    return text
+	case "count":
+	    return text " (" count ")"
+	default:
+	    print "Assert: Invalid render type: " render > "/dev/stderr"
+	    exit 3
+    }
+}
 function collapse(isBelongsToDifferentSet, current, pattern, replacement, count)
 {
     if (isBelongsToDifferentSet) finishLine()
@@ -125,14 +137,8 @@ function collapse(isBelongsToDifferentSet, current, pattern, replacement, count)
     if (count == 1) {
 	hold = current	# First (tentative) match, take as-is; no replacement yet.
     } else {
-	hold = replace(previousMatch, pattern, replacement) # Use the first match, but replace.
-	switch (render) {
-	    case "":
-		break
-	    case "count":
-		hold = hold " (" count ")"
-		break
-	}
+	# Use the first match, but replace.
+	hold = renderCount(replace(previousMatch, pattern, replacement), count)
     }
     next
 }
@@ -140,14 +146,7 @@ function recall(current, pattern, replacement, count)
 {
     finishLine()
 
-    hold = replace(previousMatch, pattern, replacement) # Use the first match, but replace.
-    switch (render) {
-	case "":
-	    break
-	case "count":
-	    hold = hold " (" count ")"
-	    break
-    }
+    hold = renderCount(replace(previousMatch, pattern, replacement), count)
 
     next
 }
