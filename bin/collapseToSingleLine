@@ -64,7 +64,7 @@ done
 
 s=
 isEmptyLine=
-lastUpdateEpoch=2147483647
+SECONDS=0
 currentLine=
 newline()
 {
@@ -86,9 +86,8 @@ cat "$@" | {
 	    fi
 	else
 	    if [ "$breakTimeout" ]; then
-		now="$(date +%s)"
-		[ $((now - lastUpdateEpoch)) -gt $breakTimeout ] && newline
-		lastUpdateEpoch="$now"
+		[ $SECONDS -gt "$breakTimeout" ] && newline
+		SECONDS=0
 	    fi
 
 	    [ "$breakBefore" ] && [[ "$line" =~ $breakBefore ]] && newline
