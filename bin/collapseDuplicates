@@ -1,0 +1,56 @@
+#!/bin/bash
+
+printShortUsage()
+{
+    # Note: short followed by long option; if the user knows the short one, she can
+    # skim the long one.
+    printf 'Usage: %q %s\n' "$(basename "$1")" '[--count|--dot] [-s|--skip PATTERN] (-e|--regexp|-a|--accumulate|-m|--match|-M|--match-accumulated PATTERN [-r|--replacement REPLACEMENT]) [...] [--] FILE [...][-?|-h|--help]'
+    printf 'Usage: cat FILE [...] | %q %s\n' "$(basename "$1")" '[-u|--unbuffered [--flash|--spin] [...]'
+}
+printUsage()
+{
+    # This is the short help when launched with no or incorrect arguments.
+    # It is printed to stderr to avoid accidental processing.
+    printShortUsage "$1" >&2
+    printf >&2 'Try %q --help for more information.\n' "$(basename "$1")"
+}
+printLongUsage()
+{
+    # This is the long "man page" when launched with the help argument.
+    # It is printed to stdout to allow paging with 'more'.
+    cat <<HELPDESCRIPTION
+Condense matches of PATTERNs by omitting consecutive lines, potentially with the
+duplication signaled by appending a count, trailing period, spinner, etc.
+Useful to reduce the verbosity of simplistic applications that repeatedly print
+the same message or log retry attempts.
+HELPDESCRIPTION
+    echo
+    printShortUsage "$1"
+    cat <<HELPTEXT
+    --count	    Append a count of occurrences to the line.
+    --dot	    Append a period for each occurrence to the line.
+    --flash	    Briefly reverse and unreverse the line to highlight it.
+    --spin	    Change a spinner control after the line for each occurrence.
+    --regexp|-e PATTERN	    Collapse consecutive lines that all match PATTERN.
+			    Other matches or lines reset counting.
+    --accumulate|-a PATTERN Collapse any lines that match PATTERN; counts from
+			    previous occurrences are kept.
+    --match|-m PATTERN	    Collapse consecutive identical matches of PATTERN.
+			    Different matches are treated as different
+			    occurrences.
+    --match-accumulated|-M PATTERN
+			    Collapse any identical matches of PATTERN.
+    --replacement|-r REPLACEMENT
+			    Use REPLACEMENT (that can refer to PATTERN capture
+			    groups via \1 etc.) instead of the original line.
+    --skip|-s PATTERN	    Ignore (but still print) lines that match PATTERN,
+			    so that these don't disrupt the processing of
+			    surrounding lines.
+    --unbuffered|-u Immediately output each read line and use backspaces / ANSI
+		    escape sequences to update counts / spinner / flashing.
+		    Without this,  consecutive duplicate lines will be silently
+		    consumed until a different line is encountered.
+Example:
+HELPTEXT
+    printf '%q %s\n' "$(basename "$1")" '--foo bar /tmp/foobar'
+}
