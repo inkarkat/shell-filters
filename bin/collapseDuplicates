@@ -113,26 +113,30 @@ function finishLine()
 	hold = ""
     }
 }
-function collapse(isFirst, current, replacement, count,		previousHold)
+function replace(line, pattern, replacement)
 {
-    if (isFirst) finishLine()
-
-    previousHold = hold
-    # TODO: replacement
-    hold = current
-
-    switch (render) {
-	case "":
-	    if (! isFirst) hold = previousHold
-	    break
-	case "count":
-	    if (count > 1) hold = hold " (" count ")"
-	    break
+    # TODO
+    return line
+}
+function collapse(isBelongsToDifferentSet, current, pattern, replacement, count)
+{
+    if (isBelongsToDifferentSet) finishLine()
+# if (isBuffered) {
+    if (count == 1) {
+	hold = current
+    } else {
+	hold = replace(previousMatch, pattern, replacement) # Use the first match, but replace.
+	switch (render) {
+	    case "":
+		break
+	    case "count":
+		hold = hold " (" count ")"
+		break
+	}
     }
-
     next
 }
-function recall(current, replacement, count)
+function recall(current, pattern, replacement, count)
 {
     finishLine()
     next
@@ -142,29 +146,29 @@ function recall(current, replacement, count)
 	switch (types[i]) {
 	    case "reset":
 		if ($0 ~ patterns[i]) {
-		    previousMatch = $0
 		    if (patterns[i] == previousPattern) {
-			collapse(0, $0, replacements[i], ++count)
+			collapse(0, $0, patterns[i], replacements[i], ++count)
 		    } else {
 			count = 1
+			previousMatch = $0
 			previousPattern = patterns[i]
-			collapse(1, $0, replacements[i], count)
+			collapse(1, $0, patterns[i], replacements[i], count)
 		    }
 		}
 		break
 	    case "accumulate":
 		if ($0 ~ patterns[i]) {
-		    previousMatch = $0
 		    patternCount[patterns[i]] += 1
 		    if (patternCount[patterns[i]] > 1) {
 			if (patterns[i] == previousPattern) {
 			    # Consecutive occurrence, collapse.
-			    collapse(0, $0, replacements[i], patternCount[patterns[i]])
+			    collapse(0, $0, patterns[i], replacements[i], patternCount[patterns[i]])
 			} else {
 			    # Occurrence that is different from previous one,
 			    # recall with count.
+			    previousMatch = $0
 			    previousPattern = patterns[i]
-			    recall($0, replacements[i], patternCount[patterns[i]])
+			    recall($0, patterns[i], replacements[i], patternCount[patterns[i]])
 			}
 		    }
 		}
@@ -173,11 +177,11 @@ function recall(current, replacement, count)
 		if ($0 ~ patterns[i]) {
 		    previousPattern = patterns[i]
 		    if ($0 == previousMatch) {
-			collapse(0, $0, replacements[i], ++count)
+			collapse(0, $0, patterns[i], replacements[i], ++count)
 		    } else {
 			count = 1
 			previousMatch = $0
-			collapse(1, $0, replacements[i], count)
+			collapse(1, $0, patterns[i], replacements[i], count)
 		    }
 		}
 		break
