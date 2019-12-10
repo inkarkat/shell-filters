@@ -169,15 +169,18 @@ function recall(current, pattern, replacement, count)
 	    case "accumulate":
 		if ($0 ~ patterns[i]) {
 		    patternCounts[patterns[i]] += 1
-		    if (patternCounts[patterns[i]] > 1) {
-			if (patterns[i] == previousPattern) {
-			    # Consecutive occurrence, collapse.
-			    collapse(0, $0, patterns[i], replacements[i], patternCounts[patterns[i]])
+		    if (patterns[i] == previousPattern) {
+			# Consecutive match, collapse.
+			collapse(0, $0, patterns[i], replacements[i], patternCounts[patterns[i]])
+		    } else {
+			previousMatch = $0
+			previousPattern = patterns[i]
+			if (patternCounts[patterns[i]] == 1) {
+			    # First match overall.
+			    collapse(1, $0, patterns[i], replacements[i], patternCounts[patterns[i]])
 			} else {
-			    # Occurrence that is different from previous one,
-			    # recall with count.
-			    previousMatch = $0
-			    previousPattern = patterns[i]
+			    # Match that is different from previous one, recall
+			    # with count.
 			    recall($0, patterns[i], replacements[i], patternCounts[patterns[i]])
 			}
 		    }
@@ -200,11 +203,13 @@ function recall(current, pattern, replacement, count)
 		    previousPattern = patterns[i]
 		    matchCounts[$0] += 1
 		    if ($0 == previousMatch) {
+			# Consecutive occurrence, collapse.
 			collapse(0, $0, patterns[i], replacements[i], matchCounts[$0])
 		    } else {
 			previousMatch = $0
 			previousPattern = patterns[i]
 			if (matchCounts[$0] == 1) {
+			    # First occurrence overall.
 			    collapse(1, $0, patterns[i], replacements[i], 1)
 			} else {
 			    # Occurrence that is different from previous one, recall
