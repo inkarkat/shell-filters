@@ -74,7 +74,16 @@ do
 	--accumulate|-a)	shift; types+=(accumulate); patterns+=("$1"); replacements+=('&'); shift;;
 	--match|-m)		shift; types+=(match); patterns+=("$1"); replacements+=('&'); shift;;
 	--match-accumulated|-M)	shift; types+=(match-accumulate); patterns+=("$1"); replacements+=('&'); shift;;
-	--replacement|-r)	shift; replacements[-1]="$1"; shift;;
+	--replacement|-r)	shift
+				if [ ${#types[@]} -eq 0 ]; then
+				    echo >&2 "Need -e|--regexp|-a|--accumulate|-m|--match|-M|--match-accumulated PATTERN before passing REPLACEMENT."
+				    echo >&2
+				    printShortUsage "$0" >&2
+				    exit 2
+				fi
+				replacements[-1]="$1"
+				shift
+				;;
 	--unbuffered|-u)	shift; isBuffered=;;
 	--)		shift; break;;
 	-*)		{ echo "ERROR: Unknown option \"$1\"!"; echo; printShortUsage "$0"; } >&2; exit 2;;
