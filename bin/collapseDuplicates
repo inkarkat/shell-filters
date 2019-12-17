@@ -124,8 +124,7 @@ function finishLine()
 }
 function replace(line, pattern, replacement)
 {
-    # TODO
-    return line
+    return (replacement == "&" ? line : gensub(pattern, replacement, "g", line))
 }
 function renderCount( text, count,      tmp )
 {
