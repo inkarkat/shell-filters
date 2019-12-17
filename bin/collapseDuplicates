@@ -118,13 +118,22 @@ function replace(line, pattern, replacement)
     # TODO
     return line
 }
-function renderCount( text, count )
+function renderCount( text, count,      tmp )
 {
     switch (render) {
 	case "":
 	    return text
 	case "count":
+	    sub(/\s*$/, "", text)
 	    return text " (" count ")"
+	case "dot":
+	    sub(/\s*\.*$/, "", text)
+	    for (tmp = ""; count > 0; count--)
+		tmp = tmp "."
+	    return text tmp
+	case "ellipsis":
+	    sub(/\s*$/, "", text)
+	    return text " [...]"
 	default:
 	    print "Assert: Invalid render type: " render > "/dev/stderr"
 	    exit 3
