@@ -118,7 +118,11 @@ BEGIN {
 function finishLine()
 {
     if (hold != "") {
-	print hold
+	if (isBuffered) {
+	    print hold
+	} else {
+	    printf "%s", hold
+	}
 	hold = ""
     }
 }
@@ -126,7 +130,7 @@ function replace(line, pattern, replacement)
 {
     return (replacement == "&" ? line : gensub(pattern, replacement, "g", line))
 }
-function renderCount( text, count,      tmp )
+function renderCountFull( text, count,      tmp )
 {
     switch (render) {
 	case "":
@@ -150,12 +154,20 @@ function renderCount( text, count,      tmp )
 function collapse(isBelongsToDifferentSet, current, pattern, replacement, count)
 {
     if (isBelongsToDifferentSet) finishLine()
-# if (isBuffered) {
-    if (count == 1) {
-	hold = current	# First (tentative) match, take as-is; no replacement yet.
+    if (isBuffered) {
+	if (count == 1) {
+	    hold = current	# First (tentative) match, take as-is; no replacement yet.
+	} else {
+	    # Use the first match, but replace.
+	    hold = renderCountFull(replace(previousMatch, pattern, replacement), count)
+	}
     } else {
-	# Use the first match, but replace.
-	hold = renderCount(replace(previousMatch, pattern, replacement), count)
+	hold = "\n"
+	if (count == 1) {
+	    printf "%s", current
+	} else {
+	    printf "\r%s", renderCountFull(replace(current, pattern, replacement), count)
+	}
     }
     next
 }
@@ -163,7 +175,7 @@ function recall(current, pattern, replacement, count)
 {
     finishLine()
 
-    hold = renderCount(replace(previousMatch, pattern, replacement), count)
+    hold = renderCountFull(replace(previousMatch, pattern, replacement), count)
 
     next
 }
