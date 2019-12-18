@@ -165,6 +165,8 @@ function collapse(isBelongsToDifferentSet, current, pattern, replacement, count)
 	hold = "\n"
 	if (count == 1) {
 	    printf "%s", current
+	} else if (previousMatch == current) {
+	    # TODO printf "\r%s", renderCountDelta(replace(current, pattern, replacement), count)
 	} else {
 	    printf "\r%s", renderCountFull(replace(current, pattern, replacement), count)
 	}
