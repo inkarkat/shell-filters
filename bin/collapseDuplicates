@@ -202,7 +202,12 @@ function recall(current, pattern, replacement, count)
 {
     finishLine()
 
-    hold = renderCountFull(replace(previousMatch, pattern, replacement), count)
+    if (isBuffered) {
+	hold = renderCountFull(replace(previousMatch, pattern, replacement), count)
+    } else {
+	hold = "\n"
+	printf "%s", renderCountFull(replace(current, pattern, replacement), count)
+    }
 
     next
 }
