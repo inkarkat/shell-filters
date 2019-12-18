@@ -151,6 +151,31 @@ function renderCountFull( text, count,      tmp )
 	    exit 3
     }
 }
+function deleteCount(count,      offset)
+{
+    offset = (count ~ /^10+$/ ? -1 : 0)
+    return substr("", 0, length(count) + offset)
+}
+function renderCountDelta(text, count,      tmp)
+{
+    switch (render) {
+	case "":
+	    return ""
+	case "count":
+	    return (count <= 2 ? " (" count ")" : "" deleteCount(count) count ")")
+	case "dot":
+	    sub(/\s*\.*$/, "", text)
+	    for (tmp = ""; count > 0; count--)
+		tmp = tmp "."
+	    return text tmp
+	case "ellipsis":
+	    sub(/\s*$/, "", text)
+	    return text " [...]"
+	default:
+	    print "Assert: Invalid render type: " render > "/dev/stderr"
+	    exit 3
+    }
+}
 function collapse(isBelongsToDifferentSet, current, pattern, replacement, count)
 {
     if (isBelongsToDifferentSet) finishLine()
@@ -166,7 +191,7 @@ function collapse(isBelongsToDifferentSet, current, pattern, replacement, count)
 	if (count == 1) {
 	    printf "%s", current
 	} else if (previousMatch == current) {
-	    # TODO printf "\r%s", renderCountDelta(replace(current, pattern, replacement), count)
+	    printf "%s", renderCountDelta(replace(current, pattern, replacement), count)
 	} else {
 	    printf "\r%s", renderCountFull(replace(current, pattern, replacement), count)
 	}
