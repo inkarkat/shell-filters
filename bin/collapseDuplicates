@@ -5,7 +5,7 @@ printShortUsage()
     # Note: short followed by long option; if the user knows the short one, she can
     # skim the long one.
     printf 'Usage: %q %s\n' "$(basename "$1")" '[--as count|dot|ellipsis] [-s|--skip PATTERN [...]] (-e|--regexp|-a|--accumulate|-m|--match|-M|--match-accumulated PATTERN [-r|--replacement REPLACEMENT]) [...] [--] FILE [...][-?|-h|--help]'
-    printf 'Usage: cat FILE [...] | %q %s\n' "$(basename "$1")" '[-u|--unbuffered [--as count|dot|ellipsis|flash|spinner|kitt] [...]'
+    printf 'Usage: cat FILE [...] | %q %s\n' "$(basename "$1")" '[-u|--unbuffered [--as count|dot|ellipsis|flash|spinner|sweep] [...]'
 }
 printUsage()
 {
@@ -33,7 +33,7 @@ HELPDESCRIPTION
     --as ellipsis   Append an ellipis ([...]) once.
     --as flash	    Briefly reverse and unreverse the line to highlight it.
     --as spinner    Change a spinner control after the line for each occurrence.
-    --as kitt	    Change a Knight Rider-alike sweeping control after the line
+    --as sweep	    Change a Knight Rider-alike sweeping control after the line
 		    for each occurrence.
     --regexp|-e PATTERN	    Collapse consecutive lines that all match PATTERN.
 			    Other matches or lines reset counting.
@@ -111,7 +111,17 @@ awk \
 '
 BEGIN {
     FS = "\n"
+
     SPINNER="/-\\|"
+
+    SWEEPCOMMON=1
+    SWEEPSTART="[...]"
+    SWEEPS[0]="[ ..]"
+    SWEEPS[1]="[. .]"
+    SWEEPS[2]="[.. ]"
+    SWEEPS[3]="[. .]"
+    SWEEPSLEN=4
+
     N = split(typeList, types)
     if (split(patternList, patterns) != N) {
 	print "Assert: Mismatch in number of types and patterns." > "/dev/stderr"
@@ -149,7 +159,16 @@ function spin(count)
 {
     return substr(SPINNER, 1 + ((count - 2) % length(SPINNER)), 1)
 }
-function renderCountFull( text, count, prefix,      tmp )
+function sweep(count)
+{
+    return (count == 2 ? SWEEPSTART : SWEEPS[(count - 3) % SWEEPSLEN])
+}
+function multiply(char, count,      tmp, i)
+{
+    for (i = 1; i <= count; ++i) tmp = tmp char
+    return tmp
+}
+function renderCountFull(text, count, prefix,      tmp )
 {
     switch (render) {
 	case "":
@@ -168,7 +187,11 @@ function renderCountFull( text, count, prefix,      tmp )
 	case "flash":
 	    return flash(text, prefix)
 	case "spinner":
+	    sub(/\s*$/, "", text)
 	    return prefix text " " spin(count)
+	case "sweep":
+	    sub(/\s*$/, "", text)
+	    return prefix text " " sweep(count)
 	default:
 	    print "Assert: Invalid render type: " render > "/dev/stderr"
 	    exit 3
@@ -194,6 +217,8 @@ function renderCountDelta(text, count,      tmp)
 	    return flash(text, "\r")
 	case "spinner":
 	    return (count == 1 ? "" : (count == 2 ? " " : "") spin(count))
+	case "sweep":
+	    return (count == 1 ? "" : (count == 2 ? " " sweep(count) : multiply("", length(SWEEPSTART) - SWEEPCOMMON) substr(sweep(count), SWEEPCOMMON + 1)))
 	default:
 	    print "Assert: Invalid render type: " render > "/dev/stderr"
 	    exit 3
