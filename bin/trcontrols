@@ -1,163 +1,194 @@
-#!/bin/sed -f
+#!/bin/bash
 
-s/\x00/^@/g
-s/\x01/^A/g
-s/\x02/^B/g
-s/\x03/^C/g
-s/\x04/^D/g
-s/\x05/^E/g
-s/\x06/^F/g
-s/\x07/^G/g
-s/\x08/^H/g
-s/\x09/^I/g
-s/\x0a/^J/g
-s/\x0b/^K/g
-s/\x0c/^L/g
-s/\x0d/^M/g
-s/\x0e/^N/g
-s/\x0f/^O/g
-s/\x10/^P/g
-s/\x11/^Q/g
-s/\x12/^R/g
-s/\x13/^S/g
-s/\x14/^T/g
-s/\x15/^U/g
-s/\x16/^V/g
-s/\x17/^W/g
-s/\x18/^X/g
-s/\x19/^Y/g
-s/\x1a/^Z/g
-s/\x1b/^[/g
-s/\x1c/^\\/g
-s/\x1d/^]/g
-s/\x1e/^^/g
-s/\x1f/^_/g
-s/\x7f/^?/g
-s/\x80/~@/g
-s/\x81/~A/g
-s/\x82/~B/g
-s/\x83/~C/g
-s/\x84/~D/g
-s/\x85/~E/g
-s/\x86/~F/g
-s/\x87/~G/g
-s/\x88/~H/g
-s/\x89/~I/g
-s/\x8a/~J/g
-s/\x8b/~K/g
-s/\x8c/~L/g
-s/\x8d/~M/g
-s/\x8e/~N/g
-s/\x8f/~O/g
-s/\x90/~P/g
-s/\x91/~Q/g
-s/\x92/~R/g
-s/\x93/~S/g
-s/\x94/~T/g
-s/\x95/~U/g
-s/\x96/~V/g
-s/\x97/~W/g
-s/\x98/~X/g
-s/\x99/~Y/g
-s/\x9a/~Z/g
-s/\x9b/~[/g
-s/\x9c/~\\/g
-s/\x9d/~]/g
-s/\x9e/~^/g
-s/\x9f/~_/g
-s/\xa0/| /g
-s/\xa1/|!/g
-s/\xa2/|"/g
-s/\xa3/|#/g
-s/\xa4/|$/g
-s/\xa5/|%/g
-s/\xa6/|&/g
-s/\xa7/|'/g
-s/\xa8/|(/g
-s/\xa9/|)/g
-s/\xaa/|*/g
-s/\xab/|+/g
-s/\xac/|,/g
-s/\xad/|-/g
-s/\xae/|./g
-s/\xaf/|//g
-s/\xb0/|0/g
-s/\xb1/|1/g
-s/\xb2/|2/g
-s/\xb3/|3/g
-s/\xb4/|4/g
-s/\xb5/|5/g
-s/\xb6/|6/g
-s/\xb7/|7/g
-s/\xb8/|8/g
-s/\xb9/|9/g
-s/\xba/|:/g
-s/\xbb/|;/g
-s/\xbc/|</g
-s/\xbd/|=/g
-s/\xbe/|>/g
-s/\xbf/|?/g
-s/\xc0/|@/g
-s/\xc1/|A/g
-s/\xc2/|B/g
-s/\xc3/|C/g
-s/\xc4/|D/g
-s/\xc5/|E/g
-s/\xc6/|F/g
-s/\xc7/|G/g
-s/\xc8/|H/g
-s/\xc9/|I/g
-s/\xca/|J/g
-s/\xcb/|K/g
-s/\xcc/|L/g
-s/\xcd/|M/g
-s/\xce/|N/g
-s/\xcf/|O/g
-s/\xd0/|P/g
-s/\xd1/|Q/g
-s/\xd2/|R/g
-s/\xd3/|S/g
-s/\xd4/|T/g
-s/\xd5/|U/g
-s/\xd6/|V/g
-s/\xd7/|W/g
-s/\xd8/|X/g
-s/\xd9/|Y/g
-s/\xda/|Z/g
-s/\xdb/|[/g
-s/\xdc/|\\/g
-s/\xdd/|]/g
-s/\xde/|^/g
-s/\xdf/|_/g
-s/\xe0/|`/g
-s/\xe1/|a/g
-s/\xe2/|b/g
-s/\xe3/|c/g
-s/\xe4/|d/g
-s/\xe5/|e/g
-s/\xe6/|f/g
-s/\xe7/|g/g
-s/\xe8/|h/g
-s/\xe9/|i/g
-s/\xea/|j/g
-s/\xeb/|k/g
-s/\xec/|l/g
-s/\xed/|m/g
-s/\xee/|n/g
-s/\xef/|o/g
-s/\xf0/|p/g
-s/\xf1/|q/g
-s/\xf2/|r/g
-s/\xf3/|s/g
-s/\xf4/|t/g
-s/\xf5/|u/g
-s/\xf6/|v/g
-s/\xf7/|w/g
-s/\xf8/|x/g
-s/\xf9/|y/g
-s/\xfa/|z/g
-s/\xfb/|{/g
-s/\xfc/||/g
-s/\xfd/|}/g
-s/\xfe/|~/g
-s/\xff/|~?g
+printUsage()
+{
+    cat <<HELPTEXT
+Translate all unprintable control characters (including ANSI escape sequences)
+into printable representations; e.g. <Esc> into ^[.
+HELPTEXT
+    printf 'Usage: %q %s\n' "$(basename "$1")" '[--color=(always|auto|never)|--no-color] [SED-OPTIONS ...] [FILE ...] [-?|-h|--help]'
+}
+
+: ${TRCONTROLS_PREFIX=[07m}
+: ${TRCONTROLS_SUFFIX=[0m}
+isColor=; [ -t 1 ] && isColor=t
+case "$1" in
+    --help|-h|-\?)	shift; printUsage "$0"; exit 0;;
+    --no-color|--color=never)	isColor=; shift;;
+    --color=always)	isColor=t; shift;;
+    --color)		case "" in
+			    always)	isColor=t;;
+			    never)  isColor=;;
+			esac
+			shift; shift
+			;;
+esac
+if [ ! "$isColor" ]; then
+    TRCONTROLS_PREFIX=''
+    TRCONTROLS_SUFFIX=''
+fi
+
+
+exec sed \
+    -e "s/\\x1b/${TRCONTROLS_PREFIX}^[${TRCONTROLS_SUFFIX}/g" \
+    -e "s/\\x00/${TRCONTROLS_PREFIX}^@${TRCONTROLS_SUFFIX}/g" \
+    -e "s/\\x01/${TRCONTROLS_PREFIX}^A${TRCONTROLS_SUFFIX}/g" \
+    -e "s/\\x02/${TRCONTROLS_PREFIX}^B${TRCONTROLS_SUFFIX}/g" \
+    -e "s/\\x03/${TRCONTROLS_PREFIX}^C${TRCONTROLS_SUFFIX}/g" \
+    -e "s/\\x04/${TRCONTROLS_PREFIX}^D${TRCONTROLS_SUFFIX}/g" \
+    -e "s/\\x05/${TRCONTROLS_PREFIX}^E${TRCONTROLS_SUFFIX}/g" \
+    -e "s/\\x06/${TRCONTROLS_PREFIX}^F${TRCONTROLS_SUFFIX}/g" \
+    -e "s/\\x07/${TRCONTROLS_PREFIX}^G${TRCONTROLS_SUFFIX}/g" \
+    -e "s/\\x08/${TRCONTROLS_PREFIX}^H${TRCONTROLS_SUFFIX}/g" \
+    -e "s/\\x09/${TRCONTROLS_PREFIX}^I${TRCONTROLS_SUFFIX}/g" \
+    -e "s/\\x0a/${TRCONTROLS_PREFIX}^J${TRCONTROLS_SUFFIX}/g" \
+    -e "s/\\x0b/${TRCONTROLS_PREFIX}^K${TRCONTROLS_SUFFIX}/g" \
+    -e "s/\\x0c/${TRCONTROLS_PREFIX}^L${TRCONTROLS_SUFFIX}/g" \
+    -e "s/\\x0d/${TRCONTROLS_PREFIX}^M${TRCONTROLS_SUFFIX}/g" \
+    -e "s/\\x0e/${TRCONTROLS_PREFIX}^N${TRCONTROLS_SUFFIX}/g" \
+    -e "s/\\x0f/${TRCONTROLS_PREFIX}^O${TRCONTROLS_SUFFIX}/g" \
+    -e "s/\\x10/${TRCONTROLS_PREFIX}^P${TRCONTROLS_SUFFIX}/g" \
+    -e "s/\\x11/${TRCONTROLS_PREFIX}^Q${TRCONTROLS_SUFFIX}/g" \
+    -e "s/\\x12/${TRCONTROLS_PREFIX}^R${TRCONTROLS_SUFFIX}/g" \
+    -e "s/\\x13/${TRCONTROLS_PREFIX}^S${TRCONTROLS_SUFFIX}/g" \
+    -e "s/\\x14/${TRCONTROLS_PREFIX}^T${TRCONTROLS_SUFFIX}/g" \
+    -e "s/\\x15/${TRCONTROLS_PREFIX}^U${TRCONTROLS_SUFFIX}/g" \
+    -e "s/\\x16/${TRCONTROLS_PREFIX}^V${TRCONTROLS_SUFFIX}/g" \
+    -e "s/\\x17/${TRCONTROLS_PREFIX}^W${TRCONTROLS_SUFFIX}/g" \
+    -e "s/\\x18/${TRCONTROLS_PREFIX}^X${TRCONTROLS_SUFFIX}/g" \
+    -e "s/\\x19/${TRCONTROLS_PREFIX}^Y${TRCONTROLS_SUFFIX}/g" \
+    -e "s/\\x1a/${TRCONTROLS_PREFIX}^Z${TRCONTROLS_SUFFIX}/g" \
+    -e "s/\\x1c/${TRCONTROLS_PREFIX}^\\\\${TRCONTROLS_SUFFIX}/g" \
+    -e "s/\\x1d/${TRCONTROLS_PREFIX}^]${TRCONTROLS_SUFFIX}/g" \
+    -e "s/\\x1e/${TRCONTROLS_PREFIX}^^${TRCONTROLS_SUFFIX}/g" \
+    -e "s/\\x1f/${TRCONTROLS_PREFIX}^_${TRCONTROLS_SUFFIX}/g" \
+    -e "s/\\x7f/${TRCONTROLS_PREFIX}^?${TRCONTROLS_SUFFIX}/g" \
+    -e "s/\\x80/${TRCONTROLS_PREFIX}~@${TRCONTROLS_SUFFIX}/g" \
+    -e "s/\\x81/${TRCONTROLS_PREFIX}~A${TRCONTROLS_SUFFIX}/g" \
+    -e "s/\\x82/${TRCONTROLS_PREFIX}~B${TRCONTROLS_SUFFIX}/g" \
+    -e "s/\\x83/${TRCONTROLS_PREFIX}~C${TRCONTROLS_SUFFIX}/g" \
+    -e "s/\\x84/${TRCONTROLS_PREFIX}~D${TRCONTROLS_SUFFIX}/g" \
+    -e "s/\\x85/${TRCONTROLS_PREFIX}~E${TRCONTROLS_SUFFIX}/g" \
+    -e "s/\\x86/${TRCONTROLS_PREFIX}~F${TRCONTROLS_SUFFIX}/g" \
+    -e "s/\\x87/${TRCONTROLS_PREFIX}~G${TRCONTROLS_SUFFIX}/g" \
+    -e "s/\\x88/${TRCONTROLS_PREFIX}~H${TRCONTROLS_SUFFIX}/g" \
+    -e "s/\\x89/${TRCONTROLS_PREFIX}~I${TRCONTROLS_SUFFIX}/g" \
+    -e "s/\\x8a/${TRCONTROLS_PREFIX}~J${TRCONTROLS_SUFFIX}/g" \
+    -e "s/\\x8b/${TRCONTROLS_PREFIX}~K${TRCONTROLS_SUFFIX}/g" \
+    -e "s/\\x8c/${TRCONTROLS_PREFIX}~L${TRCONTROLS_SUFFIX}/g" \
+    -e "s/\\x8d/${TRCONTROLS_PREFIX}~M${TRCONTROLS_SUFFIX}/g" \
+    -e "s/\\x8e/${TRCONTROLS_PREFIX}~N${TRCONTROLS_SUFFIX}/g" \
+    -e "s/\\x8f/${TRCONTROLS_PREFIX}~O${TRCONTROLS_SUFFIX}/g" \
+    -e "s/\\x90/${TRCONTROLS_PREFIX}~P${TRCONTROLS_SUFFIX}/g" \
+    -e "s/\\x91/${TRCONTROLS_PREFIX}~Q${TRCONTROLS_SUFFIX}/g" \
+    -e "s/\\x92/${TRCONTROLS_PREFIX}~R${TRCONTROLS_SUFFIX}/g" \
+    -e "s/\\x93/${TRCONTROLS_PREFIX}~S${TRCONTROLS_SUFFIX}/g" \
+    -e "s/\\x94/${TRCONTROLS_PREFIX}~T${TRCONTROLS_SUFFIX}/g" \
+    -e "s/\\x95/${TRCONTROLS_PREFIX}~U${TRCONTROLS_SUFFIX}/g" \
+    -e "s/\\x96/${TRCONTROLS_PREFIX}~V${TRCONTROLS_SUFFIX}/g" \
+    -e "s/\\x97/${TRCONTROLS_PREFIX}~W${TRCONTROLS_SUFFIX}/g" \
+    -e "s/\\x98/${TRCONTROLS_PREFIX}~X${TRCONTROLS_SUFFIX}/g" \
+    -e "s/\\x99/${TRCONTROLS_PREFIX}~Y${TRCONTROLS_SUFFIX}/g" \
+    -e "s/\\x9a/${TRCONTROLS_PREFIX}~Z${TRCONTROLS_SUFFIX}/g" \
+    -e "s/\\x9b/${TRCONTROLS_PREFIX}~[${TRCONTROLS_SUFFIX}/g" \
+    -e "s/\\x9c/${TRCONTROLS_PREFIX}~\\\\${TRCONTROLS_SUFFIX}/g" \
+    -e "s/\\x9d/${TRCONTROLS_PREFIX}~]${TRCONTROLS_SUFFIX}/g" \
+    -e "s/\\x9e/${TRCONTROLS_PREFIX}~^${TRCONTROLS_SUFFIX}/g" \
+    -e "s/\\x9f/${TRCONTROLS_PREFIX}~_${TRCONTROLS_SUFFIX}/g" \
+    -e "s/\\xa0/${TRCONTROLS_PREFIX}| ${TRCONTROLS_SUFFIX}/g" \
+    -e "s/\\xa1/${TRCONTROLS_PREFIX}|!${TRCONTROLS_SUFFIX}/g" \
+    -e "s/\\xa2/${TRCONTROLS_PREFIX}|\"${TRCONTROLS_SUFFIX}/g" \
+    -e "s/\\xa3/${TRCONTROLS_PREFIX}|#${TRCONTROLS_SUFFIX}/g" \
+    -e "s/\\xa4/${TRCONTROLS_PREFIX}|$${TRCONTROLS_SUFFIX}/g" \
+    -e "s/\\xa5/${TRCONTROLS_PREFIX}|%${TRCONTROLS_SUFFIX}/g" \
+    -e "s/\\xa6/${TRCONTROLS_PREFIX}|&${TRCONTROLS_SUFFIX}/g" \
+    -e "s/\\xa7/${TRCONTROLS_PREFIX}|'${TRCONTROLS_SUFFIX}/g" \
+    -e "s/\\xa8/${TRCONTROLS_PREFIX}|(${TRCONTROLS_SUFFIX}/g" \
+    -e "s/\\xa9/${TRCONTROLS_PREFIX}|)${TRCONTROLS_SUFFIX}/g" \
+    -e "s/\\xaa/${TRCONTROLS_PREFIX}|*${TRCONTROLS_SUFFIX}/g" \
+    -e "s/\\xab/${TRCONTROLS_PREFIX}|+${TRCONTROLS_SUFFIX}/g" \
+    -e "s/\\xac/${TRCONTROLS_PREFIX}|,${TRCONTROLS_SUFFIX}/g" \
+    -e "s/\\xad/${TRCONTROLS_PREFIX}|-${TRCONTROLS_SUFFIX}/g" \
+    -e "s/\\xae/${TRCONTROLS_PREFIX}|.${TRCONTROLS_SUFFIX}/g" \
+    -e "s/\\xaf/${TRCONTROLS_PREFIX}|${TRCONTROLS_SUFFIX}\//g" \
+    -e "s/\\xb0/${TRCONTROLS_PREFIX}|0${TRCONTROLS_SUFFIX}/g" \
+    -e "s/\\xb1/${TRCONTROLS_PREFIX}|1${TRCONTROLS_SUFFIX}/g" \
+    -e "s/\\xb2/${TRCONTROLS_PREFIX}|2${TRCONTROLS_SUFFIX}/g" \
+    -e "s/\\xb3/${TRCONTROLS_PREFIX}|3${TRCONTROLS_SUFFIX}/g" \
+    -e "s/\\xb4/${TRCONTROLS_PREFIX}|4${TRCONTROLS_SUFFIX}/g" \
+    -e "s/\\xb5/${TRCONTROLS_PREFIX}|5${TRCONTROLS_SUFFIX}/g" \
+    -e "s/\\xb6/${TRCONTROLS_PREFIX}|6${TRCONTROLS_SUFFIX}/g" \
+    -e "s/\\xb7/${TRCONTROLS_PREFIX}|7${TRCONTROLS_SUFFIX}/g" \
+    -e "s/\\xb8/${TRCONTROLS_PREFIX}|8${TRCONTROLS_SUFFIX}/g" \
+    -e "s/\\xb9/${TRCONTROLS_PREFIX}|9${TRCONTROLS_SUFFIX}/g" \
+    -e "s/\\xba/${TRCONTROLS_PREFIX}|:${TRCONTROLS_SUFFIX}/g" \
+    -e "s/\\xbb/${TRCONTROLS_PREFIX}|;${TRCONTROLS_SUFFIX}/g" \
+    -e "s/\\xbc/${TRCONTROLS_PREFIX}|<${TRCONTROLS_SUFFIX}/g" \
+    -e "s/\\xbd/${TRCONTROLS_PREFIX}|=${TRCONTROLS_SUFFIX}/g" \
+    -e "s/\\xbe/${TRCONTROLS_PREFIX}|>${TRCONTROLS_SUFFIX}/g" \
+    -e "s/\\xbf/${TRCONTROLS_PREFIX}|?${TRCONTROLS_SUFFIX}/g" \
+    -e "s/\\xc0/${TRCONTROLS_PREFIX}|@${TRCONTROLS_SUFFIX}/g" \
+    -e "s/\\xc1/${TRCONTROLS_PREFIX}|A${TRCONTROLS_SUFFIX}/g" \
+    -e "s/\\xc2/${TRCONTROLS_PREFIX}|B${TRCONTROLS_SUFFIX}/g" \
+    -e "s/\\xc3/${TRCONTROLS_PREFIX}|C${TRCONTROLS_SUFFIX}/g" \
+    -e "s/\\xc4/${TRCONTROLS_PREFIX}|D${TRCONTROLS_SUFFIX}/g" \
+    -e "s/\\xc5/${TRCONTROLS_PREFIX}|E${TRCONTROLS_SUFFIX}/g" \
+    -e "s/\\xc6/${TRCONTROLS_PREFIX}|F${TRCONTROLS_SUFFIX}/g" \
+    -e "s/\\xc7/${TRCONTROLS_PREFIX}|G${TRCONTROLS_SUFFIX}/g" \
+    -e "s/\\xc8/${TRCONTROLS_PREFIX}|H${TRCONTROLS_SUFFIX}/g" \
+    -e "s/\\xc9/${TRCONTROLS_PREFIX}|I${TRCONTROLS_SUFFIX}/g" \
+    -e "s/\\xca/${TRCONTROLS_PREFIX}|J${TRCONTROLS_SUFFIX}/g" \
+    -e "s/\\xcb/${TRCONTROLS_PREFIX}|K${TRCONTROLS_SUFFIX}/g" \
+    -e "s/\\xcc/${TRCONTROLS_PREFIX}|L${TRCONTROLS_SUFFIX}/g" \
+    -e "s/\\xcd/${TRCONTROLS_PREFIX}|M${TRCONTROLS_SUFFIX}/g" \
+    -e "s/\\xce/${TRCONTROLS_PREFIX}|N${TRCONTROLS_SUFFIX}/g" \
+    -e "s/\\xcf/${TRCONTROLS_PREFIX}|O${TRCONTROLS_SUFFIX}/g" \
+    -e "s/\\xd0/${TRCONTROLS_PREFIX}|P${TRCONTROLS_SUFFIX}/g" \
+    -e "s/\\xd1/${TRCONTROLS_PREFIX}|Q${TRCONTROLS_SUFFIX}/g" \
+    -e "s/\\xd2/${TRCONTROLS_PREFIX}|R${TRCONTROLS_SUFFIX}/g" \
+    -e "s/\\xd3/${TRCONTROLS_PREFIX}|S${TRCONTROLS_SUFFIX}/g" \
+    -e "s/\\xd4/${TRCONTROLS_PREFIX}|T${TRCONTROLS_SUFFIX}/g" \
+    -e "s/\\xd5/${TRCONTROLS_PREFIX}|U${TRCONTROLS_SUFFIX}/g" \
+    -e "s/\\xd6/${TRCONTROLS_PREFIX}|V${TRCONTROLS_SUFFIX}/g" \
+    -e "s/\\xd7/${TRCONTROLS_PREFIX}|W${TRCONTROLS_SUFFIX}/g" \
+    -e "s/\\xd8/${TRCONTROLS_PREFIX}|X${TRCONTROLS_SUFFIX}/g" \
+    -e "s/\\xd9/${TRCONTROLS_PREFIX}|Y${TRCONTROLS_SUFFIX}/g" \
+    -e "s/\\xda/${TRCONTROLS_PREFIX}|Z${TRCONTROLS_SUFFIX}/g" \
+    -e "s/\\xdb/${TRCONTROLS_PREFIX}|[${TRCONTROLS_SUFFIX}/g" \
+    -e "s/\\xdc/${TRCONTROLS_PREFIX}|\\\\${TRCONTROLS_SUFFIX}/g" \
+    -e "s/\\xdd/${TRCONTROLS_PREFIX}|]${TRCONTROLS_SUFFIX}/g" \
+    -e "s/\\xde/${TRCONTROLS_PREFIX}|^${TRCONTROLS_SUFFIX}/g" \
+    -e "s/\\xdf/${TRCONTROLS_PREFIX}|_${TRCONTROLS_SUFFIX}/g" \
+    -e "s/\\xe0/${TRCONTROLS_PREFIX}|\`${TRCONTROLS_SUFFIX}/g" \
+    -e "s/\\xe1/${TRCONTROLS_PREFIX}|a${TRCONTROLS_SUFFIX}/g" \
+    -e "s/\\xe2/${TRCONTROLS_PREFIX}|b${TRCONTROLS_SUFFIX}/g" \
+    -e "s/\\xe3/${TRCONTROLS_PREFIX}|c${TRCONTROLS_SUFFIX}/g" \
+    -e "s/\\xe4/${TRCONTROLS_PREFIX}|d${TRCONTROLS_SUFFIX}/g" \
+    -e "s/\\xe5/${TRCONTROLS_PREFIX}|e${TRCONTROLS_SUFFIX}/g" \
+    -e "s/\\xe6/${TRCONTROLS_PREFIX}|f${TRCONTROLS_SUFFIX}/g" \
+    -e "s/\\xe7/${TRCONTROLS_PREFIX}|g${TRCONTROLS_SUFFIX}/g" \
+    -e "s/\\xe8/${TRCONTROLS_PREFIX}|h${TRCONTROLS_SUFFIX}/g" \
+    -e "s/\\xe9/${TRCONTROLS_PREFIX}|i${TRCONTROLS_SUFFIX}/g" \
+    -e "s/\\xea/${TRCONTROLS_PREFIX}|j${TRCONTROLS_SUFFIX}/g" \
+    -e "s/\\xeb/${TRCONTROLS_PREFIX}|k${TRCONTROLS_SUFFIX}/g" \
+    -e "s/\\xec/${TRCONTROLS_PREFIX}|l${TRCONTROLS_SUFFIX}/g" \
+    -e "s/\\xed/${TRCONTROLS_PREFIX}|m${TRCONTROLS_SUFFIX}/g" \
+    -e "s/\\xee/${TRCONTROLS_PREFIX}|n${TRCONTROLS_SUFFIX}/g" \
+    -e "s/\\xef/${TRCONTROLS_PREFIX}|o${TRCONTROLS_SUFFIX}/g" \
+    -e "s/\\xf0/${TRCONTROLS_PREFIX}|p${TRCONTROLS_SUFFIX}/g" \
+    -e "s/\\xf1/${TRCONTROLS_PREFIX}|q${TRCONTROLS_SUFFIX}/g" \
+    -e "s/\\xf2/${TRCONTROLS_PREFIX}|r${TRCONTROLS_SUFFIX}/g" \
+    -e "s/\\xf3/${TRCONTROLS_PREFIX}|s${TRCONTROLS_SUFFIX}/g" \
+    -e "s/\\xf4/${TRCONTROLS_PREFIX}|t${TRCONTROLS_SUFFIX}/g" \
+    -e "s/\\xf5/${TRCONTROLS_PREFIX}|u${TRCONTROLS_SUFFIX}/g" \
+    -e "s/\\xf6/${TRCONTROLS_PREFIX}|v${TRCONTROLS_SUFFIX}/g" \
+    -e "s/\\xf7/${TRCONTROLS_PREFIX}|w${TRCONTROLS_SUFFIX}/g" \
+    -e "s/\\xf8/${TRCONTROLS_PREFIX}|x${TRCONTROLS_SUFFIX}/g" \
+    -e "s/\\xf9/${TRCONTROLS_PREFIX}|y${TRCONTROLS_SUFFIX}/g" \
+    -e "s/\\xfa/${TRCONTROLS_PREFIX}|z${TRCONTROLS_SUFFIX}/g" \
+    -e "s/\\xfb/${TRCONTROLS_PREFIX}|{${TRCONTROLS_SUFFIX}/g" \
+    -e "s/\\xfc/${TRCONTROLS_PREFIX}||${TRCONTROLS_SUFFIX}/g" \
+    -e "s/\\xfd/${TRCONTROLS_PREFIX}|}${TRCONTROLS_SUFFIX}/g" \
+    -e "s/\\xfe/${TRCONTROLS_PREFIX}|~${TRCONTROLS_SUFFIX}/g" \
+    -e "s/\\xff/${TRCONTROLS_PREFIX}|~${TRCONTROLS_SUFFIX}/g" \
+    "$@"
