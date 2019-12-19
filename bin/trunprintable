@@ -1,0 +1,38 @@
+#!/bin/bash
+
+printUsage()
+{
+    cat <<HELPTEXT
+Translate all unprintable characters; ANSI escape sequences for coloring and
+cursor control are kept and executed.
+HELPTEXT
+    printf 'Usage: %q %s\n' "$(basename "$1")" '[--color=(always|auto|never)|--no-color] [SED-OPTIONS ...] [FILE ...] [-?|-h|--help]'
+}
+
+: ${TRCONTROLS_PREFIX=[07m}
+: ${TRCONTROLS_SUFFIX=[0m}
+typeset -a colorArg=()
+isColor=; [ -t 1 ] && isColor=t
+case "$1" in
+    --help|-h|-\?)	shift; printUsage "$0"; exit 0;;
+    --no-color|--color=never)	colorArg=("$1"); isColor=; shift;;
+    --color=always)	colorArg=("$1"); isColor=t; shift;;
+    --color)		colorArg=("$1" "$2")
+			case "" in
+			    always)	isColor=t;;
+			    never)  isColor=;;
+			esac
+			shift; shift
+			;;
+esac
+if [ ! "$isColor" ]; then
+    TRCONTROLS_PREFIX=''
+    TRCONTROLS_SUFFIX=''
+fi
+literalTrControlsPrefix="$(printf %s "$TRCONTROLS_PREFIX" | sed -e 's/[][\$*.^#]/\\&/g')"
+literalTrControlsSuffix="$(printf %s "$TRCONTROLS_SUFFIX" | sed -e 's/[][\$*.^#]/\\&/g')"
+
+exec trcontrols \
+    "${colorArg[@]}" \
+    -e "s#${literalTrControlsPrefix}\\^\\[${literalTrControlsSuffix}\\(\\[[0-9;]*[mK]\\)#\\1#g" \
+    "$@"
