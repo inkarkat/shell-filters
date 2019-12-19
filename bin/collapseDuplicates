@@ -5,7 +5,7 @@ printShortUsage()
     # Note: short followed by long option; if the user knows the short one, she can
     # skim the long one.
     printf 'Usage: %q %s\n' "$(basename "$1")" '[--as count|dot|ellipsis] [-s|--skip PATTERN [...]] (-e|--regexp|-a|--accumulate|-m|--match|-M|--match-accumulated PATTERN [-r|--replacement REPLACEMENT]) [...] [--] FILE [...][-?|-h|--help]'
-    printf 'Usage: cat FILE [...] | %q %s\n' "$(basename "$1")" '[-u|--unbuffered [--as count|dot|ellipsis|flash|spinner] [...]'
+    printf 'Usage: cat FILE [...] | %q %s\n' "$(basename "$1")" '[-u|--unbuffered [--as count|dot|ellipsis|flash|spinner|kitt] [...]'
 }
 printUsage()
 {
@@ -33,6 +33,8 @@ HELPDESCRIPTION
     --as ellipsis   Append an ellipis ([...]) once.
     --as flash	    Briefly reverse and unreverse the line to highlight it.
     --as spinner    Change a spinner control after the line for each occurrence.
+    --as kitt	    Change a Knight Rider-alike sweeping control after the line
+		    for each occurrence.
     --regexp|-e PATTERN	    Collapse consecutive lines that all match PATTERN.
 			    Other matches or lines reset counting.
     --accumulate|-a PATTERN Collapse any lines that match PATTERN; counts from
@@ -134,32 +136,32 @@ function replace(line, pattern, replacement)
 {
     return (replacement == "&" ? line : gensub(pattern, replacement, "g", line))
 }
-function flash(text)
+function flash(text, prefix)
 {
     system("sleep " flashOffTime)
-    printf "\r[07m%s[0m", text
+    printf prefix "[07m%s[0m", text
     fflush()
     system("sleep " flashOnTime)
     return "\r" text
 }
-function renderCountFull( text, count,      tmp )
+function renderCountFull( text, count, prefix,      tmp )
 {
     switch (render) {
 	case "":
-	    return text
+	    return prefix text
 	case "count":
 	    sub(/\s*$/, "", text)
-	    return text " (" count ")"
+	    return prefix text " (" count ")"
 	case "dot":
 	    sub(/\s*\.*$/, "", text)
 	    for (tmp = ""; count > 0; count--)
 		tmp = tmp "."
-	    return text tmp
+	    return prefix text tmp
 	case "ellipsis":
 	    sub(/\s*$/, "", text)
-	    return text " [...]"
+	    return prefix text " [...]"
 	case "flash":
-	    return flash(text)
+	    return flash(text, prefix)
 	default:
 	    print "Assert: Invalid render type: " render > "/dev/stderr"
 	    exit 3
@@ -182,7 +184,7 @@ function renderCountDelta(text, count,      tmp)
 	case "ellipsis":
 	    return (count == 2 ? " [...]" : "")
 	case "flash":
-	    return flash(text)
+	    return flash(text, "\r")
 	default:
 	    print "Assert: Invalid render type: " render > "/dev/stderr"
 	    exit 3
@@ -205,7 +207,7 @@ function collapse(isBelongsToDifferentSet, current, pattern, replacement, count)
 	} else if (previousMatch == current && replacement == "&") {
 	    printf "%s", renderCountDelta(replace(current, pattern, replacement), count)
 	} else {
-	    printf "\r%s", renderCountFull(replace(current, pattern, replacement), count)
+	    printf "%s", renderCountFull(replace(current, pattern, replacement), count, "\r")
 	}
 	fflush()
     }
