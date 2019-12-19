@@ -111,6 +111,7 @@ awk \
 '
 BEGIN {
     FS = "\n"
+    SPINNER="/-\\|"
     N = split(typeList, types)
     if (split(patternList, patterns) != N) {
 	print "Assert: Mismatch in number of types and patterns." > "/dev/stderr"
@@ -144,6 +145,10 @@ function flash(text, prefix)
     system("sleep " flashOnTime)
     return "\r" text
 }
+function spin(count)
+{
+    return substr(SPINNER, 1 + ((count - 2) % length(SPINNER)), 1)
+}
 function renderCountFull( text, count, prefix,      tmp )
 {
     switch (render) {
@@ -162,6 +167,8 @@ function renderCountFull( text, count, prefix,      tmp )
 	    return prefix text " [...]"
 	case "flash":
 	    return flash(text, prefix)
+	case "spinner":
+	    return prefix text " " spin(count)
 	default:
 	    print "Assert: Invalid render type: " render > "/dev/stderr"
 	    exit 3
@@ -185,6 +192,8 @@ function renderCountDelta(text, count,      tmp)
 	    return (count == 2 ? " [...]" : "")
 	case "flash":
 	    return flash(text, "\r")
+	case "spinner":
+	    return (count == 1 ? "" : (count == 2 ? " " : "") spin(count))
 	default:
 	    print "Assert: Invalid render type: " render > "/dev/stderr"
 	    exit 3
