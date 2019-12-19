@@ -59,6 +59,8 @@ HELPTEXT
     printf '%q %s\n' "$(basename "$1")" '--foo bar /tmp/foobar'
 }
 
+: ${COLLAPSEDUPLICATES_FLASH_ON_TIME:=0.1}
+: ${COLLAPSEDUPLICATES_FLASH_OFF_TIME:=0.2}
 render=
 typeset -a types=()
 typeset -a patterns=()
@@ -102,6 +104,8 @@ awk \
     -v typeList="${types[*]}" \
     -v patternList="${patterns[*]//\\/\\\\}" \
     -v replacementList="${replacements[*]//\\/\\\\}" \
+    -v flashOnTime="${COLLAPSEDUPLICATES_FLASH_ON_TIME}" \
+    -v flashOffTime="${COLLAPSEDUPLICATES_FLASH_OFF_TIME}" \
 '
 BEGIN {
     FS = "\n"
@@ -130,6 +134,14 @@ function replace(line, pattern, replacement)
 {
     return (replacement == "&" ? line : gensub(pattern, replacement, "g", line))
 }
+function flash(text)
+{
+    system("sleep " flashOffTime)
+    printf "\r[07m%s[0m", text
+    fflush()
+    system("sleep " flashOnTime)
+    return "\r" text
+}
 function renderCountFull( text, count,      tmp )
 {
     switch (render) {
@@ -146,6 +158,8 @@ function renderCountFull( text, count,      tmp )
 	case "ellipsis":
 	    sub(/\s*$/, "", text)
 	    return text " [...]"
+	case "flash":
+	    return flash(text)
 	default:
 	    print "Assert: Invalid render type: " render > "/dev/stderr"
 	    exit 3
@@ -167,6 +181,8 @@ function renderCountDelta(text, count,      tmp)
 	    return (count == 1 ? "" : ".")
 	case "ellipsis":
 	    return (count == 2 ? " [...]" : "")
+	case "flash":
+	    return flash(text)
 	default:
 	    print "Assert: Invalid render type: " render > "/dev/stderr"
 	    exit 3
@@ -191,6 +207,7 @@ function collapse(isBelongsToDifferentSet, current, pattern, replacement, count)
 	} else {
 	    printf "\r%s", renderCountFull(replace(current, pattern, replacement), count)
 	}
+	fflush()
     }
     next
 }
@@ -203,6 +220,7 @@ function recall(current, pattern, replacement, count)
     } else {
 	hold = "\n"
 	printf "%s", renderCountFull(replace(current, pattern, replacement), count)
+	fflush()
     }
 
     next
