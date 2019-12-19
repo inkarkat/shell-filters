@@ -144,6 +144,11 @@ function finishLine()
 	hold = ""
     }
 }
+function matchstr(pattern, text)
+{
+    match(text, pattern)
+    return substr(text, RSTART, RLENGTH)
+}
 function replace(line, pattern, replacement)
 {
     return (replacement == "&" ? line : gensub(pattern, replacement, "g", line))
@@ -225,7 +230,7 @@ function renderCountDelta(text, count,      tmp)
 	    exit 3
     }
 }
-function collapse(isBelongsToDifferentSet, current, pattern, replacement, count)
+function collapse(isBelongsToDifferentSet, current, pattern, replacement, previous, compare, count)
 {
     if (isBelongsToDifferentSet) finishLine()
     if (isBuffered) {
@@ -233,13 +238,13 @@ function collapse(isBelongsToDifferentSet, current, pattern, replacement, count)
 	    hold = current	# First (tentative) match, take as-is; no replacement yet.
 	} else {
 	    # Use the first match, but replace.
-	    hold = renderCountFull(replace(previousMatch, pattern, replacement), count)
+	    hold = renderCountFull(replace(previousMatchingLine, pattern, replacement), count)
 	}
     } else {
 	hold = "\n"
 	if (count == 1) {
 	    printf "%s", current
-	} else if (previousMatch == current && replacement == "&") {
+	} else if (previous == compare && replacement == "&") {
 	    printf "%s", renderCountDelta(replace(current, pattern, replacement), count)
 	} else {
 	    printf "%s", renderCountFull(replace(current, pattern, replacement), count, "\r")
@@ -253,7 +258,7 @@ function recall(current, pattern, replacement, count)
     finishLine()
 
     if (isBuffered) {
-	hold = renderCountFull(replace(previousMatch, pattern, replacement), count)
+	hold = renderCountFull(replace(previousMatchingLine, pattern, replacement), count)
     } else {
 	hold = "\n"
 	printf "%s", renderCountFull(replace(current, pattern, replacement), count)
@@ -269,12 +274,13 @@ function recall(current, pattern, replacement, count)
 		case "reset":
 		    if ($0 ~ patterns[i]) {
 			if (patterns[i] == previousPattern) {
-			    collapse(0, $0, patterns[i], replacements[i], ++count)
+			    collapse(0, $0, patterns[i], replacements[i], previousMatchingLine, $0, ++count)
 			} else {
 			    count = 1
-			    previousMatch = $0
+			    previousMatch = matchstr(patterns[i], $0)
+			    previousMatchingLine = $0
 			    previousPattern = patterns[i]
-			    collapse(1, $0, patterns[i], replacements[i], count)
+			    collapse(1, $0, patterns[i], replacements[i], previousMatchingLine, $0, count)
 			}
 		    }
 		    break
@@ -283,13 +289,14 @@ function recall(current, pattern, replacement, count)
 			patternCounts[patterns[i]] += 1
 			if (patterns[i] == previousPattern) {
 			    # Consecutive match, collapse.
-			    collapse(0, $0, patterns[i], replacements[i], patternCounts[patterns[i]])
+			    collapse(0, $0, patterns[i], replacements[i], previousMatchingLine, $0, patternCounts[patterns[i]])
 			} else {
-			    previousMatch = $0
+			    previousMatch = matchstr(patterns[i], $0)
+			    previousMatchingLine = $0
 			    previousPattern = patterns[i]
 			    if (patternCounts[patterns[i]] == 1) {
 				# First match overall.
-				collapse(1, $0, patterns[i], replacements[i], patternCounts[patterns[i]])
+				collapse(1, $0, patterns[i], replacements[i], previousMatchingLine, $0, patternCounts[patterns[i]])
 			    } else {
 				# Match that is different from previous one, recall
 				# with count.
@@ -301,12 +308,13 @@ function recall(current, pattern, replacement, count)
 		case "match":
 		    if ($0 ~ patterns[i]) {
 			previousPattern = patterns[i]
-			if ($0 == previousMatch) {
-			    collapse(0, $0, patterns[i], replacements[i], ++count)
+			if (matchstr(patterns[i], $0) == previousMatch) {
+			    collapse(0, $0, patterns[i], replacements[i], previousMatch, matchstr(patterns[i], $0), ++count)
 			} else {
 			    count = 1
-			    previousMatch = $0
-			    collapse(1, $0, patterns[i], replacements[i], count)
+			    previousMatch = matchstr(patterns[i], $0)
+			    previousMatchingLine = $0
+			    collapse(1, $0, patterns[i], replacements[i], previousMatch, matchstr(patterns[i], $0), count)
 			}
 		    }
 		    break
@@ -314,15 +322,16 @@ function recall(current, pattern, replacement, count)
 		    if ($0 ~ patterns[i]) {
 			previousPattern = patterns[i]
 			matchCounts[$0] += 1
-			if ($0 == previousMatch) {
+			if (matchstr(patterns[i], $0) == previousMatch) {
 			    # Consecutive occurrence, collapse.
-			    collapse(0, $0, patterns[i], replacements[i], matchCounts[$0])
+			    collapse(0, $0, patterns[i], replacements[i], previousMatch, matchstr(patterns[i], $0), matchCounts[$0])
 			} else {
-			    previousMatch = $0
+			    previousMatch = matchstr(patterns[i], $0)
+			    previousMatchingLine = $0
 			    previousPattern = patterns[i]
 			    if (matchCounts[$0] == 1) {
 				# First occurrence overall.
-				collapse(1, $0, patterns[i], replacements[i], 1)
+				collapse(1, $0, patterns[i], replacements[i], previousMatch, matchstr(patterns[i], $0), 1)
 			    } else {
 				# Occurrence that is different from previous one, recall
 				# with count.
@@ -339,6 +348,7 @@ function recall(current, pattern, replacement, count)
     }
 
     previousMatch = ""
+    previousMatchingLine = ""
     previousPattern = ""
     finishLine()
     print
