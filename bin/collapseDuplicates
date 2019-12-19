@@ -164,13 +164,9 @@ function renderCountDelta(text, count,      tmp)
 	case "count":
 	    return (count <= 2 ? " (" count ")" : "" deleteCount(count) count ")")
 	case "dot":
-	    sub(/\s*\.*$/, "", text)
-	    for (tmp = ""; count > 0; count--)
-		tmp = tmp "."
-	    return text tmp
+	    return (count == 1 ? "" : ".")
 	case "ellipsis":
-	    sub(/\s*$/, "", text)
-	    return text " [...]"
+	    return (count == 2 ? " [...]" : "")
 	default:
 	    print "Assert: Invalid render type: " render > "/dev/stderr"
 	    exit 3
