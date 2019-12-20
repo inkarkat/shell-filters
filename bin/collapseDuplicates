@@ -144,6 +144,11 @@ function finishLine()
 	hold = ""
     }
 }
+function nextLine()
+{
+    previousLine = $0
+    next
+}
 function matchstr(pattern, text)
 {
     match(text, pattern)
@@ -251,7 +256,8 @@ function collapse(isBelongsToDifferentSet, current, pattern, replacement, previo
 	}
 	fflush()
     }
-    next
+
+    nextLine()
 }
 function recall(current, pattern, replacement, count)
 {
@@ -265,7 +271,7 @@ function recall(current, pattern, replacement, count)
 	fflush()
     }
 
-    next
+    nextLine()
 }
 {
     if (skipPattern == "" || $0 !~ skipPattern) {
@@ -309,33 +315,34 @@ function recall(current, pattern, replacement, count)
 		    if ($0 ~ patterns[i]) {
 			previousPattern = patterns[i]
 			if (matchstr(patterns[i], $0) == previousMatch) {
-			    collapse(0, $0, patterns[i], replacements[i], previousMatch, matchstr(patterns[i], $0), ++count)
+			    collapse(0, $0, patterns[i], replacements[i], previousLine, $0, ++count)
 			} else {
 			    count = 1
 			    previousMatch = matchstr(patterns[i], $0)
 			    previousMatchingLine = $0
-			    collapse(1, $0, patterns[i], replacements[i], previousMatch, matchstr(patterns[i], $0), count)
+			    collapse(1, $0, patterns[i], replacements[i], previousLine, $0, count)
 			}
 		    }
 		    break
 		case "match-accumulate":
 		    if ($0 ~ patterns[i]) {
 			previousPattern = patterns[i]
-			matchCounts[$0] += 1
-			if (matchstr(patterns[i], $0) == previousMatch) {
+			currentMatch = matchstr(patterns[i], $0)
+			matchCounts[currentMatch] += 1
+			if (currentMatch == previousMatch) {
 			    # Consecutive occurrence, collapse.
-			    collapse(0, $0, patterns[i], replacements[i], previousMatch, matchstr(patterns[i], $0), matchCounts[$0])
+			    collapse(0, $0, patterns[i], replacements[i], previousLine, $0, matchCounts[currentMatch])
 			} else {
-			    previousMatch = matchstr(patterns[i], $0)
+			    previousMatch = currentMatch
 			    previousMatchingLine = $0
 			    previousPattern = patterns[i]
-			    if (matchCounts[$0] == 1) {
+			    if (matchCounts[currentMatch] == 1) {
 				# First occurrence overall.
-				collapse(1, $0, patterns[i], replacements[i], previousMatch, matchstr(patterns[i], $0), 1)
+				collapse(1, $0, patterns[i], replacements[i], previousLine, $0, 1)
 			    } else {
 				# Occurrence that is different from previous one, recall
 				# with count.
-				recall($0, patterns[i], replacements[i], matchCounts[$0])
+				recall($0, patterns[i], replacements[i], matchCounts[currentMatch])
 			    }
 			}
 		    }
@@ -352,6 +359,7 @@ function recall(current, pattern, replacement, count)
     previousPattern = ""
     finishLine()
     print
+    nextLine()
 }
 END {
     finishLine()
