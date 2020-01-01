@@ -74,11 +74,11 @@ do
     case "$1" in
 	--help|-h|-\?)	shift; printLongUsage "$0"; exit 0;;
 	--as)		shift; render="$1"; shift;;
-	--skip|-s)	shift; skipPattern="${skipPattern}${skipPattern:+|}$1"; shift;;
-	--regexp|-e)		shift; types+=(reset); patterns+=("$1"); replacements+=('&'); shift;;
-	--accumulate|-a)	shift; types+=(accumulate); patterns+=("$1"); replacements+=('&'); shift;;
-	--match|-m)		shift; types+=(match); patterns+=("$1"); replacements+=('&'); shift;;
-	--match-accumulated|-M)	shift; types+=(match-accumulate); patterns+=("$1"); replacements+=('&'); shift;;
+	--skip|-s)	shift; skipPattern="${skipPattern}${skipPattern:+|}${1:?}"; shift;;
+	--regexp|-e)		shift; types+=(reset); patterns+=("${1:?}"); replacements+=('&'); shift;;
+	--accumulate|-a)	shift; types+=(accumulate); patterns+=("${1:?}"); replacements+=('&'); shift;;
+	--match|-m)		shift; types+=(match); patterns+=("${1:?}"); replacements+=('&'); shift;;
+	--match-accumulated|-M)	shift; types+=(match-accumulate); patterns+=("${1:?}"); replacements+=('&'); shift;;
 	--replacement|-r)	shift
 				if [ ${#types[@]} -eq 0 ]; then
 				    echo >&2 "Need -e|--regexp|-a|--accumulate|-m|--match|-M|--match-accumulated PATTERN before passing REPLACEMENT."
