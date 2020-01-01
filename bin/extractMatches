@@ -65,6 +65,8 @@ HELPTEXT
     printf '%q %s\n' "$(basename "$1")" '--regexp "FATAL:.*" --name err --regexp "ERROR:.*" --name err --count Restarted --reset Restarted --name err'
 }
 
+: ${EXTRACTMATCHES_FLASH_ON_TIME:=0.1}
+: ${EXTRACTMATCHES_FLASH_OFF_TIME:=0.2}
 render=
 skipPattern=
 typeset -a types=()
@@ -78,11 +80,11 @@ do
     case "$1" in
 	--help|-h|-\?)	shift; printLongUsage "$0"; exit 0;;
 	--to|-t)	shift; render="$1"; shift;;
-	--skip|-s)	shift; skipPattern="${skipPattern}${skipPattern:+|}$1"; shift;;
-	--regexp|-e)		shift; types+=(regexp); patterns+=("$1"); replacements+=('&'); shift;;
-	--count|-c)		shift; types+=(count); patterns+=("$1"); replacements+=('&'); shift;;
-	--match-count|-M)	shift; types+=(match-count); patterns+=("$1"); replacements+=('&'); shift;;
-	--reset|-x)		shift; type+=(reset); patterns+=("$1"); replacements+=('&'); shift;;
+	--skip|-s)	shift; skipPattern="${skipPattern}${skipPattern:+|}${1?}"; shift;;
+	--regexp|-e)		shift; types+=(regexp); patterns+=("${1?}"); replacements+=('&'); names+=('') priorities+=(0); shift;;
+	--count|-c)		shift; types+=(count); patterns+=("${1?}"); replacements+=('&'); names+=('') priorities+=(0); shift;;
+	--match-count|-M)	shift; types+=(match-count); patterns+=("${1?}"); replacements+=('&'); names+=('') priorities+=(0); shift;;
+	--reset|-x)		shift; types+=(reset); patterns+=("${1?}"); replacements+=('&'); names+=('') priorities+=(0); shift;;
 	--replacement|-r)	shift
 				if [ ${#types[@]} -eq 0 ]; then
 				    echo >&2 "Need -e|--regexp|-c|--count|-M|--match-count|-x|--reset PATTERN before passing REPLACEMENT."
@@ -130,3 +132,43 @@ if [ ${#types[@]} -eq 0 ]; then
     printShortUsage "$0" >&2
     exit 2
 fi
+replacements+=(''); names+=('')	# Add one empty element so that split() will yield at least one in case of a single empty one.
+
+IFS=$'\n'
+awk \
+    -v "render=$render" \
+    -v "isBuffered=$isBuffered" \
+    -v "typeList=${types[*]}" \
+    -v "patternList=${patterns[*]//\\/\\\\}" \
+    -v "replacementList=${replacements[*]//\\/\\\\}" \
+    -v "nameList=${names[*]//\\/\\\\}" \
+    -v "priorityList=${priorities[*]//\\/\\\\}" \
+    -v "skipPattern=${skipPattern//\\/\\\\}" \
+    -v "flashOnTime=${EXTRACTMATCHES_FLASH_ON_TIME}" \
+    -v "flashOffTime=${EXTRACTMATCHES_FLASH_OFF_TIME}" \
+'
+BEGIN {
+    FS = "\n"
+
+    N = split(typeList, types)
+    if (split(patternList, patterns) != N) {
+	print "Assert: Mismatch in number of types and patterns." > "/dev/stderr"
+	exit 3
+    }
+    if (split(replacementList, replacements) != N + 1) {
+	print "Assert: Mismatch in number of replacements and patterns." > "/dev/stderr"
+	exit 3
+    }
+    if (split(nameList, names) != N + 1) {
+	print "Assert: Mismatch in number of names and patterns." > "/dev/stderr"
+	exit 3
+    }
+    if (split(priorityList, priorities) != N) {
+	print "Assert: Mismatch in number of priorities and patterns." > "/dev/stderr"
+	exit 3
+    }
+}
+{
+    print
+}
+' "$@"
