@@ -67,6 +67,8 @@ HELPTEXT
 
 : ${EXTRACTMATCHES_FLASH_ON_TIME:=0.1}
 : ${EXTRACTMATCHES_FLASH_OFF_TIME:=0.2}
+: ${EXTRACTMATCHES_HIGHLIGHT_PREFIX:=[07m}
+: ${EXTRACTMATCHES_HIGHLIGHT_SUFFIX:=[0m}
 render=
 skipPattern=
 typeset -a types=()
@@ -146,6 +148,8 @@ awk \
     -v "skipPattern=${skipPattern//\\/\\\\}" \
     -v "flashOnTime=${EXTRACTMATCHES_FLASH_ON_TIME}" \
     -v "flashOffTime=${EXTRACTMATCHES_FLASH_OFF_TIME}" \
+    -v "highlightPrefix=${EXTRACTMATCHES_HIGHLIGHT_PREFIX//\\/\\\\}" \
+    -v "highlightSuffix=${EXTRACTMATCHES_HIGHLIGHT_SUFFIX//\\/\\\\}" \
 '
 BEGIN {
     FS = "\n"
@@ -169,6 +173,16 @@ BEGIN {
     }
 }
 {
+    if (skipPattern == "" || $0 !~ skipPattern) {
+	for (i = 1; i <= N; i++) {
+	    switch (types[i]) {
+	    case "regexp":
+		if ($0 ~ patterns[i]) {
+		    sub(patterns[i], highlightPrefix "&" highlightSuffix)
+		}
+	    }
+	}
+    }
     print
 }
 ' "$@"
