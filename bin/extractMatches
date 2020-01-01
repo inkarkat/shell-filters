@@ -198,21 +198,32 @@ function process(type, start, len, pattern, replacement)
 }
 {
     if (skipPattern == "" || $0 !~ skipPattern) {
-	for (i = 1; i <= N; i++) {
-	    if (match($0, patterns[i])) {
-		if (globals[i]) {
-		    startOffset = 0
-		    do {
-			previousLength = length($0)
-			process(types[i], startOffset + RSTART, RLENGTH, patterns[i], replacements[i])
-			replacementOffset = length($0) - previousLength
-			startOffset += RSTART + RLENGTH - 1 + replacementOffset
-			} while (match(substr($0, startOffset + 1), patterns[i]))
-		} else {
-		    process(types[i], RSTART, RLENGTH, patterns[i], replacements[i])
+	delete seen
+	startOffset = 0
+	do {
+	    lowestOffset = length($0)
+	    lowestI = 0
+	    for (i = 1; i <= N; i++) {
+		if (match(substr($0, startOffset + 1), patterns[i])) {
+		    if (seen[i] && ! globals[i]) continue
+
+		    if (startOffset + RSTART < lowestOffset) {
+			lowestOffset = startOffset + RSTART
+			lowestLength = RLENGTH
+			lowestI = i
+		    }
 		}
 	    }
-	}
+
+	    if (lowestI == 0) break
+
+	    seen[lowestI] = 1
+	    previousLength = length($0)
+	    process(types[lowestI], lowestOffset, lowestLength, patterns[lowestI], replacements[lowestI])
+	    replacementOffset = length($0) - previousLength
+	    startOffset = lowestOffset + lowestLength - 1 + replacementOffset
+
+	} while (1)
     }
     print
 }

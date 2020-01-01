@@ -66,3 +66,11 @@ More [foo] here.
 Seriousl[y], wh[y]?" ]
 }
 
+@test "earlier matches consume those given later" {
+    run extractMatches --regexp fo+ --global --regexp oo --global --regexp o+ --global --regexp 'ex' --regexp 'x' --global <<-'EOF'
+Just some sexy text.
+This has foo, boooo and mooo in it.
+EOF
+    [ "$output" = "Just s[o]me s[ex]y te[x]t.
+This has [foo], b[oo][oo] and m[oo][o] in it." ]
+}
