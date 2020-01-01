@@ -26,6 +26,12 @@
     [ "${lines[0]}" = "Need -e|--regexp|-c|--count|-M|--match-count|-x|--reset PATTERN before passing REPLACEMENT." ]
 }
 
+@test "error when global is passed before regexp" {
+    run extractMatches --global --regexp foo
+    [ $status -eq 2 ]
+    [ "${lines[0]}" = "Need -e|--regexp|-c|--count|-M|--match-count|-x|--reset PATTERN before passing -g|--global." ]
+}
+
 @test "error when name is passed before regexp" {
     run extractMatches --name bar --regexp foo
     [ $status -eq 2 ]

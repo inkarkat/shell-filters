@@ -5,7 +5,7 @@ printShortUsage()
 {
     # Note: short followed by long option; if the user knows the short one, she can
     # skim the long one.
-    printf 'Usage: %q %s\n' "$(basename "$1")" '[-u|--unbuffered] [-t|--to overlay|title|panel|notify|highlight|flash|FILE] [-s|--skip PATTERN [...]] (-e|--regexp [-x|--reset PATTERN] [-r|--replacement REPLACEMENT] [-p|--priority N] [-n|--name NAME])(-c|--count|-M|--match-count|-x|--reset PATTERN [-n|--name NAME]) [...] [--] FILE [...][-?|-h|--help]'
+    printf 'Usage: %q %s\n' "$(basename "$1")" '[-u|--unbuffered] [-t|--to overlay|title|panel|notify|highlight|flash|FILE] [-s|--skip PATTERN [...]] (-e|--regexp [-x|--reset PATTERN] [-r|--replacement REPLACEMENT] [-g|--global] [-p|--priority N] [-n|--name NAME])(-c|--count|-M|--match-count|-x|--reset PATTERN [-n|--name NAME]) [...] [--] FILE [...][-?|-h|--help]'
 }
 printUsage()
 {
@@ -53,6 +53,8 @@ HELPDESCRIPTION
     --replacement|-r REPLACEMENT
 			    Use REPLACEMENT (that can refer to PATTERN capture
 			    groups via \1 etc.) instead of the original match.
+    --global|-g		    Report / count all occurrences of PATTERN in a line,
+			    not just the first one.
     --priority|-p N	    Only report the match if a previous match had the
 			    same or lower priority.
     --skip|-s PATTERN	    Ignore (but still print) lines that match PATTERN,
@@ -74,6 +76,7 @@ skipPattern=
 typeset -a types=()
 typeset -a patterns=()
 typeset -a replacements=()
+typeset -a globals=()
 typeset -a names=()
 typeset -a priorities=()
 isBuffered=t
@@ -83,10 +86,10 @@ do
 	--help|-h|-\?)	shift; printLongUsage "$0"; exit 0;;
 	--to|-t)	shift; render="$1"; shift;;
 	--skip|-s)	shift; skipPattern="${skipPattern}${skipPattern:+|}${1?}"; shift;;
-	--regexp|-e)		shift; types+=(regexp); patterns+=("${1?}"); replacements+=('&'); names+=('') priorities+=(0); shift;;
-	--count|-c)		shift; types+=(count); patterns+=("${1?}"); replacements+=('&'); names+=('') priorities+=(0); shift;;
-	--match-count|-M)	shift; types+=(match-count); patterns+=("${1?}"); replacements+=('&'); names+=('') priorities+=(0); shift;;
-	--reset|-x)		shift; types+=(reset); patterns+=("${1?}"); replacements+=('&'); names+=('') priorities+=(0); shift;;
+	--regexp|-e)		shift; types+=(regexp); patterns+=("${1?}"); replacements+=('&'); globals+=(0); names+=('') priorities+=(0); shift;;
+	--count|-c)		shift; types+=(count); patterns+=("${1?}"); replacements+=('&'); globals+=(0); names+=('') priorities+=(0); shift;;
+	--match-count|-M)	shift; types+=(match-count); patterns+=("${1?}"); replacements+=('&'); globals+=(0); names+=('') priorities+=(0); shift;;
+	--reset|-x)		shift; types+=(reset); patterns+=("${1?}"); replacements+=('&'); globals+=(0); names+=('') priorities+=(0); shift;;
 	--replacement|-r)	shift
 				if [ ${#types[@]} -eq 0 ]; then
 				    echo >&2 "Need -e|--regexp|-c|--count|-M|--match-count|-x|--reset PATTERN before passing REPLACEMENT."
@@ -95,6 +98,16 @@ do
 				    exit 2
 				fi
 				replacements[-1]="$1"
+				shift
+				;;
+	--global|-g)		shift
+				if [ ${#types[@]} -eq 0 ]; then
+				    echo >&2 "Need -e|--regexp|-c|--count|-M|--match-count|-x|--reset PATTERN before passing -g|--global."
+				    echo >&2
+				    printShortUsage "$0" >&2
+				    exit 2
+				fi
+				globals[-1]=1
 				shift
 				;;
 	--name|-n)		shift
@@ -143,6 +156,7 @@ awk \
     -v "typeList=${types[*]}" \
     -v "patternList=${patterns[*]//\\/\\\\}" \
     -v "replacementList=${replacements[*]//\\/\\\\}" \
+    -v "globalsList=${globals[*]//\\/\\\\}" \
     -v "nameList=${names[*]//\\/\\\\}" \
     -v "priorityList=${priorities[*]//\\/\\\\}" \
     -v "skipPattern=${skipPattern//\\/\\\\}" \
@@ -159,6 +173,10 @@ BEGIN {
 	print "Assert: Mismatch in number of types and patterns." > "/dev/stderr"
 	exit 3
     }
+    if (split(globalsList, globals) != N) {
+	print "Assert: Mismatch in number of globals and patterns." > "/dev/stderr"
+	exit 3
+    }
     if (split(replacementList, replacements) != N + 1) {
 	print "Assert: Mismatch in number of replacements and patterns." > "/dev/stderr"
 	exit 3
@@ -172,13 +190,27 @@ BEGIN {
 	exit 3
     }
 }
+function process(type, start, len, pattern, replacement)
+{
+    switch (type) {
+	case "regexp":
+	    $0 = substr($0, 1, start - 1) highlightPrefix substr($0, start, len) highlightSuffix substr($0, start + len)
+    }
+}
 {
     if (skipPattern == "" || $0 !~ skipPattern) {
 	for (i = 1; i <= N; i++) {
-	    switch (types[i]) {
-	    case "regexp":
-		if ($0 ~ patterns[i]) {
-		    sub(patterns[i], highlightPrefix "&" highlightSuffix)
+	    if (match($0, patterns[i])) {
+		if (globals[i]) {
+		    startOffset = 0
+		    do {
+			previousLength = length($0)
+			process(types[i], startOffset + RSTART, RLENGTH, patterns[i], replacements[i])
+			replacementOffset = length($0) - previousLength
+			startOffset += RSTART + RLENGTH - 1 + replacementOffset
+			} while (match(substr($0, startOffset + 1), patterns[i]))
+		} else {
+		    process(types[i], RSTART, RLENGTH, patterns[i], replacements[i])
 		}
 	    }
 	}
