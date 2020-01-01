@@ -99,6 +99,7 @@ if [ ${#types[@]} -eq 0 ]; then
     # Default to consending identical consecutive lines.
     types+=(match); patterns+=('.*'); replacements+=('&')
 fi
+replacements+=('')  # Add one empty element so that split() will yield at least one in case of a single empty one.
 
 IFS=$'\n'
 awk \
@@ -129,7 +130,7 @@ BEGIN {
 	print "Assert: Mismatch in number of types and patterns." > "/dev/stderr"
 	exit 3
     }
-    if (split(replacementList, replacements) != N) {
+    if (split(replacementList, replacements) != N + 1) {
 	print "Assert: Mismatch in number of replacements and patterns." > "/dev/stderr"
 	exit 3
     }
