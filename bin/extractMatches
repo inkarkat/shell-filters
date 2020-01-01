@@ -1,4 +1,5 @@
 #!/bin/bash
+shopt -qs extglob
 
 printShortUsage()
 {
@@ -63,3 +64,69 @@ Example:
 HELPTEXT
     printf '%q %s\n' "$(basename "$1")" '--regexp "FATAL:.*" --name err --regexp "ERROR:.*" --name err --count Restarted --reset Restarted --name err'
 }
+
+render=
+skipPattern=
+typeset -a types=()
+typeset -a patterns=()
+typeset -a replacements=()
+typeset -a names=()
+typeset -a priorities=()
+isBuffered=t
+while [ $# -ne 0 ]
+do
+    case "$1" in
+	--help|-h|-\?)	shift; printLongUsage "$0"; exit 0;;
+	--to|-t)	shift; render="$1"; shift;;
+	--skip|-s)	shift; skipPattern="${skipPattern}${skipPattern:+|}$1"; shift;;
+	--regexp|-e)		shift; types+=(regexp); patterns+=("$1"); replacements+=('&'); shift;;
+	--count|-c)		shift; types+=(count); patterns+=("$1"); replacements+=('&'); shift;;
+	--match-count|-M)	shift; types+=(match-count); patterns+=("$1"); replacements+=('&'); shift;;
+	--reset|-x)		shift; type+=(reset); patterns+=("$1"); replacements+=('&'); shift;;
+	--replacement|-r)	shift
+				if [ ${#types[@]} -eq 0 ]; then
+				    echo >&2 "Need -e|--regexp|-c|--count|-M|--match-count|-x|--reset PATTERN before passing REPLACEMENT."
+				    echo >&2
+				    printShortUsage "$0" >&2
+				    exit 2
+				fi
+				replacements[-1]="$1"
+				shift
+				;;
+	--name|-n)		shift
+				if [ ${#types[@]} -eq 0 ]; then
+				    echo >&2 "Need -e|--regexp|-c|--count|-M|--match-count|-x|--reset PATTERN before passing NAME."
+				    echo >&2
+				    printShortUsage "$0" >&2
+				    exit 2
+				fi
+				names[-1]="$1"
+				shift
+				;;
+	--priority|-p)		shift
+				if [ ${#types[@]} -eq 0 ] || [ ${types[-1]} != regexp ]; then
+				    echo >&2 "Need -e|--regexp PATTERN before passing PRIORITY."
+				    echo >&2
+				    printShortUsage "$0" >&2
+				    exit 2
+				elif [[ "$1" != +([0-9]) ]]; then
+				    echo >&2 "PRIORITY must be a number."
+				    echo >&2
+				    printShortUsage "$0" >&2
+				    exit 2
+				fi
+				priorities[-1]="$1"
+				shift
+				;;
+	--unbuffered|-u)	shift; isBuffered=;;
+	--)		shift; break;;
+	-*)		{ echo "ERROR: Unknown option \"$1\"!"; echo; printShortUsage "$0"; } >&2; exit 2;;
+	*)		break;;
+    esac
+done
+if [ ${#types[@]} -eq 0 ]; then
+    echo >&2 'ERROR: No -e|--regexp|-c|--count|-M|--match-count|-x|--reset passed.'
+    echo >&2
+    printShortUsage "$0" >&2
+    exit 2
+fi
