@@ -181,6 +181,10 @@ function multiply(char, count,      tmp, i)
     for (i = 1; i <= count; ++i) tmp = tmp char
     return tmp
 }
+function pad(text, padding)
+{
+    return (text == "" ? "" : padding)
+}
 function renderCountFull(text, count, prefix,      tmp )
 {
     switch (render) {
@@ -188,7 +192,7 @@ function renderCountFull(text, count, prefix,      tmp )
 	    return prefix text
 	case "count":
 	    sub(/\s*$/, "", text)
-	    return prefix text " (" count ")"
+	    return prefix text pad(text, " ") "(" count ")"
 	case "dot":
 	    sub(/\s*\.*$/, "", text)
 	    for (tmp = ""; count > 0; count--)
@@ -196,15 +200,15 @@ function renderCountFull(text, count, prefix,      tmp )
 	    return prefix text tmp
 	case "ellipsis":
 	    sub(/\s*$/, "", text)
-	    return prefix text " [...]"
+	    return prefix text pad(text, " ") "[...]"
 	case "flash":
 	    return flash(text, prefix)
 	case "spinner":
 	    sub(/\s*$/, "", text)
-	    return prefix text " " spin(count)
+	    return prefix text pad(text, " ") spin(count)
 	case "sweep":
 	    sub(/\s*$/, "", text)
-	    return prefix text " " sweep(count)
+	    return prefix text pad(text, " ") sweep(count)
 	default:
 	    print "Assert: Invalid render type: " render > "/dev/stderr"
 	    exit 3

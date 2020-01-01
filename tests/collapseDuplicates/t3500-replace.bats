@@ -61,3 +61,15 @@ A unique statement.
 Not unique. (2)
 Serious. (3)" ]
 }
+
+@test "plain replacement with nothing" {
+    run collapseDuplicates --as count --match '.*' --replacement '' <<-'EOF'
+Just some text.
+This repeats once.
+This repeats once.
+Seriously.
+EOF
+    [ "$output" = "Just some text.
+(2)
+Seriously." ]
+}

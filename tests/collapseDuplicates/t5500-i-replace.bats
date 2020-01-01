@@ -56,3 +56,15 @@ A unique statement.
 Not unique. (2)
 Seriously.${LF}Serious? (2)${LF}Serious! (3)" ]
 }
+
+@test "interactive plain replacement with nothing" {
+    run collapseDuplicates --unbuffered --as count --match '.*' --replacement '' <<-'EOF'
+Just some text.
+This repeats once.
+This repeats once.
+Seriously.
+EOF
+    [ "$output" = "Just some text.
+This repeats once.${LF}(2)
+Seriously." ]
+}
