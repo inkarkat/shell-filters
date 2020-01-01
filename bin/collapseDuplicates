@@ -64,6 +64,7 @@ HELPTEXT
 : ${COLLAPSEDUPLICATES_FLASH_ON_TIME:=0.1}
 : ${COLLAPSEDUPLICATES_FLASH_OFF_TIME:=0.2}
 render=
+skipPattern=
 typeset -a types=()
 typeset -a patterns=()
 typeset -a replacements=()
