@@ -69,8 +69,10 @@ HELPTEXT
 
 : ${EXTRACTMATCHES_FLASH_ON_TIME:=0.1}
 : ${EXTRACTMATCHES_FLASH_OFF_TIME:=0.2}
-: ${EXTRACTMATCHES_HIGHLIGHT_PREFIX:=[07m}
-: ${EXTRACTMATCHES_HIGHLIGHT_SUFFIX:=[0m}
+: ${EXTRACTMATCHES_HIGHLIGHT_PREFIX=[07m}
+: ${EXTRACTMATCHES_HIGHLIGHT_SUFFIX=[0m}
+: ${EXTRACTMATCHES_HIGHLIGHT_COUNT_PREFIX= (}
+: ${EXTRACTMATCHES_HIGHLIGHT_COUNT_SUFFIX=)}
 render=
 skipPattern=
 typeset -a types=()
@@ -163,6 +165,8 @@ awk \
     -v "flashOffTime=${EXTRACTMATCHES_FLASH_OFF_TIME}" \
     -v "highlightPrefix=${EXTRACTMATCHES_HIGHLIGHT_PREFIX//\\/\\\\}" \
     -v "highlightSuffix=${EXTRACTMATCHES_HIGHLIGHT_SUFFIX//\\/\\\\}" \
+    -v "highlightCountPrefix=${EXTRACTMATCHES_HIGHLIGHT_COUNT_PREFIX//\\/\\\\}" \
+    -v "highlightCountSuffix=${EXTRACTMATCHES_HIGHLIGHT_COUNT_SUFFIX//\\/\\\\}" \
 '
 BEGIN {
     FS = "\n"
@@ -189,11 +193,18 @@ BEGIN {
 	exit 3
     }
 }
-function process(type, start, len, pattern, replacement)
+function process(type, start, len, pattern, replacement, name)
 {
     switch (type) {
 	case "regexp":
 	    $0 = substr($0, 1, start - 1) highlightPrefix substr($0, start, len) highlightSuffix substr($0, start + len)
+	    break
+	case "count":
+	    $0 = substr($0, 1, start - 1) highlightPrefix substr($0, start, len) highlightCountPrefix (++counts[name]) highlightCountSuffix highlightSuffix substr($0, start + len)
+	    break
+	default:
+	    print "Assert: Invalid render type: " type > "/dev/stderr"
+	    exit 3
     }
 }
 {
@@ -219,7 +230,7 @@ function process(type, start, len, pattern, replacement)
 
 	    seen[lowestI] = 1
 	    previousLength = length($0)
-	    process(types[lowestI], lowestOffset, lowestLength, patterns[lowestI], replacements[lowestI])
+	    process(types[lowestI], lowestOffset, lowestLength, patterns[lowestI], replacements[lowestI], (names[lowestI] == "" ? patterns[lowestI] : names[lowestI]))
 	    replacementOffset = length($0) - previousLength
 	    startOffset = lowestOffset + lowestLength - 1 + replacementOffset
 
