@@ -35,3 +35,34 @@ EOF
     [ "$output" = "This has [foo], [foo] and [foo][foo] in it.
 More [foooo] and [foo] here." ]
 }
+
+@test "three different matches in a line are highlighted" {
+    run extractMatches --regexp fo+ --regexp 'ex' --regexp 'y' <<-'EOF'
+Just some sexy text.
+This has foo, foo and foofoo in it.
+All simple lines.
+More foo here.
+Seriously, why?
+EOF
+    [ "$output" = "Just some s[ex][y] text.
+This has [foo], foo and foofoo in it.
+All simple lines.
+More [foo] here.
+Seriousl[y], why?" ]
+}
+
+@test "three different matches with different single / global are highlighted" {
+    run extractMatches --regexp fo+ --global --regexp 'ex' --regexp 'y' --global <<-'EOF'
+Just some sexy text.
+This has foo, foo and foofoo in it.
+All simple lines.
+More foo here.
+Seriously, why?
+EOF
+    [ "$output" = "Just some s[ex][y] text.
+This has [foo], [foo] and [foo][foo] in it.
+All simple lines.
+More [foo] here.
+Seriousl[y], wh[y]?" ]
+}
+

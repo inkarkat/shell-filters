@@ -108,7 +108,6 @@ do
 				    exit 2
 				fi
 				globals[-1]=1
-				shift
 				;;
 	--name|-n)		shift
 				if [ ${#types[@]} -eq 0 ]; then
