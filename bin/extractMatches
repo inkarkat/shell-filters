@@ -4,8 +4,7 @@ printShortUsage()
 {
     # Note: short followed by long option; if the user knows the short one, she can
     # skim the long one.
-    printf 'Usage: %q %s\n' "$(basename "$1")" '[-t|--to overlay|title|panel|notify|FILE] [-s|--skip PATTERN [...]] (-e|--regexp [-x|--reset PATTERN] [-r|--replacement REPLACEMENT] [-p|--priority N] [-n|--name NAME])(-c|--count|-M|--match-count|-x|--reset PATTERN [-n|--name NAME]) [...] [--] FILE [...][-?|-h|--help]'
-    printf 'Usage: cat FILE [...] | %q %s\n' "$(basename "$1")" '[-u|--unbuffered] [...]'
+    printf 'Usage: %q %s\n' "$(basename "$1")" '[-u|--unbuffered] [-t|--to overlay|title|panel|notify|highlight|flash|FILE] [-s|--skip PATTERN [...]] (-e|--regexp [-x|--reset PATTERN] [-r|--replacement REPLACEMENT] [-p|--priority N] [-n|--name NAME])(-c|--count|-M|--match-count|-x|--reset PATTERN [-n|--name NAME]) [...] [--] FILE [...][-?|-h|--help]'
 }
 printUsage()
 {
@@ -37,6 +36,9 @@ HELPDESCRIPTION
 			    title.
     --to|-t notify	    Report via notify-send to the system's notification
 			    system.
+    --to|-t highlight	    Just highlight the match (and added count) in-line.
+    --to|-t flash	    Briefly reverse and unreverse the match (and added
+			    count) to highlight it.
     --to|-t FILE	    Append the report to FILE.
     --regexp|-e PATTERN	    Report matches of PATTERN in a line.
     --count|-c PATTERN	    Report the number of matches of PATTERN in a line.
