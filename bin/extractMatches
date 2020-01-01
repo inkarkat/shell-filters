@@ -47,9 +47,13 @@ HELPDESCRIPTION
 			    Report the number of identical matches of PATTERN.
     --reset|-x PATTERN	    Clear the reporting / count of matches for PATTERN.
     --name|-n NAME	    Prefix the report of matches with NAME.
-			    Use NAME instead of PATTERN for keeping counts.
-			    Make --reset|-x clear the reporting / count for NAME
-			    (or all names matching /NAME-PATTERN/).
+			    --regexp|-e:      Use NAME instead of PATTERN for
+					      keeping counts.
+			    --match-count|-M: Prepend NAME- to the match for
+					      keeping counts.
+			    --reset|-x:	      Clear the reporting / count for
+					      NAME (or all names matching
+					      /NAME-PATTERN/).
     --replacement|-r REPLACEMENT
 			    Use REPLACEMENT (that can refer to PATTERN capture
 			    groups via \1 etc.) instead of the original match.
@@ -193,14 +197,23 @@ BEGIN {
 	exit 3
     }
 }
-function process(type, start, len, pattern, replacement, name)
+function pad(text, padding)
+{
+    return (text == "" ? "" : padding)
+}
+function process(type, start, len, pattern, replacement, name,      key)
 {
     switch (type) {
 	case "regexp":
 	    $0 = substr($0, 1, start - 1) highlightPrefix substr($0, start, len) highlightSuffix substr($0, start + len)
 	    break
 	case "count":
-	    $0 = substr($0, 1, start - 1) highlightPrefix substr($0, start, len) highlightCountPrefix (++counts[name]) highlightCountSuffix highlightSuffix substr($0, start + len)
+	    key = (name == "" ? pattern : name)
+	    $0 = substr($0, 1, start - 1) highlightPrefix substr($0, start, len) highlightCountPrefix (++counts[key]) highlightCountSuffix highlightSuffix substr($0, start + len)
+	    break
+	case "match-count":
+	    key = name pad(name, "-") substr($0, start, len)
+	    $0 = substr($0, 1, start - 1) highlightPrefix substr($0, start, len) highlightCountPrefix (++matchCounts[key]) highlightCountSuffix highlightSuffix substr($0, start + len)
 	    break
 	default:
 	    print "Assert: Invalid render type: " type > "/dev/stderr"
@@ -230,7 +243,7 @@ function process(type, start, len, pattern, replacement, name)
 
 	    seen[lowestI] = 1
 	    previousLength = length($0)
-	    process(types[lowestI], lowestOffset, lowestLength, patterns[lowestI], replacements[lowestI], (names[lowestI] == "" ? patterns[lowestI] : names[lowestI]))
+	    process(types[lowestI], lowestOffset, lowestLength, patterns[lowestI], replacements[lowestI], names[lowestI])
 	    replacementOffset = length($0) - previousLength
 	    startOffset = lowestOffset + lowestLength - 1 + replacementOffset
 
