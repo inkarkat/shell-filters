@@ -1,0 +1,61 @@
+#!/bin/bash
+
+printShortUsage()
+{
+    # Note: short followed by long option; if the user knows the short one, she can
+    # skim the long one.
+    printf 'Usage: %q %s\n' "$(basename "$1")" '[-t|--to overlay|title|panel|notify|FILE] [-s|--skip PATTERN [...]] (-e|--regexp|-c|--count|-M|--match-count|-x|--reset PATTERN [-r|--replacement REPLACEMENT] [-n|--name NAME]) [...] [--] FILE [...][-?|-h|--help]'
+    printf 'Usage: cat FILE [...] | %q %s\n' "$(basename "$1")" '[-u|--unbuffered] [...]'
+}
+printUsage()
+{
+    # This is the short help when launched with no or incorrect arguments.
+    # It is printed to stderr to avoid accidental processing.
+    printShortUsage "$1" >&2
+    printf >&2 'Try %q --help for more information.\n' "$(basename "$1")"
+}
+printLongUsage()
+{
+    # This is the long "man page" when launched with the help argument.
+    # It is printed to stdout to allow paging with 'more'.
+    cat <<HELPDESCRIPTION
+Locate passed PATTERNs in the input and duplicate the last of (or count
+occurrences of) them to overlaid text in the terminal / the terminal's window
+title, in order to emphasize and persist the information.
+Useful to alert the user to crucial events (like application exceptions, or the
+number of fatal errors) when watching a log file.
+HELPDESCRIPTION
+    echo
+    printShortUsage "$1"
+    cat <<HELPTEXT
+    --to|-t overlay	    Report in the form of overlaid text, written via
+			    ANSI escape sequences in the first line of the
+			    terminal.
+    --to|-t title	    Report in the terminal's window title via ANSI
+			    escape sequences.
+    --to|-t panel	    Report in the panel part of the terminal's window
+			    title.
+    --to|-t notify	    Report via notify-send to the system's notification
+			    system.
+    --to|-t FILE	    Append the report to FILE.
+    --regexp|-e PATTERN	    Report matches of PATTERN in a line.
+    --count|-c PATTERN	    Report the number of matches of PATTERN in a line.
+    --match-count|-M PATTERN
+			    Report the number of identical matches of PATTERN.
+    --reset|-x PATTERN	    Clear the reporting / count of matches for PATTERN.
+    --name|-n NAME	    Prefix the report of matches with NAME.
+			    Use NAME instead of PATTERN for keeping counts.
+			    Make --reset|-x clear the reporting / count for NAME
+			    (or all names matching /NAME-PATTERN/).
+    --replacement|-r REPLACEMENT
+			    Use REPLACEMENT (that can refer to PATTERN capture
+			    groups via \1 etc.) instead of the original match.
+    --skip|-s PATTERN	    Ignore (but still print) lines that match PATTERN,
+			    so that these don't disrupt the processing of
+			    surrounding lines.
+    --unbuffered|-u	    Immediately output each read line.
+
+Example:
+HELPTEXT
+    printf '%q %s\n' "$(basename "$1")" '--regexp "FATAL:.*" --name err --regexp "ERROR:.*" --name err --count Restarted --reset Restarted --name err'
+}
