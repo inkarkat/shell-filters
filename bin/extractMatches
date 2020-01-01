@@ -4,7 +4,7 @@ printShortUsage()
 {
     # Note: short followed by long option; if the user knows the short one, she can
     # skim the long one.
-    printf 'Usage: %q %s\n' "$(basename "$1")" '[-t|--to overlay|title|panel|notify|FILE] [-s|--skip PATTERN [...]] (-e|--regexp|-c|--count|-M|--match-count|-x|--reset PATTERN [-r|--replacement REPLACEMENT] [-n|--name NAME]) [...] [--] FILE [...][-?|-h|--help]'
+    printf 'Usage: %q %s\n' "$(basename "$1")" '[-t|--to overlay|title|panel|notify|FILE] [-s|--skip PATTERN [...]] (-e|--regexp [-x|--reset PATTERN] [-r|--replacement REPLACEMENT] [-p|--priority N] [-n|--name NAME])(-c|--count|-M|--match-count|-x|--reset PATTERN [-n|--name NAME]) [...] [--] FILE [...][-?|-h|--help]'
     printf 'Usage: cat FILE [...] | %q %s\n' "$(basename "$1")" '[-u|--unbuffered] [...]'
 }
 printUsage()
@@ -50,6 +50,8 @@ HELPDESCRIPTION
     --replacement|-r REPLACEMENT
 			    Use REPLACEMENT (that can refer to PATTERN capture
 			    groups via \1 etc.) instead of the original match.
+    --priority|-p N	    Only report the match if a previous match had the
+			    same or lower priority.
     --skip|-s PATTERN	    Ignore (but still print) lines that match PATTERN,
 			    so that these don't disrupt the processing of
 			    surrounding lines.
