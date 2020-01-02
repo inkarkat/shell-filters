@@ -23,7 +23,7 @@
 @test "error when replacement is passed before regexp" {
     run extractMatches --replacement bar --regexp foo
     [ $status -eq 2 ]
-    [ "${lines[0]}" = "Need -e|--regexp|-c|--count|-M|--match-count|--reset-name PATTERN before passing REPLACEMENT." ]
+    [ "${lines[0]}" = "Need -e|--regexp|-c|--count|-M|--match-count PATTERN before passing REPLACEMENT." ]
 }
 
 @test "error when global is passed before regexp" {
@@ -58,7 +58,13 @@
 @test "error when replacement is passed after reset" {
     run extractMatches --regexp foo --reset fox --replacement bar
     [ $status -eq 2 ]
-    [ "${lines[0]}" = "Need -e|--regexp|-c|--count|-M|--match-count|--reset-name PATTERN before passing REPLACEMENT." ]
+    [ "${lines[0]}" = "Need -e|--regexp|-c|--count|-M|--match-count PATTERN before passing REPLACEMENT." ]
+}
+
+@test "error when replacement is passed after reset-name" {
+    run extractMatches --reset-name fox-name --replacement bar
+    [ $status -eq 2 ]
+    [ "${lines[0]}" = "Need -e|--regexp|-c|--count|-M|--match-count PATTERN before passing REPLACEMENT." ]
 }
 
 @test "error when global is passed after reset" {

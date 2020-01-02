@@ -5,7 +5,7 @@ printShortUsage()
 {
     # Note: short followed by long option; if the user knows the short one, she can
     # skim the long one.
-    printf 'Usage: %q %s\n' "$(basename "$1")" '[-u|--unbuffered] [-t|--to overlay|title|panel|notify|highlight|flash|FILE] [-s|--skip PATTERN [...]] (-e|--regexp [-r|--replacement REPLACEMENT] [-g|--global] [-p|--priority N] [-n|--name NAME] [-x|--reset RESET-PATTERN])(-c|--count|-M|--match-count [-r|--replacement REPLACEMENT] [-g|--global] [-p|--priority N] [-n|--name NAME] [-x|--reset RESET-PATTERN])(--reset-name PATTERN [-r|--replacement REPLACEMENT] [-g|--global] [-p|--priority N] -n|--name NAME|/NAME-PATTERN/) [...] [--] FILE [...][-?|-h|--help]'
+    printf 'Usage: %q %s\n' "$(basename "$1")" '[-u|--unbuffered] [-t|--to overlay|title|panel|notify|highlight|flash|FILE] [-s|--skip PATTERN [...]] (-e|--regexp [-r|--replacement REPLACEMENT] [-g|--global] [-p|--priority N] [-n|--name NAME] [-x|--reset RESET-PATTERN])(-c|--count|-M|--match-count [-r|--replacement REPLACEMENT] [-g|--global] [-n|--name NAME] [-x|--reset RESET-PATTERN])(--reset-name PATTERN [-g|--global] -n|--name NAME|/NAME-PATTERN/) [...] [--] FILE [...][-?|-h|--help]'
 }
 printUsage()
 {
@@ -62,7 +62,9 @@ HELPDESCRIPTION
 					      /NAME-PATTERN/).
     --replacement|-r REPLACEMENT
 			    Use REPLACEMENT (that can refer to PATTERN capture
-			    groups via \1 etc.) instead of the original match.
+			    groups via \1 etc.) instead of the original match
+			    (for reporting with --regexp, for counting with
+			    --match-count)
     --global|-g		    Report / count all occurrences of PATTERN in a line,
 			    not just the first one.
     --priority|-p N	    Only report the match if a previous match had the
@@ -119,8 +121,8 @@ do
 				shift
 				;;
 	--replacement|-r)	shift
-				if [ ${#types[@]} -eq 0 ] || [ "${types[-1]}" = reset ]; then
-				    echo >&2 "Need -e|--regexp|-c|--count|-M|--match-count|--reset-name PATTERN before passing REPLACEMENT."
+				if [ ${#types[@]} -eq 0 ] || [[ "${types[-1]}" = reset?(-name) ]]; then
+				    echo >&2 "Need -e|--regexp|-c|--count|-M|--match-count PATTERN before passing REPLACEMENT."
 				    echo >&2
 				    printShortUsage "$0" >&2
 				    exit 2
