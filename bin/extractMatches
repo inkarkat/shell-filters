@@ -225,6 +225,10 @@ function pad(text, padding)
 {
     return (text == "" ? "" : padding)
 }
+function replace(text, pattern, replacement)
+{
+    return (replacement == "&" ? text : gensub(pattern, replacement, "g", text))
+}
 function resetCount(key)
 {
     if (key == "") return
@@ -247,15 +251,16 @@ function resetMatchCounts(key,      tmp)
 function process(type, start, len, pattern, replacement, name,      key, tmp, namePattern) {
     switch (type) {
 	case "regexp":
-	    $0 = substr($0, 1, start - 1) highlightPrefix substr($0, start, len) highlightSuffix substr($0, start + len)
+	    $0 = substr($0, 1, start - 1) highlightPrefix replace(substr($0, start, len), pattern, replacement) highlightSuffix substr($0, start + len)
 	    break
 	case "count":
 	    key = (name == "" ? pattern : name)
-	    $0 = substr($0, 1, start - 1) highlightPrefix substr($0, start, len) highlightCountPrefix (++counts[key]) highlightCountSuffix highlightSuffix substr($0, start + len)
+	    $0 = substr($0, 1, start - 1) highlightPrefix replace(substr($0, start, len), pattern, replacement) highlightCountPrefix (++counts[key]) highlightCountSuffix highlightSuffix substr($0, start + len)
 	    break
 	case "match-count":
-	    key = name pad(name, "-") substr($0, start, len)
-	    $0 = substr($0, 1, start - 1) highlightPrefix substr($0, start, len) highlightCountPrefix (++matchCounts[key]) highlightCountSuffix highlightSuffix substr($0, start + len)
+	    tmp = replace(substr($0, start, len), pattern, replacement)
+	    key = name pad(name, "-") tmp
+	    $0 = substr($0, 1, start - 1) highlightPrefix tmp highlightCountPrefix (++matchCounts[key]) highlightCountSuffix highlightSuffix substr($0, start + len)
 	    break
 	case "reset":
 	    resetCount(name == "" ? pattern : name)
