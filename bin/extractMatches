@@ -79,6 +79,9 @@ HELPTEXT
     printf '%q %s\n' "$(basename "$1")" '--regexp "FATAL:.*" --name err --regexp "ERROR:.*" --name err --count Restarted --reset Restarted --name err'
 }
 
+: ${EXTRACTMATCHES_PANEL_UPDATE_DELAY:=1}
+: ${EXTRACTMATCHES_NOTIFY_UPDATE_DELAY:=10}
+: ${EXTRACTMATCHES_FILE_UPDATE_DELAY:=1}
 : ${EXTRACTMATCHES_FLASH_ON_TIME:=0.1}
 : ${EXTRACTMATCHES_FLASH_OFF_TIME:=0.2}
 : ${EXTRACTMATCHES_FLASH_REPEATS:=3}
@@ -306,8 +309,7 @@ function renderMatch(before, text, after)
 	    $0 = flash(text, text) after
 	    break
 	default:
-	    print "Assert: Invalid renderer: " render > "/dev/stderr"
-	    exit 3
+	    print text > render
     }
 }
 function renderCount(before, text, count, after,      tmp)
@@ -328,8 +330,7 @@ function renderCount(before, text, count, after,      tmp)
 	    $0 = flash(text tmp, text) after
 	    break
 	default:
-	    print "Assert: Invalid renderer: " render > "/dev/stderr"
-	    exit 3
+	    print text countPrefix count countSuffix > render
     }
 }
 function process(type, start, len, pattern, replacement, name,      key, tmp, namePattern) {
