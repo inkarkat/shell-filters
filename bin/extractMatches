@@ -5,7 +5,7 @@ printShortUsage()
 {
     # Note: short followed by long option; if the user knows the short one, she can
     # skim the long one.
-    printf 'Usage: %q %s\n' "$(basename "$1")" '[-u|--unbuffered] [-t|--to overlay|title|panel|notify|highlight|flash|FILE] [-s|--skip PATTERN [...]] (-e|--regexp [-x|--reset PATTERN] [-r|--replacement REPLACEMENT] [-g|--global] [-p|--priority N] [-n|--name NAME])(-c|--count|-M|--match-count|-x|--reset PATTERN [-n|--name NAME]) [...] [--] FILE [...][-?|-h|--help]'
+    printf 'Usage: %q %s\n' "$(basename "$1")" '[-u|--unbuffered] [-t|--to overlay|title|panel|notify|highlight|flash|FILE] [-s|--skip PATTERN [...]] (-e|--regexp [-r|--replacement REPLACEMENT] [-g|--global] [-p|--priority N] [-n|--name NAME] [-x|--reset RESET-PATTERN])(-c|--count|-M|--match-count [-r|--replacement REPLACEMENT] [-g|--global] [-p|--priority N] [-n|--name NAME] [-x|--reset RESET-PATTERN])(--reset-name PATTERN [-r|--replacement REPLACEMENT] [-g|--global] [-p|--priority N] -n|--name NAME|/NAME-PATTERN/) [...] [--] FILE [...][-?|-h|--help]'
 }
 printUsage()
 {
@@ -45,13 +45,19 @@ HELPDESCRIPTION
     --count|-c PATTERN	    Report the number of matches of PATTERN in a line.
     --match-count|-M PATTERN
 			    Report the number of identical matches of PATTERN.
-    --reset|-x PATTERN	    Clear the reporting / count of matches for PATTERN.
+    --reset-name PATTERN    Clear the reporting / count of matches for NAME or
+			    /NAME-PATTERN/ when PATTERN is encountered. This
+			    affects any other rule through NAME.
+    --reset|-x RESET-PATTERN
+			    Clear the reporting / count of matches for PATTERN
+			    when RESET-PATTERN is encountered. This is connected
+			    to the corresponding --regexp|--count|--match-count.
     --name|-n NAME	    Prefix the report of matches with NAME.
 			    --regexp|-e:      Use NAME instead of PATTERN for
 					      keeping counts.
 			    --match-count|-M: Prepend NAME- to the match for
 					      keeping counts.
-			    --reset|-x:	      Clear the reporting / count for
+			    --reset-name|-x:  Clear the reporting / count for
 					      NAME (or all names matching
 					      /NAME-PATTERN/).
     --replacement|-r REPLACEMENT
@@ -91,14 +97,30 @@ do
     case "$1" in
 	--help|-h|-\?)	shift; printLongUsage "$0"; exit 0;;
 	--to|-t)	shift; render="$1"; shift;;
-	--skip|-s)	shift; skipPattern="${skipPattern}${skipPattern:+|}${1?}"; shift;;
-	--regexp|-e)		shift; types+=(regexp); patterns+=("${1?}"); replacements+=('&'); globals+=(0); names+=('') priorities+=(0); shift;;
-	--count|-c)		shift; types+=(count); patterns+=("${1?}"); replacements+=('&'); globals+=(0); names+=('') priorities+=(0); shift;;
-	--match-count|-M)	shift; types+=(match-count); patterns+=("${1?}"); replacements+=('&'); globals+=(0); names+=('') priorities+=(0); shift;;
-	--reset|-x)		shift; types+=(reset); patterns+=("${1?}"); replacements+=('&'); globals+=(0); names+=('') priorities+=(0); shift;;
+	--skip|-s)	shift; skipPattern="${skipPattern}${skipPattern:+|}${1:?}"; shift;;
+	--regexp|-e)		shift; types+=(regexp); patterns+=("${1:?}"); replacements+=('&'); globals+=(0); names+=('') priorities+=(0); shift;;
+	--count|-c)		shift; types+=(count); patterns+=("${1:?}"); replacements+=('&'); globals+=(0); names+=('') priorities+=(0); shift;;
+	--match-count|-M)	shift; types+=(match-count); patterns+=("${1:?}"); replacements+=('&'); globals+=(0); names+=('') priorities+=(0); shift;;
+	--reset-name)		shift; types+=(reset-name); patterns+=("${1:?}"); replacements+=('&'); globals+=(0); names+=('') priorities+=(0); shift;;
+	--reset|-x)		shift
+				if [ ${#types[@]} -eq 0 ] || [ "${types[-1]}" = reset-name ]; then
+				    echo >&2 "Need -e|--regexp|-c|--count|-M|--match-count PATTERN before passing RESET-PATTERN."
+				    echo >&2
+				    printShortUsage "$0" >&2
+				    exit 2
+				fi
+				types+=(reset); patterns+=("${1:?}"); replacements+=('&'); globals+=("${globals[-1]}"); priorities+=("${priorities[-1]}")
+				if [ "${names[-1]}" ]; then
+				    names+=("${names[-1]}")
+				else
+				    names=("${names[@]:0:$((${#names[@]} - 1))}" "${patterns[-2]}")
+				    names+=("${patterns[-2]}")
+				fi
+				shift
+				;;
 	--replacement|-r)	shift
-				if [ ${#types[@]} -eq 0 ]; then
-				    echo >&2 "Need -e|--regexp|-c|--count|-M|--match-count|-x|--reset PATTERN before passing REPLACEMENT."
+				if [ ${#types[@]} -eq 0 ] || [ "${types[-1]}" = reset ]; then
+				    echo >&2 "Need -e|--regexp|-c|--count|-M|--match-count|--reset-name PATTERN before passing REPLACEMENT."
 				    echo >&2
 				    printShortUsage "$0" >&2
 				    exit 2
@@ -107,8 +129,8 @@ do
 				shift
 				;;
 	--global|-g)		shift
-				if [ ${#types[@]} -eq 0 ]; then
-				    echo >&2 "Need -e|--regexp|-c|--count|-M|--match-count|-x|--reset PATTERN before passing -g|--global."
+				if [ ${#types[@]} -eq 0 ] || [ "${types[-1]}" = reset ]; then
+				    echo >&2 "Need -e|--regexp|-c|--count|-M|--match-count PATTERN before passing -g|--global."
 				    echo >&2
 				    printShortUsage "$0" >&2
 				    exit 2
@@ -117,7 +139,7 @@ do
 				;;
 	--name|-n)		shift
 				if [ ${#types[@]} -eq 0 ]; then
-				    echo >&2 "Need -e|--regexp|-c|--count|-M|--match-count|-x|--reset PATTERN before passing NAME."
+				    echo >&2 "Need -e|--regexp|-c|--count|-M|--match-count|--reset-name PATTERN before passing NAME."
 				    echo >&2
 				    printShortUsage "$0" >&2
 				    exit 2
@@ -201,7 +223,7 @@ function pad(text, padding)
 {
     return (text == "" ? "" : padding)
 }
-function process(type, start, len, pattern, replacement, name,      key)
+function process(type, start, len, pattern, replacement, name,      key, tmp)
 {
     switch (type) {
 	case "regexp":
@@ -214,6 +236,18 @@ function process(type, start, len, pattern, replacement, name,      key)
 	case "match-count":
 	    key = name pad(name, "-") substr($0, start, len)
 	    $0 = substr($0, 1, start - 1) highlightPrefix substr($0, start, len) highlightCountPrefix (++matchCounts[key]) highlightCountSuffix highlightSuffix substr($0, start + len)
+	    break
+	case "reset":
+	    key = (name == "" ? pattern : name)
+	    counts[key] = 0
+
+	    key = name
+	    for (tmp in matchCounts) {
+		if (substr(tmp, 1, length(key)) == key) {
+		    matchCounts[tmp] = 0
+		}
+	    }
+
 	    break
 	default:
 	    print "Assert: Invalid render type: " type > "/dev/stderr"
@@ -229,6 +263,7 @@ function process(type, start, len, pattern, replacement, name,      key)
 	    lowestI = 0
 	    for (i = 1; i <= N; i++) {
 		if (match(substr($0, startOffset + 1), patterns[i])) {
+		    # print "**** matched /" patterns[i] "/ in \"" substr($0, startOffset + RSTART, RLENGTH) "\""
 		    if (seen[i] && ! globals[i]) continue
 
 		    if (startOffset + RSTART < lowestOffset) {
@@ -240,6 +275,7 @@ function process(type, start, len, pattern, replacement, name,      key)
 	    }
 
 	    if (lowestI == 0) break
+	    # print "**** picked " types[lowestI] " /" patterns[lowestI] "/ in \"" substr($0, lowestOffset, lowestLength) "\""
 
 	    seen[lowestI] = 1
 	    previousLength = length($0)
