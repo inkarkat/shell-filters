@@ -225,6 +225,17 @@ function pad(text, padding)
 {
     return (text == "" ? "" : padding)
 }
+function reset(countKey, matchCountKey,      tmp)
+{
+    counts[countKey] = 0
+    if (matchCountKey == "") return
+
+    for (tmp in matchCounts) {
+	if (substr(tmp, 1, length(matchCountKey)) == matchCountKey) {
+	    matchCounts[tmp] = 0
+	}
+    }
+}
 function process(type, start, len, pattern, replacement, name,      key, tmp)
 {
     switch (type) {
@@ -240,16 +251,10 @@ function process(type, start, len, pattern, replacement, name,      key, tmp)
 	    $0 = substr($0, 1, start - 1) highlightPrefix substr($0, start, len) highlightCountPrefix (++matchCounts[key]) highlightCountSuffix highlightSuffix substr($0, start + len)
 	    break
 	case "reset":
-	    key = (name == "" ? pattern : name)
-	    counts[key] = 0
-
-	    key = name
-	    for (tmp in matchCounts) {
-		if (substr(tmp, 1, length(key)) == key) {
-		    matchCounts[tmp] = 0
-		}
-	    }
-
+	    reset(name == "" ? pattern : name, name)
+	    break
+	case "reset-name":
+	    reset(name, name)
 	    break
 	default:
 	    print "Assert: Invalid render type: " type > "/dev/stderr"
