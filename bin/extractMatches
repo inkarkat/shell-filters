@@ -39,7 +39,7 @@ HELPDESCRIPTION
 			    system.
     --to|-t highlight	    Just highlight the match (and added count) in-line.
     --to|-t flash	    Briefly reverse and unreverse the match (and added
-			    count) to highlight it.
+			    count) to highlight it. Use with --unbuffered.
     --to|-t FILE	    Append the report to FILE.
     --regexp|-e PATTERN	    Report matches of PATTERN in a line.
     --count|-c PATTERN	    Report the number of matches of PATTERN in a line.
@@ -85,7 +85,7 @@ HELPTEXT
 : ${EXTRACTMATCHES_HIGHLIGHT_SUFFIX=[0m}
 : ${EXTRACTMATCHES_HIGHLIGHT_COUNT_PREFIX= (}
 : ${EXTRACTMATCHES_HIGHLIGHT_COUNT_SUFFIX=)}
-render=
+render='highlight'
 skipPattern=
 typeset -a types=()
 typeset -a patterns=()
@@ -175,6 +175,11 @@ if [ ${#types[@]} -eq 0 ]; then
     echo >&2
     printShortUsage "$0" >&2
     exit 2
+elif [ "$render" = "flash" ] && [ "$isBuffered" ]; then
+    echo >&2 'ERROR: Flash reporting must be combined with --unbuffered.'
+    echo >&2
+    printShortUsage "$0" >&2
+    exit 2
 fi
 replacements+=(''); names+=('')	# Add one empty element so that split() will yield at least one in case of a single empty one.
 
@@ -221,6 +226,19 @@ BEGIN {
 	exit 3
     }
 }
+function multiply(char, count,      tmp, i)
+{
+    for (i = 1; i <= count; ++i) tmp = tmp char
+    return tmp
+}
+function flash(text)
+{
+    system("sleep " flashOffTime)
+    printf "[07m%s[0m", text
+    fflush()
+    system("sleep " flashOnTime)
+    return multiply("", length(text)) text
+}
 function pad(text, padding)
 {
     return (text == "" ? "" : padding)
@@ -248,10 +266,25 @@ function resetMatchCounts(key,      tmp)
 	}
     }
 }
+function renderMatch(before, text, after)
+{
+    switch (render) {
+	case "highlight":
+	    $0 = before highlightPrefix text highlightSuffix after
+	    break
+	case "flash":
+	    printf "%s", before
+	    $0 = flash(text) after
+	    break
+	default:
+	    print "Assert: Invalid renderer: " render > "/dev/stderr"
+	    exit 3
+    }
+}
 function process(type, start, len, pattern, replacement, name,      key, tmp, namePattern) {
     switch (type) {
 	case "regexp":
-	    $0 = substr($0, 1, start - 1) highlightPrefix replace(substr($0, start, len), pattern, replacement) highlightSuffix substr($0, start + len)
+	    renderMatch(substr($0, 1, start - 1), replace(substr($0, start, len), pattern, replacement), substr($0, start + len))
 	    break
 	case "count":
 	    key = (name == "" ? pattern : name)
