@@ -81,6 +81,7 @@ HELPTEXT
 
 : ${EXTRACTMATCHES_FLASH_ON_TIME:=0.1}
 : ${EXTRACTMATCHES_FLASH_OFF_TIME:=0.2}
+: ${EXTRACTMATCHES_FLASH_REPEATS:=3}
 : ${EXTRACTMATCHES_HIGHLIGHT_PREFIX=[07m}
 : ${EXTRACTMATCHES_HIGHLIGHT_SUFFIX=[0m}
 : ${EXTRACTMATCHES_COUNT_PREFIX= (}
@@ -196,6 +197,7 @@ awk \
     -v "skipPattern=${skipPattern//\\/\\\\}" \
     -v "flashOnTime=${EXTRACTMATCHES_FLASH_ON_TIME}" \
     -v "flashOffTime=${EXTRACTMATCHES_FLASH_OFF_TIME}" \
+    -v "flashRepeats=${EXTRACTMATCHES_FLASH_REPEATS}" \
     -v "highlightPrefix=${EXTRACTMATCHES_HIGHLIGHT_PREFIX//\\/\\\\}" \
     -v "highlightSuffix=${EXTRACTMATCHES_HIGHLIGHT_SUFFIX//\\/\\\\}" \
     -v "countPrefix=${EXTRACTMATCHES_COUNT_PREFIX//\\/\\\\}" \
@@ -231,13 +233,23 @@ function multiply(char, count,      tmp, i)
     for (i = 1; i <= count; ++i) tmp = tmp char
     return tmp
 }
-function flash(onText, offText)
+function flash(onText, offText,      deleter, i, prefix)
 {
-    system("sleep " flashOffTime)
-    printf "[07m%s[0m", onText
-    fflush()
-    system("sleep " flashOnTime)
-    return multiply("", length(onText)) offText
+    deleter = multiply("", length(onText))
+
+    for (i = 0; i < flashRepeats; ++i) {
+	if (i > 0) {
+	    printf "%s%s", deleter, onText
+	    prefix = deleter
+	    fflush()
+	}
+
+	system("sleep " flashOffTime)
+	printf prefix "[07m%s[0m", onText
+	fflush()
+	system("sleep " flashOnTime)
+    }
+    return deleter offText
 }
 function pad(text, padding)
 {
