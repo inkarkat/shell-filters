@@ -1,7 +1,6 @@
 #!/usr/bin/env bats
 
-readonly R='[07m'
-readonly N='[0m'
+load flash
 
 @test "single matches in a line are flashed" {
     run extractMatches --unbuffered --to flash --count fo+ <<-'EOF'

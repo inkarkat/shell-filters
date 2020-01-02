@@ -1,7 +1,6 @@
 #!/usr/bin/env bats
 
-readonly R='[07m'
-readonly N='[0m'
+load flash
 
 @test "error when flash is used with buffered output" {
     run extractMatches --to flash --regexp fo+
