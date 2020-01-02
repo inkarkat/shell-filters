@@ -308,7 +308,7 @@ function process(type, start, len, pattern, replacement, name,      key, tmp, na
 	case "match-count":
 	    tmp = replace(substr($0, start, len), pattern, replacement)
 	    key = name pad(name, "-") tmp
-	    $0 = substr($0, 1, start - 1) highlightPrefix tmp countPrefix (++matchCounts[key]) countSuffix highlightSuffix substr($0, start + len)
+	    renderCount(substr($0, 1, start - 1), replace(substr($0, start, len), pattern, replacement), (++matchCounts[key]), substr($0, start + len))
 	    break
 	case "reset":
 	    resetCount(name == "" ? pattern : name)
