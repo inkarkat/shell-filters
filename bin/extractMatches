@@ -231,13 +231,13 @@ function multiply(char, count,      tmp, i)
     for (i = 1; i <= count; ++i) tmp = tmp char
     return tmp
 }
-function flash(text)
+function flash(onText, offText)
 {
     system("sleep " flashOffTime)
-    printf "[07m%s[0m", text
+    printf "[07m%s[0m", onText
     fflush()
     system("sleep " flashOnTime)
-    return multiply("", length(text)) text
+    return multiply("", length(onText)) offText
 }
 function pad(text, padding)
 {
@@ -274,7 +274,22 @@ function renderMatch(before, text, after)
 	    break
 	case "flash":
 	    printf "%s", before
-	    $0 = flash(text) after
+	    $0 = flash(text, text) after
+	    break
+	default:
+	    print "Assert: Invalid renderer: " render > "/dev/stderr"
+	    exit 3
+    }
+}
+function renderCount(before, text, count, after)
+{
+    switch (render) {
+	case "highlight":
+	    $0 = before highlightPrefix text highlightCountPrefix count highlightCountSuffix highlightSuffix after
+	    break
+	case "flash":
+	    printf "%s", before
+	    $0 = flash(text highlightCountPrefix count highlightCountSuffix, text) after
 	    break
 	default:
 	    print "Assert: Invalid renderer: " render > "/dev/stderr"
@@ -288,7 +303,7 @@ function process(type, start, len, pattern, replacement, name,      key, tmp, na
 	    break
 	case "count":
 	    key = (name == "" ? pattern : name)
-	    $0 = substr($0, 1, start - 1) highlightPrefix replace(substr($0, start, len), pattern, replacement) highlightCountPrefix (++counts[key]) highlightCountSuffix highlightSuffix substr($0, start + len)
+	    renderCount(substr($0, 1, start - 1), replace(substr($0, start, len), pattern, replacement), (++counts[key]), substr($0, start + len))
 	    break
 	case "match-count":
 	    tmp = replace(substr($0, start, len), pattern, replacement)
