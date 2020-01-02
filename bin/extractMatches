@@ -266,6 +266,23 @@ function resetMatchCounts(key,      tmp)
 	}
     }
 }
+function preRenderLine()
+{
+    switch (render) {
+	case "flash":
+	    flashAdditionalWidth = 0
+	    break
+    }
+}
+function postRenderLine()
+{
+    switch (render) {
+	case "flash":
+	    if (flashAdditionalWidth > 0) {
+		$0 = $0 multiply(" ", flashAdditionalWidth) multiply("", flashAdditionalWidth)
+	    }
+    }
+}
 function renderMatch(before, text, after)
 {
     switch (render) {
@@ -281,15 +298,22 @@ function renderMatch(before, text, after)
 	    exit 3
     }
 }
-function renderCount(before, text, count, after)
+function renderCount(before, text, count, after,      tmp)
 {
     switch (render) {
 	case "highlight":
 	    $0 = before highlightPrefix text countPrefix count countSuffix highlightSuffix after
 	    break
 	case "flash":
+	    tmp = countPrefix count countSuffix
+	    # Appending the count during the highlighting adds more characters
+	    # to the line. At the end, one instance of those trailing characters
+	    # will remain, as the original line is shorter. To avoid that, add
+	    # (and backspace) filler spaces to the end.
+	    flashAdditionalWidth = length(tmp)
+
 	    printf "%s", before
-	    $0 = flash(text countPrefix count countSuffix, text) after
+	    $0 = flash(text tmp, text) after
 	    break
 	default:
 	    print "Assert: Invalid renderer: " render > "/dev/stderr"
@@ -339,6 +363,8 @@ function process(type, start, len, pattern, replacement, name,      key, tmp, na
     }
 }
 {
+    preRenderLine()
+
     if (skipPattern == "" || $0 !~ skipPattern) {
 	delete seen
 	startOffset = 0
@@ -369,6 +395,9 @@ function process(type, start, len, pattern, replacement, name,      key, tmp, na
 
 	} while (1)
     }
+
+    postRenderLine()
     print
+    if (! isBuffered) fflush()
 }
 ' "$@"

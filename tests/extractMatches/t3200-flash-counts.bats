@@ -11,9 +11,9 @@ More foo here.
 Seriously.
 EOF
     [ "$output" = "Just some text.
-This has ${R}foo (1)${N}foo in it.
+This has ${R}foo (1)${N}foo in it.    
 All simple lines.
-More ${R}foo (2)${N}foo here.
+More ${R}foo (2)${N}foo here.    
 Seriously." ]
 }
 
@@ -25,9 +25,9 @@ All simple lines.
 More foo here.
 Seriously, why?
 EOF
-    [ "$output" = "Just some s${R}ex (1)${N}ex${R}y (1)${N}y text.
-This has ${R}foo (1)${N}foo, ${R}foo (2)${N}foo and ${R}foo (3)${N}foo${R}foo (4)${N}foo in it.
+    [ "$output" = "Just some s${R}ex (1)${N}ex${R}y (1)${N}y text.    
+This has ${R}foo (1)${N}foo, ${R}foo (2)${N}foo and ${R}foo (3)${N}foo${R}foo (4)${N}foo in it.    
 All simple lines.
-More ${R}foo (5)${N}foo here.
-Seriousl${R}y (2)${N}y, wh${R}y (3)${N}y?" ]
+More ${R}foo (5)${N}foo here.    
+Seriousl${R}y (2)${N}y, wh${R}y (3)${N}y?    " ]
 }
