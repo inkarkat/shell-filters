@@ -225,10 +225,14 @@ function pad(text, padding)
 {
     return (text == "" ? "" : padding)
 }
-function resetCounts(key)
+function resetCount(key)
 {
     if (key == "") return
     counts[key] = 0
+}
+function resetMatchCount(key)
+{
+    matchCounts[key] = 0
 }
 function resetMatchCounts(key,      tmp)
 {
@@ -236,7 +240,7 @@ function resetMatchCounts(key,      tmp)
 
     for (tmp in matchCounts) {
 	if (substr(tmp, 1, length(key)) == key) {
-	    matchCounts[tmp] = 0
+	    resetMatchCount(tmp)
 	}
     }
 }
@@ -254,7 +258,7 @@ function process(type, start, len, pattern, replacement, name,      key, tmp, na
 	    $0 = substr($0, 1, start - 1) highlightPrefix substr($0, start, len) highlightCountPrefix (++matchCounts[key]) highlightCountSuffix highlightSuffix substr($0, start + len)
 	    break
 	case "reset":
-	    resetCounts(name == "" ? pattern : name)
+	    resetCount(name == "" ? pattern : name)
 	    resetMatchCounts(name)
 	    break
 	case "reset-name":
@@ -263,12 +267,16 @@ function process(type, start, len, pattern, replacement, name,      key, tmp, na
 
 		for (tmp in counts) {
 		    if (tmp ~ namePattern) {
-			resetCounts(tmp)
+			resetCount(tmp)
 		    }
 		}
-		resetMatchCounts(name)
+		for (tmp in matchCounts) {
+		    if (tmp ~ namePattern) {
+			resetMatchCount(tmp)
+		    }
+		}
 	    } else {
-		resetCounts(name)
+		resetCount(name)
 		resetMatchCounts(name)
 	    }
 	    break
