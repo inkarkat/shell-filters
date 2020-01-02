@@ -225,19 +225,22 @@ function pad(text, padding)
 {
     return (text == "" ? "" : padding)
 }
-function reset(countKey, matchCountKey,      tmp)
+function resetCounts(key)
 {
-    counts[countKey] = 0
-    if (matchCountKey == "") return
+    if (key == "") return
+    counts[key] = 0
+}
+function resetMatchCounts(key,      tmp)
+{
+    if (key == "") return
 
     for (tmp in matchCounts) {
-	if (substr(tmp, 1, length(matchCountKey)) == matchCountKey) {
+	if (substr(tmp, 1, length(key)) == key) {
 	    matchCounts[tmp] = 0
 	}
     }
 }
-function process(type, start, len, pattern, replacement, name,      key, tmp)
-{
+function process(type, start, len, pattern, replacement, name,      key, tmp, namePattern) {
     switch (type) {
 	case "regexp":
 	    $0 = substr($0, 1, start - 1) highlightPrefix substr($0, start, len) highlightSuffix substr($0, start + len)
@@ -251,10 +254,23 @@ function process(type, start, len, pattern, replacement, name,      key, tmp)
 	    $0 = substr($0, 1, start - 1) highlightPrefix substr($0, start, len) highlightCountPrefix (++matchCounts[key]) highlightCountSuffix highlightSuffix substr($0, start + len)
 	    break
 	case "reset":
-	    reset(name == "" ? pattern : name, name)
+	    resetCounts(name == "" ? pattern : name)
+	    resetMatchCounts(name)
 	    break
 	case "reset-name":
-	    reset(name, name)
+	    if (name ~ /^\/.*\/$/) {
+		namePattern = substr(name, 2, length(name) - 2)
+
+		for (tmp in counts) {
+		    if (tmp ~ namePattern) {
+			resetCounts(tmp)
+		    }
+		}
+		resetMatchCounts(name)
+	    } else {
+		resetCounts(name)
+		resetMatchCounts(name)
+	    }
 	    break
 	default:
 	    print "Assert: Invalid render type: " type > "/dev/stderr"
