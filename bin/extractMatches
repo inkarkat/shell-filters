@@ -52,8 +52,11 @@ HELPDESCRIPTION
 			    Clear the reporting / count of matches for PATTERN
 			    when RESET-PATTERN is encountered. This is connected
 			    to the corresponding --regexp|--count|--match-count.
-    --name|-n NAME	    Prefix the report of matches with NAME.
-			    --regexp|-e:      Use NAME instead of PATTERN for
+    --name|-n NAME	    Tweak the counting / resetting.
+			    --regexp|-e:      Clear reporting (potentially of
+					      several instances) via
+					      --reset-name.
+			    --count|-c:       Use NAME instead of PATTERN for
 					      keeping counts.
 			    --match-count|-M: Prepend NAME- to the match for
 					      keeping counts.
