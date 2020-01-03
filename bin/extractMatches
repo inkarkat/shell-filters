@@ -307,6 +307,10 @@ function resetMatchCounts(key,      tmp)
 	}
     }
 }
+function writeToFile(text)
+{
+    print text > render
+}
 function preRenderLine()
 {
     switch (render) {
@@ -338,7 +342,7 @@ function renderMatch(before, text, after)
 	    if (fileUpdateDelay > 0) {
 		delayedMatch = text
 	    } else {
-		print text > render
+		writeToFile(text)
 	    }
     }
 }
@@ -363,7 +367,7 @@ function renderCount(key, before, text, count, after,      tmp)
 	    if (fileUpdateDelay > 0) {
 		delayedCounts[key] = text countPrefix count countSuffix
 	    } else {
-		print text countPrefix count countSuffix > render
+		writeToFile(text countPrefix count countSuffix)
 	    }
     }
 }
