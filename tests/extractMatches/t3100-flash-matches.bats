@@ -25,7 +25,7 @@ More ${FOO_M} here.
 Seriously." ]
 }
 
-@test "three different matches with different single / global are highlighted" {
+@test "three different matches with different single / global are flashed" {
     run extractMatches --unbuffered --to flash --regexp fo+ --global --regexp 'ex' --regexp 'y' --global <<-'EOF'
 Just some sexy text.
 This has foo, foo and foofoo in it.

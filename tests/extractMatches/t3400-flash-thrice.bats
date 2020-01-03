@@ -18,7 +18,7 @@ More ${FOO_M}${FOO_M}${FOO_M} here.
 Seriously." ]
 }
 
-@test "two different matches with different single / global are highlighted three times" {
+@test "two different matches with different single / global are flashed three times" {
     run extractMatches --unbuffered --to flash --count fo+ --global --count 'x' <<-'EOF'
 Just some sexy text.
 This has foo, foo and foofoo in it.

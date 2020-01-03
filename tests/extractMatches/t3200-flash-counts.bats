@@ -17,7 +17,7 @@ More ${FOO_C2} here.${EOL}
 Seriously." ]
 }
 
-@test "three different counts with different single / global are highlighted" {
+@test "three different counts with different single / global are flashed" {
     run extractMatches --unbuffered --to flash --count fo+ --global --count 'ex' --count 'y' --global <<-'EOF'
 Just some sexy text.
 This has foo, foo and foofoo in it.

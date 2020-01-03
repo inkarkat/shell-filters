@@ -14,7 +14,7 @@ Seriously."
 foo" ]
 }
 
-@test "three different matches with different single / global are highlighted" {
+@test "three different matches with different single / global are written to a file" {
     input="Just some sexy text.
 This has foo, foo and foofoo in it.
 All simple lines.
