@@ -9,7 +9,7 @@ This has foo in it.
 All simple lines.
 More foo here.
 Seriously."
-    run extractMatches --unbuffered --to "$LOG" --count fo+ <<<"$input"
+    run extractMatches --to "$LOG" --count fo+ <<<"$input"
     [ "$output" = "$input" ]
     assert_log "foo: 1
 foo: 2"
@@ -21,7 +21,7 @@ This has foo, foo and foofoo in it.
 All simple lines.
 More foo here.
 Seriously, why?"
-    run extractMatches --unbuffered --to "$LOG" --count fo+ --global --count 'ex' --count 'y' --global <<<"$input"
+    run extractMatches --to "$LOG" --count fo+ --global --count 'ex' --count 'y' --global <<<"$input"
     [ "$output" = "$input" ]
     assert_log "ex: 1
 y: 1
