@@ -214,6 +214,9 @@ awk \
     -v "nameList=${names[*]//\\/\\\\}" \
     -v "priorityList=${priorities[*]//\\/\\\\}" \
     -v "skipPattern=${skipPattern//\\/\\\\}" \
+    -v "panelUpdateDelay=${EXTRACTMATCHES_PANEL_UPDATE_DELAY}" \
+    -v "notifyUpdateDelay=${EXTRACTMATCHES_NOTIFY_UPDATE_DELAY}" \
+    -v "fileUpdateDelay=${EXTRACTMATCHES_FILE_UPDATE_DELAY}" \
     -v "flashOnTime=${EXTRACTMATCHES_FLASH_ON_TIME}" \
     -v "flashOffTime=${EXTRACTMATCHES_FLASH_OFF_TIME}" \
     -v "flashRepeats=${EXTRACTMATCHES_FLASH_REPEATS}" \
@@ -325,7 +328,11 @@ function renderMatch(before, text, after)
 	    $0 = flash(text, text) after
 	    break
 	default:
-	    print text > render
+	    if (fileUpdateDelay > 0) {
+		delayedMatch = text
+	    } else {
+		print text > render
+	    }
     }
 }
 function renderCount(before, text, count, after,      tmp)
@@ -346,7 +353,11 @@ function renderCount(before, text, count, after,      tmp)
 	    $0 = flash(text tmp, text) after
 	    break
 	default:
-	    print text countPrefix count countSuffix > render
+	    if (fileUpdateDelay > 0) {
+		delayedCounts[text] = text
+	    } else {
+		print text countPrefix count countSuffix > render
+	    }
     }
 }
 function process(type, start, len, pattern, replacement, name,      key, tmp, namePattern) {

@@ -1,5 +1,6 @@
 #!/usr/bin/env bats
 
+export EXTRACTMATCHES_FILE_UPDATE_DELAY=0
 load log
 
 @test "single matches in a line are written to a file" {
