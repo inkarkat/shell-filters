@@ -1,9 +1,6 @@
 #!/usr/bin/env bats
 
-readonly LOG="${BATS_TMPDIR}/log"
-setup() {
-    rm -f "$LOG"
-}
+load log
 
 @test "single matches in a line are written to a file" {
     input="Just some text.
@@ -13,7 +10,7 @@ More foo here.
 Seriously."
     run extractMatches --unbuffered --to "$LOG" --regexp fo+ <<<"$input"
     [ "$output" = "$input" ]
-    logContents="$(< "$LOG")"; [ "$logContents" = "foo
+    assert_log "foo
 foo" ]
 }
 
@@ -25,7 +22,7 @@ More foo here.
 Seriously, why?"
     run extractMatches --unbuffered --to "$LOG" --regexp fo+ --global --regexp 'ex' --regexp 'y' --global <<<"$input"
     [ "$output" = "$input" ]
-    logContents="$(< "$LOG")"; [ "$logContents" = "ex
+    assert_log "ex
 y
 foo
 foo
