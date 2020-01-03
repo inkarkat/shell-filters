@@ -12,9 +12,9 @@ More foo here.
 Seriously.
 EOF
     [ "$output" = "Just some text.
-This has ${R}foo${N}foo${R}foo${N}foo${R}foo${N}foo in it.
+This has ${FOO_M}${FOO_M}${FOO_M} in it.
 All simple lines.
-More ${R}foo${N}foo${R}foo${N}foo${R}foo${N}foo here.
+More ${FOO_M}${FOO_M}${FOO_M} here.
 Seriously." ]
 }
 
@@ -23,6 +23,6 @@ Seriously." ]
 Just some sexy text.
 This has foo, foo and foofoo in it.
 EOF
-    [ "$output" = "Just some se${R}x (1)${N}x (1)${R}x (1)${N}x (1)${R}x (1)${N}xy text.    
-This has ${R}foo (1)${N}foo (1)${R}foo (1)${N}foo (1)${R}foo (1)${N}foo, ${R}foo (2)${N}foo (2)${R}foo (2)${N}foo (2)${R}foo (2)${N}foo and ${R}foo (3)${N}foo (3)${R}foo (3)${N}foo (3)${R}foo (3)${N}foo${R}foo (4)${N}foo (4)${R}foo (4)${N}foo (4)${R}foo (4)${N}foo in it.    " ]
+    [ "$output" = "Just some se${X1}${X1}${X1f}y text.${EOL}
+This has ${FOO1}${FOO1}${FOO1f}, ${FOO2}${FOO2}${FOO2f} and ${FOO3}${FOO3}${FOO3f}${FOO4}${FOO4}${FOO4f} in it.${EOL}" ]
 }
