@@ -39,8 +39,10 @@ HELPDESCRIPTION
 			    system.
     --to|-t highlight	    Just highlight the match (and added count) in-line.
     --to|-t flash	    Briefly reverse and unreverse the match (and added
-			    count) to highlight it. Use with --unbuffered.
-    --to|-t FILE	    Append the report to FILE.
+			    count) to highlight it. Must be used with
+			    --unbuffered.
+    --to|-t FILE	    Append the report to FILE. Use with --unbuffered to
+			    observe the file contents immediately.
     --regexp|-e PATTERN	    Report matches of PATTERN in a line.
     --count|-c PATTERN	    Report the number of matches of PATTERN in a line.
     --match-count|-M PATTERN
@@ -307,9 +309,23 @@ function resetMatchCounts(key,      tmp)
 	}
     }
 }
-function writeToFile(text)
+function evaluateShellExpression(expr,      commandLine, commandResult, output)
 {
-    print text > render
+    if (expr == "") return ""
+
+    commandLine = "printf '%s' \"" expr "\""
+    commandResult = commandLine | getline output
+    close(commandLine)
+    if (commandResult == -1) {
+	print "ERROR: Failed to evaluate expression \"" expr "\"." > "/dev/stderr"
+	exit 3
+    }
+    return output
+}
+function writeToFile(text,      prefix, suffix)
+{
+    print evaluateShellExpression(filePrefixExpr) text evaluateShellExpression(fileSuffixExpr) > render
+    if (! isBuffered) fflush(render)
 }
 function preRenderLine()
 {
