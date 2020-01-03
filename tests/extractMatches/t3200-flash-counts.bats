@@ -2,7 +2,7 @@
 
 load flash
 
-@test "single matches in a line are flashed" {
+@test "single counts in a line are flashed" {
     run extractMatches --unbuffered --to flash --count fo+ <<-'EOF'
 Just some text.
 This has foo in it.
@@ -17,7 +17,7 @@ More ${R}foo (2)${N}foo here.    
 Seriously." ]
 }
 
-@test "three different matches with different single / global are highlighted" {
+@test "three different counts with different single / global are highlighted" {
     run extractMatches --unbuffered --to flash --count fo+ --global --count 'ex' --count 'y' --global <<-'EOF'
 Just some sexy text.
 This has foo, foo and foofoo in it.

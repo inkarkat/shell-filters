@@ -79,6 +79,22 @@ HELPTEXT
     printf '%q %s\n' "$(basename "$1")" '--regexp "FATAL:.*" --name err --regexp "ERROR:.*" --name err --count Restarted --reset Restarted --name err'
 }
 
+getCountPrefix()
+{
+    case "$render" in
+	highlight|flash)	printf ' (';;
+	overlay|title|panel)	printf ':';;
+	notify|*)		printf ': ';;
+    esac
+}
+getCountSuffix()
+{
+    case "$render" in
+	highlight|flash)	printf ')';;
+	overlay|title|panel)	printf '';;
+	notify|*)		printf '';;
+    esac
+}
 : ${EXTRACTMATCHES_PANEL_UPDATE_DELAY:=1}
 : ${EXTRACTMATCHES_NOTIFY_UPDATE_DELAY:=10}
 : ${EXTRACTMATCHES_FILE_UPDATE_DELAY:=1}
@@ -87,8 +103,6 @@ HELPTEXT
 : ${EXTRACTMATCHES_FLASH_REPEATS:=3}
 : ${EXTRACTMATCHES_HIGHLIGHT_PREFIX=[07m}
 : ${EXTRACTMATCHES_HIGHLIGHT_SUFFIX=[0m}
-: ${EXTRACTMATCHES_COUNT_PREFIX= (}
-: ${EXTRACTMATCHES_COUNT_SUFFIX=)}
 render='highlight'
 skipPattern=
 typeset -a types=()
@@ -186,6 +200,8 @@ elif [ "$render" = "flash" ] && [ "$isBuffered" ]; then
     exit 2
 fi
 replacements+=(''); names+=('')	# Add one empty element so that split() will yield at least one in case of a single empty one.
+: ${EXTRACTMATCHES_COUNT_PREFIX="$(getCountPrefix)"}
+: ${EXTRACTMATCHES_COUNT_SUFFIX="$(getCountSuffix)"}
 
 IFS=$'\n'
 awk \
