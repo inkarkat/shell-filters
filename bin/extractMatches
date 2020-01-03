@@ -339,7 +339,7 @@ function renderMatch(before, text, after)
 	    }
     }
 }
-function renderCount(before, text, count, after,      tmp)
+function renderCount(key, before, text, count, after,      tmp)
 {
     switch (render) {
 	case "highlight":
@@ -358,7 +358,7 @@ function renderCount(before, text, count, after,      tmp)
 	    break
 	default:
 	    if (fileUpdateDelay > 0) {
-		delayedCounts[text] = text
+		delayedCounts[key] = text countPrefix count countSuffix
 	    } else {
 		print text countPrefix count countSuffix > render
 	    }
@@ -371,12 +371,12 @@ function process(type, start, len, pattern, replacement, name,      key, tmp, na
 	    break
 	case "count":
 	    key = (name == "" ? pattern : name)
-	    renderCount(substr($0, 1, start - 1), replace(substr($0, start, len), pattern, replacement), (++counts[key]), substr($0, start + len))
+	    renderCount(key, substr($0, 1, start - 1), replace(substr($0, start, len), pattern, replacement), (++counts[key]), substr($0, start + len))
 	    break
 	case "match-count":
 	    tmp = replace(substr($0, start, len), pattern, replacement)
 	    key = name pad(name, "-") tmp
-	    renderCount(substr($0, 1, start - 1), replace(substr($0, start, len), pattern, replacement), (++matchCounts[key]), substr($0, start + len))
+	    renderCount(key, substr($0, 1, start - 1), replace(substr($0, start, len), pattern, replacement), (++matchCounts[key]), substr($0, start + len))
 	    break
 	case "reset":
 	    resetCount(name == "" ? pattern : name)
