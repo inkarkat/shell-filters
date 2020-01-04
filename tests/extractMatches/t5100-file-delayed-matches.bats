@@ -1,26 +1,25 @@
 #!/usr/bin/env bats
 
+export EXTRACTMATCHES_FILE_UPDATE_DELAY=-3
 load log
 
-@test "single matches in a line are written to a file" {
-    input="Just some text.
-This has foo in it.
-All simple lines.
-More foo here.
-Seriously."
-    run extractMatches --to "$LOG" --regexp fo+ <<<"$input"
-    [ "$output" = "$input" ]
-    assert_log "foo" ]
+@test "single matches in a line are written to a file every 3 lines and at the end" {
+    run extractMatches --to "$LOG" --regexp 'foo[0-9]+' <<<"$DELAY_INPUT"
+    [ "$output" = "$DELAY_INPUT" ]
+    assert_log "foo3
+foo6
+foo8" ]
 }
 
-@test "three different matches with different single / global are written to a file" {
-    input="Just some sexy text.
-This has foo, foo and foofoo in it.
-All simple lines.
-More foo here.
-Seriously, why?"
-    run extractMatches --to "$LOG" --regexp fo+ --global --regexp 'ex' --regexp 'y' --global <<<"$input"
+@test "a match on last line 6 is not written again" {
+    input="Just some text.
+This has foo2 in it.
+All foo3.
+More foo4 here.
+That foo5.
+Last foo6."
+    run extractMatches --to "$LOG" --regexp 'foo[0-9]+' <<<"$input"
     [ "$output" = "$input" ]
-    dump_log
-    assert_log "y" ]
+    assert_log "foo3
+foo6" ]
 }

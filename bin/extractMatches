@@ -358,16 +358,22 @@ function postRenderLine()
 		$0 = $0 multiply(" ", flashAdditionalWidth) multiply("", flashAdditionalWidth)
 	    }
 	default:
-	    if (fileUpdateDelay > 0 && systime() - delayTime >= fileUpdateDelay) {
+	    if ((fileUpdateDelay < 0 && NR % fileUpdateDelay == 0) || (fileUpdateDelay > 0 && systime() - delayTime >= fileUpdateDelay)) {
 		delayedRender()
 	    }
     }
 }
-function delayedRender()
+function delayedRender(      key)
 {
     if (delayedMatch != "") {
 	writeToFile(delayedMatch)
 	delayedMatch = ""
+    }
+    if (length(delayedCounts) > 0) {
+	for (key in delayedCounts) {
+	    writeToFile(delayedCounts[key])
+	}
+	delete delayedCounts
     }
 
     delayTime = systime()
@@ -383,7 +389,7 @@ function renderMatch(before, text, after)
 	    $0 = flash(text, text) after
 	    break
 	default:
-	    if (fileUpdateDelay > 0) {
+	    if (fileUpdateDelay != 0) {
 		delayedMatch = text
 	    } else {
 		writeToFile(text)
@@ -408,7 +414,7 @@ function renderCount(key, before, text, count, after,      tmp)
 	    $0 = flash(text tmp, text) after
 	    break
 	default:
-	    if (fileUpdateDelay > 0) {
+	    if (fileUpdateDelay != 0) {
 		delayedCounts[key] = text countPrefix count countSuffix
 	    } else {
 		writeToFile(text countPrefix count countSuffix)
@@ -426,7 +432,7 @@ function renderReset(key, previousCounts, type,      tmp) {
 	default:
 	    if (type != "regexp") {
 		tmp = (type == "count" ? lastCountText[key] : gensub(/^.*-/, "", 1, key))   # XXX: For match-count, both PATTERN and TEXT could contain the dash separator, so the extraction is not perfect here.
-		if (fileUpdateDelay > 0) {
+		if (fileUpdateDelay != 0) {
 		    delayedCounts[key] = tmp countPrefix "0" countSuffix
 		} else {
 		    writeToFile(tmp countPrefix "0" countSuffix)
