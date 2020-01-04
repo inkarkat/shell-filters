@@ -105,6 +105,7 @@ getCountSuffix()
 : ${EXTRACTMATCHES_FILE_UPDATE_DELAY:=1}
 : ${EXTRACTMATCHES_FILE_PREFIX_EXPR:=}
 : ${EXTRACTMATCHES_FILE_SUFFIX_EXPR:=}
+: ${EXTRACTMATCHES_FILE_CLEAR_MATCH_TEMPLATE='Off: &'}
 : ${EXTRACTMATCHES_FLASH_ON_TIME:=0.1}
 : ${EXTRACTMATCHES_FLASH_OFF_TIME:=0.2}
 : ${EXTRACTMATCHES_FLASH_REPEATS:=3}
@@ -226,6 +227,7 @@ awk \
     -v "fileUpdateDelay=${EXTRACTMATCHES_FILE_UPDATE_DELAY}" \
     -v "filePrefixExpr=${EXTRACTMATCHES_FILE_PREFIX_EXPR}" \
     -v "fileSuffixExpr=${EXTRACTMATCHES_FILE_SUFFIX_EXPR}" \
+    -v "fileClearMatchTemplate=${EXTRACTMATCHES_FILE_CLEAR_MATCH_TEMPLATE//\\/\\\\}" \
     -v "flashOnTime=${EXTRACTMATCHES_FLASH_ON_TIME}" \
     -v "flashOffTime=${EXTRACTMATCHES_FLASH_OFF_TIME}" \
     -v "flashRepeats=${EXTRACTMATCHES_FLASH_REPEATS}" \
@@ -290,13 +292,20 @@ function replace(text, pattern, replacement)
 {
     return (replacement == "&" ? text : gensub(pattern, replacement, "g", text))
 }
+function resetMatch(key)
+{
+    renderReset(key, matches[key], "regexp")
+    matches[key] = 0
+}
 function resetCount(key)
 {
     if (key == "") return
+    renderReset(key, counts[key], "count")
     counts[key] = 0
 }
 function resetMatchCount(key)
 {
+    renderReset(key, matchCounts[key], "match-count")
     matchCounts[key] = 0
 }
 function resetMatchCounts(key,      tmp)
@@ -387,14 +396,41 @@ function renderCount(key, before, text, count, after,      tmp)
 	    }
     }
 }
+function renderReset(key, previousCounts, type,      tmp) {
+    if (previousCounts == 0) return
+
+    switch (render) {
+	case "highlight":
+	    break
+	case "flash":
+	    break
+	default:
+	    if (type != "regexp") {
+		tmp = (type == "count" ? lastCountText[key] : gensub(/^.*-/, "", 1, key))   # XXX: For match-count, both PATTERN and TEXT could contain the dash separator, so the extraction is not perfect here.
+		if (fileUpdateDelay > 0) {
+		    delayedCounts[key] = tmp countPrefix "0" countSuffix
+		} else {
+		    writeToFile(tmp countPrefix "0" countSuffix)
+		}
+	    } else if (fileClearMatchTemplate != "") {
+		writeToFile(gensub(/.*/, fileClearMatchTemplate, 1, lastMatchText))
+	    }
+    }
+}
 function process(type, start, len, pattern, replacement, name,      key, tmp, namePattern) {
     switch (type) {
 	case "regexp":
-	    renderMatch(substr($0, 1, start - 1), replace(substr($0, start, len), pattern, replacement), substr($0, start + len))
+	    tmp = replace(substr($0, start, len), pattern, replacement)
+	    lastMatchText = tmp
+	    key = (name == "" ? pattern : name)
+	    ++matches[key]
+	    renderMatch(substr($0, 1, start - 1), tmp, substr($0, start + len))
 	    break
 	case "count":
+	    tmp = replace(substr($0, start, len), pattern, replacement)
 	    key = (name == "" ? pattern : name)
-	    renderCount(key, substr($0, 1, start - 1), replace(substr($0, start, len), pattern, replacement), (++counts[key]), substr($0, start + len))
+	    lastCountText[key] = tmp
+	    renderCount(key, substr($0, 1, start - 1), tmp, (++counts[key]), substr($0, start + len))
 	    break
 	case "match-count":
 	    tmp = replace(substr($0, start, len), pattern, replacement)
@@ -402,13 +438,20 @@ function process(type, start, len, pattern, replacement, name,      key, tmp, na
 	    renderCount(key, substr($0, 1, start - 1), replace(substr($0, start, len), pattern, replacement), (++matchCounts[key]), substr($0, start + len))
 	    break
 	case "reset":
-	    resetCount(name == "" ? pattern : name)
+	    tmp = (name == "" ? pattern : name)
+	    resetMatch(tmp)
+	    resetCount(tmp)
 	    resetMatchCounts(name)
 	    break
 	case "reset-name":
 	    if (name ~ /^\/.*\/$/) {
 		namePattern = substr(name, 2, length(name) - 2)
 
+		for (tmp in matches) {
+		    if (tmp ~ namePattern) {
+			resetMatch(tmp)
+		    }
+		}
 		for (tmp in counts) {
 		    if (tmp ~ namePattern) {
 			resetCount(tmp)
@@ -420,6 +463,7 @@ function process(type, start, len, pattern, replacement, name,      key, tmp, na
 		    }
 		}
 	    } else {
+		resetMatch(name)
 		resetCount(name)
 		resetMatchCounts(name)
 	    }
