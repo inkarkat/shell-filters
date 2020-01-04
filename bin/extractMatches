@@ -41,8 +41,10 @@ HELPDESCRIPTION
     --to|-t flash	    Briefly reverse and unreverse the match (and added
 			    count) to highlight it. Must be used with
 			    --unbuffered.
-    --to|-t FILE	    Append the report to FILE. Use with --unbuffered to
-			    observe the file contents immediately.
+    --to|-t FILE	    Append the report to FILE. Set
+			    EXTRACTMATCHES_FILE_UPDATE_DELAY to 0 for immediate
+			    updates. Additionally pass --unbuffered to observe
+			    the file contents immediately.
     --regexp|-e PATTERN	    Report matches of PATTERN in a line.
     --count|-c PATTERN	    Report the number of matches of PATTERN in a line.
     --match-count|-M PATTERN
@@ -260,6 +262,8 @@ BEGIN {
 	print "Assert: Mismatch in number of priorities and patterns." > "/dev/stderr"
 	exit 3
     }
+
+    delayTime = systime()
 }
 function multiply(char, count,      tmp, i)
 {
@@ -347,11 +351,26 @@ function preRenderLine()
 function postRenderLine()
 {
     switch (render) {
+	case "highlight":
+	    break
 	case "flash":
 	    if (flashAdditionalWidth > 0) {
 		$0 = $0 multiply(" ", flashAdditionalWidth) multiply("", flashAdditionalWidth)
 	    }
+	default:
+	    if (fileUpdateDelay > 0 && systime() - delayTime >= fileUpdateDelay) {
+		delayedRender()
+	    }
     }
+}
+function delayedRender()
+{
+    if (delayedMatch != "") {
+	writeToFile(delayedMatch)
+	delayedMatch = ""
+    }
+
+    delayTime = systime()
 }
 function renderMatch(before, text, after)
 {
@@ -510,5 +529,15 @@ function process(type, start, len, pattern, replacement, name,      key, tmp, na
     postRenderLine()
     print
     if (! isBuffered) fflush()
+}
+END {
+    switch (render) {
+	case "highlight":
+	    break
+	case "flash":
+	    break
+	default:
+	    delayedRender()
+    }
 }
 ' "$@"
