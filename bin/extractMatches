@@ -263,8 +263,28 @@ BEGIN {
 	exit 3
     }
 
-    PROCINFO["sorted_in"] = "@ind_num_asc"
+    PROCINFO["sorted_in"] = "@ind_str_asc"
     delayTime = systime()
+}
+function getKeyMatch(key)
+{
+    return gensub(/^.*-/, "", 1, key)   # XXX: For match-count, both PATTERN and TEXT could contain the dash separator, so the extraction is not perfect here.
+}
+function compareByKeyArgumentOrder(i1, v1, i2, v2,      index1, index2, report1, report2)
+{
+    # Sort first by order of key arguments (attribute "i"), then by the count
+    # report ascending (attribute "report").
+    index1 = v1["i"]
+    index2 = v2["i"]
+    report1 = v1["report"]
+    report2 = v2["report"]
+
+    if (index1 == index2) {
+	return (report1 == report2 ? 0 : report1 > report2 ? 1 : -1)
+    } else {
+	return (index1 == index2 ? 0 : index1 > index2 ? 1 : -1)
+    }
+
 }
 function multiply(char, count,      tmp, i)
 {
@@ -327,7 +347,7 @@ function evaluateShellExpression(expr,      commandLine, commandResult, output)
 {
     if (expr == "") return ""
 
-    commandLine = "printf '%s' \"" expr "\""
+    commandLine = "printf %s \"" expr "\""
     commandResult = commandLine | getline output
     close(commandLine)
     if (commandResult == -1) {
@@ -364,16 +384,19 @@ function postRenderLine()
 	    }
     }
 }
-function delayedRender(      key)
+function delayedRender(      key, save_sorted_in)
 {
     if (delayedMatch != "") {
 	writeToFile(delayedMatch)
 	delayedMatch = ""
     }
     if (length(delayedCounts) > 0) {
+	save_sorted_in = PROCINFO["sorted_in"]
+	PROCINFO["sorted_in"] = "compareByKeyArgumentOrder"
 	for (key in delayedCounts) {
-	    writeToFile(delayedCounts[key])
+	    writeToFile(delayedCounts[key]["report"])
 	}
+	PROCINFO["sorted_in"] = save_sorted_in
 	delete delayedCounts
     }
 
@@ -416,7 +439,8 @@ function renderCount(key, before, text, count, after,      tmp)
 	    break
 	default:
 	    if (fileUpdateDelay != 0) {
-		delayedCounts[key] = text countPrefix count countSuffix
+		delayedCounts[key]["i"] = lowestI
+		delayedCounts[key]["report"] = text countPrefix count countSuffix
 	    } else {
 		writeToFile(text countPrefix count countSuffix)
 	    }
@@ -432,9 +456,10 @@ function renderReset(key, previousCounts, type,      tmp) {
 	    break
 	default:
 	    if (type != "regexp") {
-		tmp = (type == "count" ? lastCountText[key] : gensub(/^.*-/, "", 1, key))   # XXX: For match-count, both PATTERN and TEXT could contain the dash separator, so the extraction is not perfect here.
+		tmp = (type == "count" ? lastCountText[key] : getKeyMatch(key))
 		if (fileUpdateDelay != 0) {
-		    delayedCounts[key] = tmp countPrefix "0" countSuffix
+		    delayedCounts[key]["i"] = lowestI
+		    delayedCounts[key]["report"] = tmp countPrefix "0" countSuffix
 		} else {
 		    writeToFile(tmp countPrefix "0" countSuffix)
 		}

@@ -27,6 +27,6 @@ assert_log() {
 }
 
 dump_log() {
-    local logContents="$(< "$LOG")"
+    local logContents="$(prefix '#' "$LOG")"
     printf >&3 '%s\n' "$logContents"
 }
