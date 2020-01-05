@@ -419,24 +419,33 @@ function postRenderLine()
 	    }
 	default:
 	    if ((fileUpdateDelay < 0 && NR % fileUpdateDelay == 0) || (fileUpdateDelay > 0 && systime() - delayTime >= fileUpdateDelay)) {
-		delayedRender()
+		delayedFileRender()
 	    }
     }
 }
-function delayedRender(      key, save_sorted_in)
+function delayedRender(resultList,      resultCnt, key, save_sorted_in)
 {
     if (delayedMatch != "") {
-	writeToFile(delayedMatch)
+	resultList[++resultCnt] = delayedMatch
 	delayedMatch = ""
     }
     if (length(delayedCounts) > 0) {
 	save_sorted_in = PROCINFO["sorted_in"]
 	PROCINFO["sorted_in"] = reportOrder
 	for (key in delayedCounts) {
-	    writeToFile(delayedCounts[key]["report"])
+	    resultList[++resultCnt] = delayedCounts[key]["report"]
 	}
 	PROCINFO["sorted_in"] = save_sorted_in
 	delete delayedCounts
+    }
+
+    return resultCnt
+}
+function delayedFileRender(      resultNum, resultList, i)
+{
+    resultNum = delayedRender(resultList)
+    for (i = 1; i <= resultNum; ++i) {
+	writeToFile(resultList[i])
     }
 
     delayTime = systime()
@@ -625,7 +634,7 @@ END {
 	case "flash":
 	    break
 	default:
-	    delayedRender()
+	    delayedFileRender()
     }
 }
 ' "$@"
