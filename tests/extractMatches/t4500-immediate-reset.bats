@@ -4,7 +4,6 @@ export EXTRACTMATCHES_FILE_UPDATE_DELAY=0
 load log
 
 @test "match resets are written to a file" {
-
     run extractMatches --to "$LOG" --regexp '\<\w{4}\>' --reset All <<<"$SIMPLE_INPUT"
     [ "$output" = "$SIMPLE_INPUT" ]
     assert_log "Just
@@ -14,7 +13,6 @@ More"
 }
 
 @test "match resets are not written to a file if the template is empty" {
-
     export EXTRACTMATCHES_FILE_CLEAR_MATCH_TEMPLATE=
     run extractMatches --to "$LOG" --regexp '\<\w{4}\>' --reset All <<<"$SIMPLE_INPUT"
     [ "$output" = "$SIMPLE_INPUT" ]
@@ -24,7 +22,6 @@ More"
 }
 
 @test "count resets are written to a file" {
-
     run extractMatches --to "$LOG" --count '\<\w{4}\>' --reset All <<<"$SIMPLE_INPUT"
     [ "$output" = "$SIMPLE_INPUT" ]
     assert_log "Just: 1
@@ -34,7 +31,6 @@ More: 1"
 }
 
 @test "match-count resets are written to a file" {
-
     run extractMatches --to "$LOG" --match-count '\<\w{4}\>' --reset All <<<"$SIMPLE_INPUT"
     [ "$output" = "$SIMPLE_INPUT" ]
     assert_log "Just: 1
