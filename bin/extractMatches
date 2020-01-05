@@ -5,7 +5,7 @@ printShortUsage()
 {
     # Note: short followed by long option; if the user knows the short one, she can
     # skim the long one.
-    printf 'Usage: %q %s\n' "$(basename "$1")" '[-u|--unbuffered] [-t|--to overlay|title|panel|notify|highlight|flash|FILE] [-s|--skip PATTERN [...]] (-e|--regexp [-r|--replacement REPLACEMENT] [-g|--global] [-p|--priority N] [-n|--name NAME] [-x|--reset RESET-PATTERN])(-c|--count|-M|--match-count [-r|--replacement REPLACEMENT] [-g|--global] [-n|--name NAME] [-x|--reset RESET-PATTERN])(--reset-name PATTERN [-g|--global] -n|--name NAME|/NAME-PATTERN/) [...] [--] FILE [...][-?|-h|--help]'
+    printf 'Usage: %q %s\n' "$(basename "$1")" '[-u|--unbuffered] [-t|--to overlay|title|panel|notify|highlight|flash|FILE] [-s|--skip PATTERN [...]] [-o|-- report-order by-arg|count-desc] (-e|--regexp [-r|--replacement REPLACEMENT] [-g|--global] [-p|--priority N] [-n|--name NAME] [-x|--reset RESET-PATTERN])(-c|--count|-M|--match-count [-r|--replacement REPLACEMENT] [-g|--global] [-n|--name NAME] [-x|--reset RESET-PATTERN])(--reset-name PATTERN [-g|--global] -n|--name NAME|/NAME-PATTERN/) [...] [--] FILE [...][-?|-h|--help]'
 }
 printUsage()
 {
@@ -79,6 +79,15 @@ HELPDESCRIPTION
     --skip|-s PATTERN	    Ignore (but still print) lines that match PATTERN,
 			    so that these don't disrupt the processing of
 			    surrounding lines.
+    --report-order|-o by-arg
+			    In case the reporting happens only periodically,
+			    sort the number of matches first by order of the
+			    --count / --match-count arguments as given on the
+			    command-line, then by the count report itself, with
+			    matches sorted alphanumerically.
+    --report-order|-o count-desc
+			    In case the reporting happens only periodically,
+			    sort the number of matches from highest to lowest.
     --unbuffered|-u	    Immediately output each read line.
 
 Example:
@@ -122,6 +131,7 @@ typeset -a globals=()
 typeset -a names=()
 typeset -a priorities=()
 isBuffered=t
+reportOrder='compareByKeyArgumentOrder'
 while [ $# -ne 0 ]
 do
     case "$1" in
@@ -193,6 +203,18 @@ do
 				shift
 				;;
 	--unbuffered|-u)	shift; isBuffered=;;
+	--report-order|-o)	shift
+				case "$1" in
+				    by-arg)	reportOrder='compareByKeyArgumentOrder';;
+				    count-desc)	reportOrder='compareByCount';;
+				    *)		echo >&2 "ERROR: Invalid report order."
+						echo >&2
+						printShortUsage "$0" >&2
+						exit 2
+						;;
+				esac
+				shift
+				;;
 	--)		shift; break;;
 	-*)		{ echo "ERROR: Unknown option \"$1\"!"; echo; printShortUsage "$0"; } >&2; exit 2;;
 	*)		break;;
@@ -224,6 +246,7 @@ awk \
     -v "nameList=${names[*]//\\/\\\\}" \
     -v "priorityList=${priorities[*]//\\/\\\\}" \
     -v "skipPattern=${skipPattern//\\/\\\\}" \
+    -v "reportOrder=${reportOrder//\\/\\\\}" \
     -v "panelUpdateDelay=${EXTRACTMATCHES_PANEL_UPDATE_DELAY}" \
     -v "notifyUpdateDelay=${EXTRACTMATCHES_NOTIFY_UPDATE_DELAY}" \
     -v "fileUpdateDelay=${EXTRACTMATCHES_FILE_UPDATE_DELAY}" \
@@ -272,8 +295,8 @@ function getKeyMatch(key)
 }
 function compareByKeyArgumentOrder(i1, v1, i2, v2,      index1, index2, report1, report2)
 {
-    # Sort first by order of key arguments (attribute "i"), then by the count
-    # report ascending (attribute "report").
+    # Sort first by order of pattern arguments as given on the command-line
+    # (attribute "i"), then by the count report ascending (attribute "report").
     index1 = v1["i"]
     index2 = v2["i"]
     report1 = v1["report"]
@@ -285,6 +308,20 @@ function compareByKeyArgumentOrder(i1, v1, i2, v2,      index1, index2, report1,
 	return (index1 == index2 ? 0 : index1 > index2 ? 1 : -1)
     }
 
+}
+function compareByCount(i1, v1, i2, v2,      count1, count2)
+{
+    # Sort first by count descending, then by count report ascending.
+    count1 = v1["count"]
+    count2 = v2["count"]
+    report1 = v1["report"]
+    report2 = v2["report"]
+
+    if (count1 == count2) {
+	return (report1 == report2 ? 0 : report1 > report2 ? 1 : -1)
+    } else {
+	return (count1 > count2 ? -1 : 1)
+    }
 }
 function multiply(char, count,      tmp, i)
 {
@@ -392,7 +429,7 @@ function delayedRender(      key, save_sorted_in)
     }
     if (length(delayedCounts) > 0) {
 	save_sorted_in = PROCINFO["sorted_in"]
-	PROCINFO["sorted_in"] = "compareByKeyArgumentOrder"
+	PROCINFO["sorted_in"] = reportOrder
 	for (key in delayedCounts) {
 	    writeToFile(delayedCounts[key]["report"])
 	}
@@ -440,6 +477,7 @@ function renderCount(key, before, text, count, after,      tmp)
 	default:
 	    if (fileUpdateDelay != 0) {
 		delayedCounts[key]["i"] = lowestI
+		delayedCounts[key]["count"] = count
 		delayedCounts[key]["report"] = text countPrefix count countSuffix
 	    } else {
 		writeToFile(text countPrefix count countSuffix)
@@ -459,6 +497,7 @@ function renderReset(key, previousCounts, type,      tmp) {
 		tmp = (type == "count" ? lastCountText[key] : getKeyMatch(key))
 		if (fileUpdateDelay != 0) {
 		    delayedCounts[key]["i"] = lowestI
+		    delayedCounts[key]["count"] = 0
 		    delayedCounts[key]["report"] = tmp countPrefix "0" countSuffix
 		} else {
 		    writeToFile(tmp countPrefix "0" countSuffix)
