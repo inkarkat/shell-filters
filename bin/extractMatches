@@ -105,6 +105,13 @@ getCountPrefix()
 	notify|*)		printf ': ';;
     esac
 }
+getMatchBeforeCount()
+{
+    case "$render" in
+	overlay|title|panel)	printf '';;
+	*)			printf 't';;
+    esac
+}
 getCountSuffix()
 {
     case "$render" in
@@ -113,6 +120,11 @@ getCountSuffix()
 	notify|*)		printf '';;
     esac
 }
+: ${EXTRACTMATCHES_OVERLAY_JUMP=[s[1;1H}
+: ${EXTRACTMATCHES_OVERLAY_PREFIX=[37;44m[}
+: ${EXTRACTMATCHES_OVERLAY_SEPARATOR=|}
+: ${EXTRACTMATCHES_OVERLAY_SUFFIX=][0m}
+: ${EXTRACTMATCHES_OVERLAY_RETURN=[u}
 : ${EXTRACTMATCHES_PANEL_UPDATE_DELAY:=1}
 : ${EXTRACTMATCHES_NOTIFY_UPDATE_DELAY:=10}
 : ${EXTRACTMATCHES_FILE_UPDATE_DELAY:=1}
@@ -236,6 +248,7 @@ fi
 replacements+=(''); names+=('')	# Add one empty element so that split() will yield at least one in case of a single empty one.
 : ${EXTRACTMATCHES_COUNT_PREFIX="$(getCountPrefix)"}
 : ${EXTRACTMATCHES_COUNT_SUFFIX="$(getCountSuffix)"}
+: ${EXTRACTMATCHES_MATCH_BEFORE_COUNT="$(getMatchBeforeCount)"}
 
 IFS=$'\n'
 awk \
@@ -249,6 +262,11 @@ awk \
     -v "priorityList=${priorities[*]//\\/\\\\}" \
     -v "skipPattern=${skipPattern//\\/\\\\}" \
     -v "reportOrder=${reportOrder//\\/\\\\}" \
+    -v "overlayJump=${EXTRACTMATCHES_OVERLAY_JUMP//\\/\\\\}" \
+    -v "overlayPrefix=${EXTRACTMATCHES_OVERLAY_PREFIX//\\/\\\\}" \
+    -v "overlaySeparator=${EXTRACTMATCHES_OVERLAY_SEPARATOR//\\/\\\\}" \
+    -v "overlaySuffix=${EXTRACTMATCHES_OVERLAY_SUFFIX//\\/\\\\}" \
+    -v "overlayReturn=${EXTRACTMATCHES_OVERLAY_RETURN//\\/\\\\}" \
     -v "panelUpdateDelay=${EXTRACTMATCHES_PANEL_UPDATE_DELAY}" \
     -v "notifyUpdateDelay=${EXTRACTMATCHES_NOTIFY_UPDATE_DELAY}" \
     -v "fileUpdateDelay=${EXTRACTMATCHES_FILE_UPDATE_DELAY}" \
@@ -262,6 +280,7 @@ awk \
     -v "highlightSuffix=${EXTRACTMATCHES_HIGHLIGHT_SUFFIX//\\/\\\\}" \
     -v "countPrefix=${EXTRACTMATCHES_COUNT_PREFIX//\\/\\\\}" \
     -v "countSuffix=${EXTRACTMATCHES_COUNT_SUFFIX//\\/\\\\}" \
+    -v "isMatchBeforeCount=${EXTRACTMATCHES_MATCH_BEFORE_COUNT}" \
 '
 BEGIN {
     FS = "\n"
@@ -289,6 +308,7 @@ BEGIN {
     }
 
     PROCINFO["sorted_in"] = "@ind_str_asc"
+    delete delayedCounts    # Reify as array; else, the length(delayedCounts) will create it as a scalar instead.
     delayTime = systime()
 }
 function getKeyMatch(key)
@@ -403,14 +423,20 @@ function writeToFile(text,      prefix, suffix)
 function preRenderLine()
 {
     switch (render) {
+	case "overlay":
+	case "highlight":
+	    break
 	case "flash":
 	    flashAdditionalWidth = 0
+	    break
+	default:
 	    break
     }
 }
 function postRenderLine()
 {
     switch (render) {
+	case "overlay":
 	case "highlight":
 	    break
 	case "flash":
@@ -423,12 +449,24 @@ function postRenderLine()
 	    }
     }
 }
+function postLine()
+{
+    switch (render) {
+	case "overlay":
+	    delayedOverlayRender()
+	    break
+	case "highlight":
+	case "flash":
+	default:
+	    break
+    }
+}
 function delayedRender(resultList,      resultCnt, key, save_sorted_in)
 {
-    if (delayedMatch != "") {
+    if (isMatchBeforeCount && delayedMatch != "") {
 	resultList[++resultCnt] = delayedMatch
-	delayedMatch = ""
     }
+
     if (length(delayedCounts) > 0) {
 	save_sorted_in = PROCINFO["sorted_in"]
 	PROCINFO["sorted_in"] = reportOrder
@@ -436,14 +474,33 @@ function delayedRender(resultList,      resultCnt, key, save_sorted_in)
 	    resultList[++resultCnt] = delayedCounts[key]["report"]
 	}
 	PROCINFO["sorted_in"] = save_sorted_in
-	delete delayedCounts
+    }
+
+    if (! isMatchBeforeCount && delayedMatch != "") {
+	resultList[++resultCnt] = delayedMatch
     }
 
     return resultCnt
 }
+function delayedOverlayRender(      resultNum, resultList, i, result)
+{
+    resultNum = delayedRender(resultList)
+    for (i = 1; i <= resultNum; ++i) {
+	result = result (result == "" ? "" : overlaySeparator) resultList[i]
+    }
+    if (result == "") return
+
+    printf "%s%s%s%s%s", overlayJump, overlayPrefix, result, overlaySuffix, overlayReturn
+    if (isBuffered) fflush()	# Flushing will happen for unbuffered output, anyway, but we need this for buffered one as well.
+}
 function delayedFileRender(      resultNum, resultList, i)
 {
     resultNum = delayedRender(resultList)
+
+    # The match / counts have been reported to the file; do not do this again for following lines (only new counts).
+    delayedMatch = ""
+    delete delayedCounts
+
     for (i = 1; i <= resultNum; ++i) {
 	writeToFile(resultList[i])
     }
@@ -453,6 +510,9 @@ function delayedFileRender(      resultNum, resultList, i)
 function renderMatch(before, text, after)
 {
     switch (render) {
+	case "overlay":
+	    delayedMatch = text
+	    break
 	case "highlight":
 	    $0 = before highlightPrefix text highlightSuffix after
 	    break
@@ -471,6 +531,11 @@ function renderMatch(before, text, after)
 function renderCount(key, before, text, count, after,      tmp)
 {
     switch (render) {
+	case "overlay":
+	    delayedCounts[key]["i"] = lowestI
+	    delayedCounts[key]["count"] = count
+	    delayedCounts[key]["report"] = text countPrefix count countSuffix
+	    break
 	case "highlight":
 	    $0 = before highlightPrefix text countPrefix count countSuffix highlightSuffix after
 	    break
@@ -499,6 +564,10 @@ function renderReset(key, previousCounts, type,      tmp) {
     if (previousCounts == 0) return
 
     switch (render) {
+	case "overlay":
+	    delayedMatch = ""
+	    delete delayedCounts[key]
+	    break
 	case "highlight":
 	    break
 	case "flash":
@@ -625,12 +694,13 @@ function process(type, start, len, pattern, replacement, name, priority,      ke
 
     postRenderLine()
     print
+    postLine()
     if (! isBuffered) fflush()
 }
 END {
     switch (render) {
+	case "overlay":
 	case "highlight":
-	    break
 	case "flash":
 	    break
 	default:
