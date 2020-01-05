@@ -41,13 +41,7 @@
 @test "error when priority is passed before regexp" {
     run extractMatches --priority 5 --regexp foo
     [ $status -eq 2 ]
-    [ "${lines[0]}" = "Need -e|--regexp PATTERN before passing PRIORITY." ]
-}
-
-@test "error when priority is passed after count" {
-    run extractMatches --count foo --priority 5
-    [ $status -eq 2 ]
-    [ "${lines[0]}" = "Need -e|--regexp PATTERN before passing PRIORITY." ]
+    [ "${lines[0]}" = "Need -e|--regexp|-c|-count|-M|--match-count|--reset-name PATTERN before passing PRIORITY." ]
 }
 
 @test "error when priority is not numeric" {

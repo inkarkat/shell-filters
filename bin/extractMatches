@@ -5,7 +5,7 @@ printShortUsage()
 {
     # Note: short followed by long option; if the user knows the short one, she can
     # skim the long one.
-    printf 'Usage: %q %s\n' "$(basename "$1")" '[-u|--unbuffered] [-t|--to overlay|title|panel|notify|highlight|flash|FILE] [-s|--skip PATTERN [...]] [-o|-- report-order by-arg|count-desc] (-e|--regexp [-r|--replacement REPLACEMENT] [-g|--global] [-p|--priority N] [-n|--name NAME] [-x|--reset RESET-PATTERN])(-c|--count|-M|--match-count [-r|--replacement REPLACEMENT] [-g|--global] [-n|--name NAME] [-x|--reset RESET-PATTERN])(--reset-name PATTERN [-g|--global] -n|--name NAME|/NAME-PATTERN/) [...] [--] FILE [...][-?|-h|--help]'
+    printf 'Usage: %q %s\n' "$(basename "$1")" '[-u|--unbuffered] [-t|--to overlay|title|panel|notify|highlight|flash|FILE] [-s|--skip PATTERN [...]] [-o|-- report-order by-arg|count-desc] (-e|--regexp [-r|--replacement REPLACEMENT] [-g|--global] [-p|--priority N] [-n|--name NAME] [-x|--reset RESET-PATTERN])(-c|--count|-M|--match-count [-r|--replacement REPLACEMENT] [-g|--global] [-p|--priority N] [-n|--name NAME] [-x|--reset RESET-PATTERN])(--reset-name PATTERN [-g|--global] -n|--name NAME|/NAME-PATTERN/) [...] [--] FILE [...][-?|-h|--help]'
 }
 printUsage()
 {
@@ -74,8 +74,10 @@ HELPDESCRIPTION
 			    --match-count)
     --global|-g		    Report / count all occurrences of PATTERN in a line,
 			    not just the first one.
-    --priority|-p N	    Only report the match if a previous match had the
-			    same or lower priority.
+    --priority|-p N	    Only report the match / count if previous one(s) had
+			    the same or lower priority. (Default priority is 0.)
+			    A --reset[-name] lowers the baseline priority to 1
+			    below the associated priority.
     --skip|-s PATTERN	    Ignore (but still print) lines that match PATTERN,
 			    so that these don't disrupt the processing of
 			    surrounding lines.
@@ -188,12 +190,12 @@ do
 				shift
 				;;
 	--priority|-p)		shift
-				if [ ${#types[@]} -eq 0 ] || [ ${types[-1]} != regexp ]; then
-				    echo >&2 "Need -e|--regexp PATTERN before passing PRIORITY."
+				if [ ${#types[@]} -eq 0 ]; then
+				    echo >&2 "Need -e|--regexp|-c|-count|-M|--match-count|--reset-name PATTERN before passing PRIORITY."
 				    echo >&2
 				    printShortUsage "$0" >&2
 				    exit 2
-				elif [[ "$1" != +([0-9]) ]]; then
+				elif [[ "$1" != ?(-)+([0-9]) ]]; then
 				    echo >&2 "PRIORITY must be a number."
 				    echo >&2
 				    printShortUsage "$0" >&2
@@ -507,7 +509,22 @@ function renderReset(key, previousCounts, type,      tmp) {
 	    }
     }
 }
-function process(type, start, len, pattern, replacement, name,      key, tmp, namePattern) {
+function process(type, start, len, pattern, replacement, name, priority,      key, tmp, namePattern) {
+    switch (type) {
+	case "regexp":
+	case "count":
+	case "match-count":
+	    if (lastPriority != "" && lastPriority > priority) return
+		lastPriority = priority
+	    break
+	case "reset":
+	case "reset-name":
+	    lastPriority = priority - 1
+	    break
+	default:
+	    print "Assert: Invalid type: " type > "/dev/stderr"
+	    exit 3
+    }
     switch (type) {
 	case "regexp":
 	    tmp = replace(substr($0, start, len), pattern, replacement)
@@ -559,7 +576,7 @@ function process(type, start, len, pattern, replacement, name,      key, tmp, na
 	    }
 	    break
 	default:
-	    print "Assert: Invalid render type: " type > "/dev/stderr"
+	    print "Assert: Invalid type: " type > "/dev/stderr"
 	    exit 3
     }
 }
@@ -590,7 +607,7 @@ function process(type, start, len, pattern, replacement, name,      key, tmp, na
 
 	    seen[lowestI] = 1
 	    previousLength = length($0)
-	    process(types[lowestI], lowestOffset, lowestLength, patterns[lowestI], replacements[lowestI], names[lowestI])
+	    process(types[lowestI], lowestOffset, lowestLength, patterns[lowestI], replacements[lowestI], names[lowestI], priorities[lowestI])
 	    replacementOffset = length($0) - previousLength
 	    startOffset = lowestOffset + lowestLength - 1 + replacementOffset
 
