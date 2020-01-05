@@ -39,7 +39,7 @@ More: 1"
     [ "$output" = "$SIMPLE_INPUT" ]
     assert_log "Just: 1
 This: 1
-This: 0
 Just: 0
+This: 0
 More: 1"
 }

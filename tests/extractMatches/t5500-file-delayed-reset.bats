@@ -36,13 +36,13 @@ foo8: 2" ]
     export EXTRACTMATCHES_FILE_CLEAR_MATCH_TEMPLATE=
     run extractMatches --to "$LOG" --match-count '\<\w{4}\>' --reset 'All|Rex' <<<"$DELAY_INPUT"
     [ "$output" = "$DELAY_INPUT" ]
-    assert_log "foo3: 1
+    assert_log "Just: 0
 This: 0
-Just: 0
+foo3: 1
+More: 0
+That: 0
 foo3: 0
 foo6: 1
-That: 0
-More: 0
 Last: 1
 Your: 1" ]
 }

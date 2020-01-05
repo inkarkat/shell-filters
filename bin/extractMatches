@@ -263,6 +263,7 @@ BEGIN {
 	exit 3
     }
 
+    PROCINFO["sorted_in"] = "@ind_num_asc"
     delayTime = systime()
 }
 function multiply(char, count,      tmp, i)

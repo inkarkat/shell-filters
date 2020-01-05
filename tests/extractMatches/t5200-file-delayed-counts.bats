@@ -15,10 +15,10 @@ foo8: 7" ]
     run extractMatches --to "$LOG" --count 'foo[0-9]+' --global --count 'ex' --count 'y' --global <<<"$DELAY_INPUT"
     [ "$output" = "$DELAY_INPUT" ]
     assert_log "ex: 1
-y: 1
 foo3: 2
+y: 1
 ex: 2
 foo6: 5
-y: 2
-foo8: 7"
+foo8: 7
+y: 2"
 }
