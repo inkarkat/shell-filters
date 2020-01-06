@@ -523,6 +523,8 @@ function delayedOverlayRender(      resultNum, resultList, i, result)
 }
 function delayedTitleRender(      resultNum, resultList, i, result)
 {
+    if (! delayedChange) return
+
     resultNum = delayedRender(resultList)
     for (i = 1; i <= resultNum; ++i) {
 	result = result (result == "" ? "" : titleSeparator) resultList[i]
@@ -531,6 +533,7 @@ function delayedTitleRender(      resultNum, resultList, i, result)
 
     printf "%s%s%s%s%s", titleSet, titlePrefix, result, titleSuffix, titleFinish
     if (isBuffered) fflush()	# Flushing will happen for unbuffered output, anyway, but we need this for buffered one as well.
+    delayedChange = 0
 }
 function delayedFileRender(      resultNum, resultList, i)
 {
@@ -551,6 +554,7 @@ function renderMatch(before, text, after)
     switch (render) {
 	case "overlay":
 	case "title":
+	    delayedChange = delayedChange || (delayedMatch != text)
 	    delayedMatch = text
 	    break
 	case "highlight":
@@ -573,9 +577,11 @@ function renderCount(key, before, text, count, after,      tmp)
     switch (render) {
 	case "overlay":
 	case "title":
+	    tmp = text countPrefix count countSuffix
+	    delayedChange = delayedChange || (delayedCounts[key]["report"] != tmp)
 	    delayedCounts[key]["i"] = lowestI
 	    delayedCounts[key]["count"] = count
-	    delayedCounts[key]["report"] = text countPrefix count countSuffix
+	    delayedCounts[key]["report"] = tmp
 	    break
 	case "highlight":
 	    $0 = before highlightPrefix text countPrefix count countSuffix highlightSuffix after
@@ -607,6 +613,7 @@ function renderReset(key, previousCounts, type,      tmp) {
     switch (render) {
 	case "overlay":
 	case "title":
+	    delayedChange = delayedChange || (delayedMatch != "") || (delayedCounts[key]["report"] != "")
 	    delayedMatch = ""
 	    delete delayedCounts[key]
 	    break

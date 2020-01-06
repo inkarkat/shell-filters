@@ -12,9 +12,8 @@ Seriously."
     [ "$output" = "Just some text.
 This has foo in it.
 ${R}foo:1${N}All simple lines.
-${R}foo:1${N}More foo here.
-${R}foo:2${N}Seriously.
-${R}foo:2${N}" ]
+More foo here.
+${R}foo:2${N}Seriously." ]
 }
 
 @test "three different counts with different single / global are shown in title" {
@@ -27,7 +26,7 @@ Seriously, why?"
     [ "$output" = "Just some sexy text.
 ${R}ex:1|y:1${N}This has foo, foo and foofoo in it.
 ${R}foo:4|ex:1|y:1${N}All simple lines.
-${R}foo:4|ex:1|y:1${N}More foo here.
+More foo here.
 ${R}foo:5|ex:1|y:1${N}Seriously, why?
 ${R}foo:5|ex:1|y:3${N}" ]
 }

@@ -9,8 +9,7 @@ load title
 ${R}Just${N}This has foo in it.
 ${R}This${N}All simple lines.
 More foooo here.
-${R}More${N}Seriously.
-${R}More${N}" ]
+${R}More${N}Seriously." ]
 }
 
 @test "count resets by name are shown in title" {
@@ -20,8 +19,7 @@ ${R}More${N}" ]
 ${R}Just:1${N}This has foo in it.
 ${R}This:2${N}All simple lines.
 More foooo here.
-${R}More:1${N}Seriously.
-${R}More:1${N}" ]
+${R}More:1${N}Seriously." ]
 }
 
 @test "match-count resets by name are shown in title" {
@@ -31,6 +29,5 @@ ${R}More:1${N}" ]
 ${R}Just:1${N}This has foo in it.
 ${R}Just:1|This:1${N}All simple lines.
 More foooo here.
-${R}More:1${N}Seriously.
-${R}More:1${N}" ]
+${R}More:1${N}Seriously." ]
 }

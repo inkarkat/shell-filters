@@ -12,9 +12,8 @@ Seriously."
     [ "$output" = "Just some text.
 This has foo in it.
 ${R}foo${N}All simple lines.
-${R}foo${N}More foo here.
-${R}foo${N}Seriously.
-${R}foo${N}" ]
+More foo here.
+Seriously." ]
 }
 
 @test "three different matches with different single / global are shown in title" {
@@ -27,7 +26,7 @@ Seriously, why?"
     [ "$output" = "Just some sexy text.
 ${R}y${N}This has foo, foo and foofoo in it.
 ${R}foo${N}All simple lines.
-${R}foo${N}More foo here.
-${R}foo${N}Seriously, why?
+More foo here.
+Seriously, why?
 ${R}y${N}" ]
 }
