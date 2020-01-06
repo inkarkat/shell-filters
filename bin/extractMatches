@@ -5,7 +5,7 @@ printShortUsage()
 {
     # Note: short followed by long option; if the user knows the short one, she can
     # skim the long one.
-    printf 'Usage: %q %s\n' "$(basename "$1")" '[-u|--unbuffered] [-t|--to overlay|title|panel|notify|highlight|flash|FILE] [-s|--skip PATTERN [...]] [-o|-- report-order by-arg|count-desc] (-e|--regexp [-r|--replacement REPLACEMENT] [-g|--global] [-p|--priority N] [-n|--name NAME] [-x|--reset RESET-PATTERN])(-c|--count|-M|--match-count [-r|--replacement REPLACEMENT] [-g|--global] [-p|--priority N] [-n|--name NAME] [-x|--reset RESET-PATTERN])(--reset-name PATTERN [-g|--global] -n|--name NAME|/NAME-PATTERN/) [...] [--] FILE [...][-?|-h|--help]'
+    printf 'Usage: %q %s\n' "$(basename "$1")" '[-u|--unbuffered] [-t|--to overlay|title|command|notify|highlight|flash|FILE] [-s|--skip PATTERN [...]] [-o|-- report-order by-arg|count-desc] (-e|--regexp [-r|--replacement REPLACEMENT] [-g|--global] [-p|--priority N] [-n|--name NAME] [-x|--reset RESET-PATTERN])(-c|--count|-M|--match-count [-r|--replacement REPLACEMENT] [-g|--global] [-p|--priority N] [-n|--name NAME] [-x|--reset RESET-PATTERN])(--reset-name PATTERN [-g|--global] -n|--name NAME|/NAME-PATTERN/) [...] [--] FILE [...][-?|-h|--help]'
 }
 printUsage()
 {
@@ -33,8 +33,8 @@ HELPDESCRIPTION
 			    terminal.
     --to|-t title	    Report in the terminal's window title via ANSI
 			    escape sequences.
-    --to|-t panel	    Report in the panel part of the terminal's window
-			    title.
+    --to|-t command	    Report by invoking EXTRACTMATCHES_COMMANDLINE while
+			    replacing {} with the overlay-like report.
     --to|-t notify	    Report via notify-send to the system's notification
 			    system.
     --to|-t highlight	    Just highlight the match (and added count) in-line.
@@ -101,14 +101,14 @@ getCountPrefix()
 {
     case "$render" in
 	highlight|flash)	printf ' (';;
-	overlay|title|panel)	printf ':';;
+	overlay|title|command)	printf ':';;
 	notify|*)		printf ': ';;
     esac
 }
 getMatchBeforeCount()
 {
     case "$render" in
-	overlay|title|panel)	printf '';;
+	overlay|title|command)	printf '';;
 	*)			printf 't';;
     esac
 }
@@ -116,7 +116,7 @@ getCountSuffix()
 {
     case "$render" in
 	highlight|flash)	printf ')';;
-	overlay|title|panel)	printf '';;
+	overlay|title|command)	printf '';;
 	notify|*)		printf '';;
     esac
 }
@@ -140,10 +140,12 @@ case "$TERM" in
 	: ${EXTRACTMATCHES_TITLE_FINISH=''}
 	;;
 esac
+EXEC=exec
 : ${EXTRACTMATCHES_TITLE_PREFIX=[}
 : ${EXTRACTMATCHES_TITLE_SEPARATOR=|}
 : ${EXTRACTMATCHES_TITLE_SUFFIX=]}
-: ${EXTRACTMATCHES_PANEL_UPDATE_DELAY:=1}
+: ${EXTRACTMATCHES_COMMAND_SEPARATOR=|}
+: ${EXTRACTMATCHES_COMMAND_UPDATE_DELAY:=1}
 : ${EXTRACTMATCHES_NOTIFY_UPDATE_DELAY:=10}
 : ${EXTRACTMATCHES_FILE_UPDATE_DELAY:=1}
 : ${EXTRACTMATCHES_FILE_PREFIX_EXPR:=}
@@ -257,11 +259,25 @@ if [ ${#types[@]} -eq 0 ]; then
     echo >&2
     printShortUsage "$0" >&2
     exit 2
-elif [ "$render" = "flash" ] && [ "$isBuffered" ]; then
+elif [ "$render" = 'flash' ] && [ "$isBuffered" ]; then
     echo >&2 'ERROR: Flash reporting must be combined with --unbuffered.'
     echo >&2
     printShortUsage "$0" >&2
     exit 2
+elif [ "$render" = 'command' ]; then
+    if [ -z "$EXTRACTMATCHES_COMMANDLINE" ]; then
+	echo >&2 'ERROR: Command reporting must define EXTRACTMATCHES_COMMANDLINE.'
+	echo >&2
+	printShortUsage "$0" >&2
+	exit 2
+    fi
+    if [ "$EXTRACTMATCHES_PRE_COMMANDLINE" ]; then
+	eval "$EXTRACTMATCHES_PRE_COMMANDLINE" || exit $?
+    fi
+    if [ "$EXTRACTMATCHES_POST_COMMANDLINE" ]; then
+	EXEC=
+	trap "$EXTRACTMATCHES_POST_COMMANDLINE" EXIT
+    fi
 fi
 replacements+=(''); names+=('')	# Add one empty element so that split() will yield at least one in case of a single empty one.
 : ${EXTRACTMATCHES_COUNT_PREFIX="$(getCountPrefix)"}
@@ -269,7 +285,7 @@ replacements+=(''); names+=('')	# Add one empty element so that split() will yie
 : ${EXTRACTMATCHES_MATCH_BEFORE_COUNT="$(getMatchBeforeCount)"}
 
 IFS=$'\n'
-awk \
+$EXEC awk \
     -v "render=$render" \
     -v "isBuffered=$isBuffered" \
     -v "typeList=${types[*]}" \
@@ -290,7 +306,9 @@ awk \
     -v "titleSeparator=${EXTRACTMATCHES_TITLE_SEPARATOR//\\/\\\\}" \
     -v "titleSuffix=${EXTRACTMATCHES_TITLE_SUFFIX//\\/\\\\}" \
     -v "titleFinish=${EXTRACTMATCHES_TITLE_FINISH//\\/\\\\}" \
-    -v "panelUpdateDelay=${EXTRACTMATCHES_PANEL_UPDATE_DELAY}" \
+    -v "commandSeparator=${EXTRACTMATCHES_COMMAND_SEPARATOR//\\/\\\\}" \
+    -v "commandLine=${EXTRACTMATCHES_COMMANDLINE//\\/\\\\}" \
+    -v "commandUpdateDelay=${EXTRACTMATCHES_COMMAND_UPDATE_DELAY}" \
     -v "notifyUpdateDelay=${EXTRACTMATCHES_NOTIFY_UPDATE_DELAY}" \
     -v "fileUpdateDelay=${EXTRACTMATCHES_FILE_UPDATE_DELAY}" \
     -v "filePrefixExpr=${EXTRACTMATCHES_FILE_PREFIX_EXPR}" \
@@ -448,6 +466,7 @@ function preRenderLine()
     switch (render) {
 	case "overlay":
 	case "title":
+	case "command":
 	case "highlight":
 	    break
 	case "flash":
@@ -462,6 +481,7 @@ function postRenderLine()
     switch (render) {
 	case "overlay":
 	case "title":
+	case "command":
 	case "highlight":
 	    break
 	case "flash":
@@ -482,6 +502,9 @@ function postLine()
 	    break
 	case "title":
 	    delayedTitleRender()
+	    break
+	case "command":
+	    delayedCommandRender()
 	    break
 	case "highlight":
 	case "flash":
@@ -535,6 +558,24 @@ function delayedTitleRender(      resultNum, resultList, i, result)
     if (isBuffered) fflush()	# Flushing will happen for unbuffered output, anyway, but we need this for buffered one as well.
     delayedChange = 0
 }
+function delayedCommandRender(      resultNum, resultList, i, result, reportingCommandLine, commandResult)
+{
+    if (! delayedChange) return
+
+    resultNum = delayedRender(resultList)
+    for (i = 1; i <= resultNum; ++i) {
+	result = result (result == "" ? "" : commandSeparator) resultList[i]
+    }
+    if (result == "") return
+
+    reportingCommandLine = gensub(/\{\}/, "\047" gensub("\047", "\047\\\\\\\\\047\047", "g", result) "\047", "g", commandLine)
+    if (commandResult = system(reportingCommandLine) != 0) {
+	printf "ERROR: Failed to invoke \"%s\" (%d).\n", reportingCommandLine, commandResult  > "/dev/stderr"
+	exit 3
+    }
+
+    delayedChange = 0
+}
 function delayedFileRender(      resultNum, resultList, i)
 {
     resultNum = delayedRender(resultList)
@@ -554,6 +595,7 @@ function renderMatch(before, text, after)
     switch (render) {
 	case "overlay":
 	case "title":
+	case "command":
 	    delayedChange = delayedChange || (delayedMatch != text)
 	    delayedMatch = text
 	    break
@@ -577,6 +619,7 @@ function renderCount(key, before, text, count, after,      tmp)
     switch (render) {
 	case "overlay":
 	case "title":
+	case "command":
 	    tmp = text countPrefix count countSuffix
 	    delayedChange = delayedChange || (delayedCounts[key]["report"] != tmp)
 	    delayedCounts[key]["i"] = lowestI
@@ -613,6 +656,7 @@ function renderReset(key, previousCounts, type,      tmp) {
     switch (render) {
 	case "overlay":
 	case "title":
+	case "command":
 	    delayedChange = delayedChange || (delayedMatch != "") || (delayedCounts[key]["report"] != "")
 	    delayedMatch = ""
 	    delete delayedCounts[key]
@@ -750,6 +794,7 @@ END {
     switch (render) {
 	case "overlay":
 	case "title":
+	case "command":
 	case "highlight":
 	case "flash":
 	    break

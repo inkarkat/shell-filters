@@ -1,6 +1,5 @@
 #!/usr/bin/env bats
 
-export EXTRACTMATCHES_FILE_UPDATE_DELAY=-3
 load overlay
 
 @test "delayed match is overlaid after delayed counts by default" {
