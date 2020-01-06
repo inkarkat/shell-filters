@@ -504,7 +504,9 @@ function postLine()
 	    delayedTitleRender()
 	    break
 	case "command":
-	    delayedCommandRender()
+	    if (commandUpdateDelay == 0 || (commandUpdateDelay < 0 && NR % commandUpdateDelay == 0) || (commandUpdateDelay > 0 && systime() - delayTime >= commandUpdateDelay)) {
+		delayedCommandRender()
+	    }
 	    break
 	case "highlight":
 	case "flash":
@@ -575,6 +577,7 @@ function delayedCommandRender(      resultNum, resultList, i, result, reportingC
     }
 
     delayedChange = 0
+    delayTime = systime()
 }
 function delayedFileRender(      resultNum, resultList, i)
 {
@@ -794,9 +797,11 @@ END {
     switch (render) {
 	case "overlay":
 	case "title":
-	case "command":
 	case "highlight":
 	case "flash":
+	    break
+	case "command":
+	    delayedCommandRender()
 	    break
 	default:
 	    delayedFileRender()

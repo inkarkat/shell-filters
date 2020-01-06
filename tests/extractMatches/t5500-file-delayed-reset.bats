@@ -13,7 +13,6 @@ Off: foo6
 foo8" ]
 }
 
-
 @test "match resets are not written to a file every 3 lines and at the end if the template is empty" {
     export EXTRACTMATCHES_FILE_CLEAR_MATCH_TEMPLATE=
     run extractMatches --to "$LOG" --regexp 'foo[0-9]+' --reset 'All|Your' <<<"$DELAY_INPUT"
@@ -31,7 +30,6 @@ foo6: 3
 foo8: 2" ]
 }
 
-
 @test "match-count resets are not written to a file every 3 lines and at the end if the template is empty" {
     export EXTRACTMATCHES_FILE_CLEAR_MATCH_TEMPLATE=
     run extractMatches --to "$LOG" --match-count '\<\w{4}\>' --reset 'All|Rex' <<<"$DELAY_INPUT"
@@ -46,4 +44,3 @@ foo3: 0
 Last: 1
 Your: 1" ]
 }
-
