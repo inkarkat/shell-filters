@@ -1,5 +1,6 @@
 #!/usr/bin/env bats
 
+export EXTRACTMATCHES_COMMAND_UPDATE_DELAY=0
 load command
 
 @test "delayed match is passed to command after delayed counts by default" {

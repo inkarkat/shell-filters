@@ -1,5 +1,6 @@
 #!/usr/bin/env bats
 
+export EXTRACTMATCHES_COMMAND_UPDATE_DELAY=0
 load command
 
 @test "match resets by name are passed to command" {
