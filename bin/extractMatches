@@ -146,6 +146,8 @@ EXEC=exec
 : ${EXTRACTMATCHES_TITLE_SUFFIX=]}
 : ${EXTRACTMATCHES_COMMAND_SEPARATOR=|}
 : ${EXTRACTMATCHES_COMMAND_UPDATE_DELAY:=1}
+: ${EXTRACTMATCHES_NOTIFY_SEND:=notify-send}
+: ${EXTRACTMATCHES_NOTIFY_SEPARATOR=|}
 : ${EXTRACTMATCHES_NOTIFY_UPDATE_DELAY:=10}
 : ${EXTRACTMATCHES_FILE_UPDATE_DELAY:=1}
 : ${EXTRACTMATCHES_FILE_PREFIX_EXPR:=}
@@ -259,7 +261,22 @@ if [ ${#types[@]} -eq 0 ]; then
     echo >&2
     printShortUsage "$0" >&2
     exit 2
-elif [ "$render" = 'flash' ] && [ "$isBuffered" ]; then
+fi
+if [ "$render" = 'notify' ]; then
+    if [ -z "$EXTRACTMATCHES_NOTIFY_COMMANDLINE" ] && ! which "$EXTRACTMATCHES_NOTIFY_SEND" > /dev/null 2>&1; then
+	printf >&2 'ERROR: notify-send command (%s) not found.\n' "$EXTRACTMATCHES_NOTIFY_SEND"
+	exit 2
+    fi
+    : ${EXTRACTMATCHES_NOTIFY_COMMANDLINE:="\"$EXTRACTMATCHES_NOTIFY_SEND\" \"extractMatches {FILENAME}\" -- {}"}
+
+    # Reuse the command renderer for notify-send; it has all the generic
+    # functionality to do it.
+    render='command'
+    EXTRACTMATCHES_COMMANDLINE="$EXTRACTMATCHES_NOTIFY_COMMANDLINE"
+    EXTRACTMATCHES_COMMAND_SEPARATOR="$EXTRACTMATCHES_NOTIFY_SEPARATOR"
+    EXTRACTMATCHES_COMMAND_UPDATE_DELAY="$EXTRACTMATCHES_NOTIFY_UPDATE_DELAY"
+fi
+if [ "$render" = 'flash' ] && [ "$isBuffered" ]; then
     echo >&2 'ERROR: Flash reporting must be combined with --unbuffered.'
     echo >&2
     printShortUsage "$0" >&2
@@ -307,7 +324,6 @@ $EXEC awk \
     -v "commandSeparator=${EXTRACTMATCHES_COMMAND_SEPARATOR//\\/\\\\}" \
     -v "commandLine=${EXTRACTMATCHES_COMMANDLINE//\\/\\\\}" \
     -v "commandUpdateDelay=${EXTRACTMATCHES_COMMAND_UPDATE_DELAY}" \
-    -v "notifyUpdateDelay=${EXTRACTMATCHES_NOTIFY_UPDATE_DELAY}" \
     -v "fileUpdateDelay=${EXTRACTMATCHES_FILE_UPDATE_DELAY}" \
     -v "filePrefixExpr=${EXTRACTMATCHES_FILE_PREFIX_EXPR}" \
     -v "fileSuffixExpr=${EXTRACTMATCHES_FILE_SUFFIX_EXPR}" \
