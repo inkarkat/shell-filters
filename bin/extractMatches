@@ -269,7 +269,7 @@ if [ "$render" = 'notify' ]; then
 	printf >&2 'ERROR: notify-send command (%s) not found.\n' "$EXTRACTMATCHES_NOTIFY_SEND"
 	exit 2
     fi
-    : ${EXTRACTMATCHES_NOTIFY_COMMANDLINE:="\"$EXTRACTMATCHES_NOTIFY_SEND\" \"extractMatches {FILENAME}:{FNR}\" -- {}"}
+    : ${EXTRACTMATCHES_NOTIFY_COMMANDLINE:="\"$EXTRACTMATCHES_NOTIFY_SEND\"${EXTRACTMATCHES_NOTIFY_ARGUMENTS:+ $EXTRACTMATCHES_NOTIFY_ARGUMENTS} \"extractMatches {FILENAME}:{FNR}\" -- {}"}
 
     # Reuse the command renderer for notify-send; it has all the generic
     # functionality to do it.
