@@ -784,7 +784,6 @@ function process(type, start, len, pattern, replacement, name, priority,      ke
 	    lowestI = 0
 	    for (i = 1; i <= N; i++) {
 		if (match(substr($0, startOffset + 1), patterns[i])) {
-		    # print "**** matched /" patterns[i] "/ in \"" substr($0, startOffset + RSTART, RLENGTH) "\""
 		    if (seen[i] && ! globals[i]) continue
 
 		    if (startOffset + RSTART < lowestOffset) {
@@ -796,7 +795,6 @@ function process(type, start, len, pattern, replacement, name, priority,      ke
 	    }
 
 	    if (lowestI == 0) break
-	    # print "**** picked " types[lowestI] " /" patterns[lowestI] "/ in \"" substr($0, lowestOffset, lowestLength) "\""
 
 	    seen[lowestI] = 1
 	    previousLength = length($0)
