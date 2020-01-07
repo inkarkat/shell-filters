@@ -1,0 +1,21 @@
+#!/bin/bash
+
+printUsage()
+{
+    cat <<HELPTEXT
+Print the first NUM lines of FILE to standard output. If there's more input,
+just print out a [...] and stop.
+HELPTEXT
+    printf 'Usage: %q %s\n' "$(basename "$1")" '[-n NUM] [--] [FILE] [-?|-h|--help]'
+}
+NUM=10
+case "$1" in
+    --help|-h|-\?)	shift; printUsage "$0"; exit 0;;
+    -n)			shift; NUM="${1:?}"; shift;;
+esac
+[ "$1" = '--' ] && shift
+if [ $# -gt 1 ]; then
+    printUsage "$0" >&2
+    exit 2
+fi
+exec sed -e "$((NUM + 1))s/.*/[...]/" -e "$((NUM + 2)),\$d" "$@"
