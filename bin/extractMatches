@@ -34,7 +34,9 @@ HELPDESCRIPTION
     --to|-t title	    Report in the terminal's window title via ANSI
 			    escape sequences.
     --to|-t command	    Report by invoking EXTRACTMATCHES_COMMANDLINE while
-			    replacing {} with the overlay-like report.
+			    replacing {} with the overlay-like report,
+			    {FILENAME} with the name of the current input file,
+			    and {FNR} with the line number.
     --to|-t notify	    Report via notify-send to the system's notification
 			    system.
     --to|-t highlight	    Just highlight the match (and added count) in-line.
@@ -585,6 +587,8 @@ function delayedCommandRender(      resultNum, resultList, i, result, reportingC
     if (result == "") return
 
     reportingCommandLine = gensub(/\{\}/, "\047" gensub("\047", "\047\\\\\\\\\047\047", "g", result) "\047", "g", commandLine)
+    if (commandLine ~ /\{FILENAME\}/) reportingCommandLine = gensub(/\{FILENAME\}/, FILENAME, "g", reportingCommandLine)
+
     if (commandResult = system(reportingCommandLine) != 0) {
 	printf "ERROR: Failed to invoke \"%s\" (%d).\n", reportingCommandLine, commandResult  > "/dev/stderr"
 	exit 3

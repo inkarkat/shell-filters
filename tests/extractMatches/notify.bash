@@ -8,7 +8,7 @@ fi
 export EXTRACTMATCHES_NOTIFY_SEND="${BASH_SOURCE[0]}"	# Invoke ourselves as the test dummy.
 export RUNS="${BATS_TMPDIR}/runs"
 
-readonly PREFIX='extractMatches {FILENAME} -- '
+readonly PREFIX='extractMatches - -- '
 
 readonly SIMPLE_INPUT="Just some sexy text.
 This has foo in it.
