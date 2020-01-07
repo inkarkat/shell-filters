@@ -23,5 +23,5 @@ ${PREFIX}foo8:2" ]
     [ "$output" = "$DELAY_INPUT" ]
     assert_runs "${PREFIX}foo3:1
 ${PREFIX}foo6:1
-${PREFIX}Last:1|Your:1|foo6:1" ]
+${PREFIX}Last:1, Your:1, foo6:1" ]
 }

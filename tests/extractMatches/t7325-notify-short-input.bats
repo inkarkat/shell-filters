@@ -8,5 +8,5 @@ load notify
 Just sexy text.
 Even has foo in it.
 EOF
-    assert_runs "${PREFIX}Even:4|in:1|it:1|foo"
+    assert_runs "${PREFIX}Even:4, in:1, it:1, foo"
 }
