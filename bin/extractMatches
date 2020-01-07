@@ -1,0 +1,829 @@
+#!/bin/bash
+shopt -qs extglob
+
+printShortUsage()
+{
+    # Note: short followed by long option; if the user knows the short one, she can
+    # skim the long one.
+    printf 'Usage: %q %s\n' "$(basename "$1")" '[-u|--unbuffered] [-t|--to overlay|title|command|notify|highlight|flash|FILE] [-s|--skip PATTERN [...]] [-o|-- report-order by-arg|count-desc] (-e|--regexp [-r|--replacement REPLACEMENT] [-g|--global] [-p|--priority N] [-n|--name NAME] [-x|--reset RESET-PATTERN])(-c|--count|-M|--match-count [-r|--replacement REPLACEMENT] [-g|--global] [-p|--priority N] [-n|--name NAME] [-x|--reset RESET-PATTERN])(--reset-name PATTERN [-g|--global] -n|--name NAME|/NAME-PATTERN/) [...] [--] FILE [...][-?|-h|--help]'
+}
+printUsage()
+{
+    # This is the short help when launched with no or incorrect arguments.
+    # It is printed to stderr to avoid accidental processing.
+    printShortUsage "$1" >&2
+    printf >&2 'Try %q --help for more information.\n' "$(basename "$1")"
+}
+printLongUsage()
+{
+    # This is the long "man page" when launched with the help argument.
+    # It is printed to stdout to allow paging with 'more'.
+    cat <<HELPDESCRIPTION
+Locate passed PATTERNs in the input and duplicate the last of (or count
+occurrences of) them to overlaid text in the terminal / the terminal's window
+title, in order to emphasize and persist the information.
+Useful to alert the user to crucial events (like application exceptions, or the
+number of fatal errors) when watching a log file.
+HELPDESCRIPTION
+    echo
+    printShortUsage "$1"
+    cat <<HELPTEXT
+    --to|-t overlay	    Report in the form of overlaid text, written via
+			    ANSI escape sequences in the first line of the
+			    terminal.
+    --to|-t title	    Report in the terminal's window title via ANSI
+			    escape sequences.
+    --to|-t command	    Report by invoking EXTRACTMATCHES_COMMANDLINE while
+			    replacing {} with the overlay-like report,
+			    {FILENAME} with the name of the current input file,
+			    and {FNR} with the line number.
+    --to|-t notify	    Report via notify-send to the system's notification
+			    system.
+    --to|-t highlight	    Just highlight the match (and added count) in-line.
+    --to|-t flash	    Briefly reverse and unreverse the match (and added
+			    count) to highlight it. Must be used with
+			    --unbuffered.
+    --to|-t FILE	    Append the report to FILE. Set
+			    EXTRACTMATCHES_FILE_UPDATE_DELAY to 0 for immediate
+			    updates. Additionally pass --unbuffered to observe
+			    the file contents immediately.
+    --regexp|-e PATTERN	    Report matches of PATTERN in a line.
+    --count|-c PATTERN	    Report the number of matches of PATTERN in a line.
+    --match-count|-M PATTERN
+			    Report the number of identical matches of PATTERN.
+    --reset-name PATTERN    Clear the reporting / count of matches for NAME or
+			    /NAME-PATTERN/ when PATTERN is encountered. This
+			    affects any other rule through NAME.
+    --reset|-x RESET-PATTERN
+			    Clear the reporting / count of matches for PATTERN
+			    when RESET-PATTERN is encountered. This is connected
+			    to the corresponding --regexp|--count|--match-count.
+    --name|-n NAME	    Tweak the counting / resetting.
+			    --regexp|-e:      Clear reporting (potentially of
+					      several instances) via
+					      --reset-name.
+			    --count|-c:       Use NAME instead of PATTERN for
+					      keeping counts.
+			    --match-count|-M: Prepend NAME- to the match for
+					      keeping counts.
+			    --reset-name|-x:  Clear the reporting / count for
+					      NAME (or all names matching
+					      /NAME-PATTERN/).
+    --replacement|-r REPLACEMENT
+			    Use REPLACEMENT (that can refer to PATTERN capture
+			    groups via \1 etc.) instead of the original match
+			    (for reporting with --regexp, for counting with
+			    --match-count)
+    --global|-g		    Report / count all occurrences of PATTERN in a line,
+			    not just the first one.
+    --priority|-p N	    Only report the match / count if previous one(s) had
+			    the same or lower priority. (Default priority is 0.)
+			    A --reset[-name] lowers the baseline priority to 1
+			    below the associated priority.
+    --skip|-s PATTERN	    Ignore (but still print) lines that match PATTERN,
+			    so that these don't disrupt the processing of
+			    surrounding lines.
+    --report-order|-o by-arg
+			    In case the reporting happens only periodically,
+			    sort the number of matches first by order of the
+			    --count / --match-count arguments as given on the
+			    command-line, then by the count report itself, with
+			    matches sorted alphanumerically.
+    --report-order|-o count-desc
+			    In case the reporting happens only periodically,
+			    sort the number of matches from highest to lowest.
+    --unbuffered|-u	    Immediately output each read line.
+
+Example:
+HELPTEXT
+    printf '%q %s\n' "$(basename "$1")" '--regexp "FATAL:.*" --name err --regexp "ERROR:.*" --name err --count Restarted --reset Restarted --name err'
+}
+
+getCountPrefix()
+{
+    case "$render" in
+	highlight|flash)	printf ' (';;
+	overlay|title|command)	printf ':';;
+	notify|*)		printf ': ';;
+    esac
+}
+getMatchBeforeCount()
+{
+    case "$render" in
+	overlay|title|command)	printf '';;
+	*)			printf 't';;
+    esac
+}
+getCountSuffix()
+{
+    case "$render" in
+	highlight|flash)	printf ')';;
+	overlay|title|command)	printf '';;
+	notify|*)		printf '';;
+    esac
+}
+: ${EXTRACTMATCHES_OVERLAY_JUMP=[s[1;1H}
+: ${EXTRACTMATCHES_OVERLAY_PREFIX=[37;44m[}
+: ${EXTRACTMATCHES_OVERLAY_SEPARATOR=|}
+: ${EXTRACTMATCHES_OVERLAY_SUFFIX=][0m}
+: ${EXTRACTMATCHES_OVERLAY_RETURN=[u}
+case "$TERM" in
+    screen*)
+	: ${EXTRACTMATCHES_TITLE_SET=']2;'}
+	: ${EXTRACTMATCHES_TITLE_FINISH='\'}
+	;;
+    linux)
+	# The Linux kernel console doesn't have a title, as it runs full-screen.
+	printf >&2 'ERROR: Cannot drive terminal title with TERM=%s\n' "$TERM"
+	exit 3
+	;;
+    *)
+	: ${EXTRACTMATCHES_TITLE_SET=']2;'}
+	: ${EXTRACTMATCHES_TITLE_FINISH=''}
+	;;
+esac
+EXEC=exec
+: ${EXTRACTMATCHES_TITLE_PREFIX=[}
+: ${EXTRACTMATCHES_TITLE_SEPARATOR=|}
+: ${EXTRACTMATCHES_TITLE_SUFFIX=]}
+: ${EXTRACTMATCHES_COMMAND_SEPARATOR=|}
+: ${EXTRACTMATCHES_COMMAND_UPDATE_DELAY:=1}
+: ${EXTRACTMATCHES_NOTIFY_SEND:=notify-send}
+: ${EXTRACTMATCHES_NOTIFY_SEPARATOR=, }
+: ${EXTRACTMATCHES_NOTIFY_UPDATE_DELAY:=10}
+: ${EXTRACTMATCHES_FILE_UPDATE_DELAY:=1}
+: ${EXTRACTMATCHES_FILE_PREFIX_EXPR:=}
+: ${EXTRACTMATCHES_FILE_SUFFIX_EXPR:=}
+: ${EXTRACTMATCHES_FILE_CLEAR_MATCH_TEMPLATE='Off: &'}
+: ${EXTRACTMATCHES_FLASH_ON_TIME:=0.1}
+: ${EXTRACTMATCHES_FLASH_OFF_TIME:=0.2}
+: ${EXTRACTMATCHES_FLASH_REPEATS:=3}
+: ${EXTRACTMATCHES_HIGHLIGHT_PREFIX=[07m}
+: ${EXTRACTMATCHES_HIGHLIGHT_SUFFIX=[0m}
+render='highlight'
+skipPattern=
+typeset -a types=()
+typeset -a patterns=()
+typeset -a replacements=()
+typeset -a globals=()
+typeset -a names=()
+typeset -a priorities=()
+isBuffered=t
+reportOrder='compareByKeyArgumentOrder'
+while [ $# -ne 0 ]
+do
+    case "$1" in
+	--help|-h|-\?)	shift; printLongUsage "$0"; exit 0;;
+	--to|-t)	shift; render="$1"; shift;;
+	--skip|-s)	shift; skipPattern="${skipPattern}${skipPattern:+|}${1:?}"; shift;;
+	--regexp|-e)		shift; types+=(regexp); patterns+=("${1:?}"); replacements+=('&'); globals+=(0); names+=('') priorities+=(0); shift;;
+	--count|-c)		shift; types+=(count); patterns+=("${1:?}"); replacements+=('&'); globals+=(0); names+=('') priorities+=(0); shift;;
+	--match-count|-M)	shift; types+=(match-count); patterns+=("${1:?}"); replacements+=('&'); globals+=(0); names+=('') priorities+=(0); shift;;
+	--reset-name)		shift; types+=(reset-name); patterns+=("${1:?}"); replacements+=('&'); globals+=(0); names+=('') priorities+=(0); shift;;
+	--reset|-x)		shift
+				if [ ${#types[@]} -eq 0 ] || [ "${types[-1]}" = reset-name ]; then
+				    echo >&2 "Need -e|--regexp|-c|--count|-M|--match-count PATTERN before passing RESET-PATTERN."
+				    echo >&2
+				    printShortUsage "$0" >&2
+				    exit 2
+				fi
+				types+=(reset); patterns+=("${1:?}"); replacements+=('&'); globals+=("${globals[-1]}"); priorities+=("${priorities[-1]}")
+				if [ "${names[-1]}" ]; then
+				    names+=("${names[-1]}")
+				else
+				    names=("${names[@]:0:$((${#names[@]} - 1))}" "${patterns[-2]}")
+				    names+=("${patterns[-2]}")
+				fi
+				shift
+				;;
+	--replacement|-r)	shift
+				if [ ${#types[@]} -eq 0 ] || [[ "${types[-1]}" = reset?(-name) ]]; then
+				    echo >&2 "Need -e|--regexp|-c|--count|-M|--match-count PATTERN before passing REPLACEMENT."
+				    echo >&2
+				    printShortUsage "$0" >&2
+				    exit 2
+				fi
+				replacements[-1]="$1"
+				shift
+				;;
+	--global|-g)		shift
+				if [ ${#types[@]} -eq 0 ] || [ "${types[-1]}" = reset ]; then
+				    echo >&2 "Need -e|--regexp|-c|--count|-M|--match-count PATTERN before passing -g|--global."
+				    echo >&2
+				    printShortUsage "$0" >&2
+				    exit 2
+				fi
+				globals[-1]=1
+				;;
+	--name|-n)		shift
+				if [ ${#types[@]} -eq 0 ]; then
+				    echo >&2 "Need -e|--regexp|-c|--count|-M|--match-count|--reset-name PATTERN before passing NAME."
+				    echo >&2
+				    printShortUsage "$0" >&2
+				    exit 2
+				fi
+				names[-1]="$1"
+				shift
+				;;
+	--priority|-p)		shift
+				if [ ${#types[@]} -eq 0 ]; then
+				    echo >&2 "Need -e|--regexp|-c|-count|-M|--match-count|--reset-name PATTERN before passing PRIORITY."
+				    echo >&2
+				    printShortUsage "$0" >&2
+				    exit 2
+				elif [[ "$1" != ?(-)+([0-9]) ]]; then
+				    echo >&2 "PRIORITY must be a number."
+				    echo >&2
+				    printShortUsage "$0" >&2
+				    exit 2
+				fi
+				priorities[-1]="$1"
+				shift
+				;;
+	--unbuffered|-u)	shift; isBuffered=;;
+	--report-order|-o)	shift
+				case "$1" in
+				    by-arg)	reportOrder='compareByKeyArgumentOrder';;
+				    count-desc)	reportOrder='compareByCount';;
+				    *)		echo >&2 "ERROR: Invalid report order."
+						echo >&2
+						printShortUsage "$0" >&2
+						exit 2
+						;;
+				esac
+				shift
+				;;
+	--)		shift; break;;
+	-*)		{ echo "ERROR: Unknown option \"$1\"!"; echo; printShortUsage "$0"; } >&2; exit 2;;
+	*)		break;;
+    esac
+done
+if [ ${#types[@]} -eq 0 ]; then
+    echo >&2 'ERROR: No -e|--regexp|-c|--count|-M|--match-count|-x|--reset passed.'
+    echo >&2
+    printShortUsage "$0" >&2
+    exit 2
+fi
+if [ "$render" = 'notify' ]; then
+    if [ -z "$EXTRACTMATCHES_NOTIFY_COMMANDLINE" ] && ! which "$EXTRACTMATCHES_NOTIFY_SEND" > /dev/null 2>&1; then
+	printf >&2 'ERROR: notify-send command (%s) not found.\n' "$EXTRACTMATCHES_NOTIFY_SEND"
+	exit 2
+    fi
+    : ${EXTRACTMATCHES_NOTIFY_COMMANDLINE:="\"$EXTRACTMATCHES_NOTIFY_SEND\"${EXTRACTMATCHES_NOTIFY_ARGUMENTS:+ $EXTRACTMATCHES_NOTIFY_ARGUMENTS} \"extractMatches {FILENAME}:{FNR}\" -- {}"}
+
+    # Reuse the command renderer for notify-send; it has all the generic
+    # functionality to do it.
+    render='command'
+    EXTRACTMATCHES_COMMANDLINE="$EXTRACTMATCHES_NOTIFY_COMMANDLINE"
+    EXTRACTMATCHES_COMMAND_SEPARATOR="$EXTRACTMATCHES_NOTIFY_SEPARATOR"
+    EXTRACTMATCHES_COMMAND_UPDATE_DELAY="$EXTRACTMATCHES_NOTIFY_UPDATE_DELAY"
+fi
+if [ "$render" = 'flash' ] && [ "$isBuffered" ]; then
+    echo >&2 'ERROR: Flash reporting must be combined with --unbuffered.'
+    echo >&2
+    printShortUsage "$0" >&2
+    exit 2
+elif [ "$render" = 'command' ]; then
+    if [ -z "$EXTRACTMATCHES_COMMANDLINE" ]; then
+	echo >&2 'ERROR: Command reporting must define EXTRACTMATCHES_COMMANDLINE.'
+	exit 2
+    fi
+    if [ "$EXTRACTMATCHES_PRE_COMMANDLINE" ]; then
+	eval "$EXTRACTMATCHES_PRE_COMMANDLINE" || exit $?
+    fi
+    if [ "$EXTRACTMATCHES_POST_COMMANDLINE" ]; then
+	EXEC=
+	trap "$EXTRACTMATCHES_POST_COMMANDLINE" EXIT
+    fi
+fi
+replacements+=(''); names+=('')	# Add one empty element so that split() will yield at least one in case of a single empty one.
+: ${EXTRACTMATCHES_COUNT_PREFIX="$(getCountPrefix)"}
+: ${EXTRACTMATCHES_COUNT_SUFFIX="$(getCountSuffix)"}
+: ${EXTRACTMATCHES_MATCH_BEFORE_COUNT="$(getMatchBeforeCount)"}
+
+IFS=$'\n'
+$EXEC awk \
+    -v "render=$render" \
+    -v "isBuffered=$isBuffered" \
+    -v "typeList=${types[*]}" \
+    -v "patternList=${patterns[*]//\\/\\\\}" \
+    -v "replacementList=${replacements[*]//\\/\\\\}" \
+    -v "globalsList=${globals[*]//\\/\\\\}" \
+    -v "nameList=${names[*]//\\/\\\\}" \
+    -v "priorityList=${priorities[*]//\\/\\\\}" \
+    -v "skipPattern=${skipPattern//\\/\\\\}" \
+    -v "reportOrder=${reportOrder//\\/\\\\}" \
+    -v "overlayJump=${EXTRACTMATCHES_OVERLAY_JUMP//\\/\\\\}" \
+    -v "overlayPrefix=${EXTRACTMATCHES_OVERLAY_PREFIX//\\/\\\\}" \
+    -v "overlaySeparator=${EXTRACTMATCHES_OVERLAY_SEPARATOR//\\/\\\\}" \
+    -v "overlaySuffix=${EXTRACTMATCHES_OVERLAY_SUFFIX//\\/\\\\}" \
+    -v "overlayReturn=${EXTRACTMATCHES_OVERLAY_RETURN//\\/\\\\}" \
+    -v "titleSet=${EXTRACTMATCHES_TITLE_SET//\\/\\\\}" \
+    -v "titlePrefix=${EXTRACTMATCHES_TITLE_PREFIX//\\/\\\\}" \
+    -v "titleSeparator=${EXTRACTMATCHES_TITLE_SEPARATOR//\\/\\\\}" \
+    -v "titleSuffix=${EXTRACTMATCHES_TITLE_SUFFIX//\\/\\\\}" \
+    -v "titleFinish=${EXTRACTMATCHES_TITLE_FINISH//\\/\\\\}" \
+    -v "commandSeparator=${EXTRACTMATCHES_COMMAND_SEPARATOR//\\/\\\\}" \
+    -v "commandLine=${EXTRACTMATCHES_COMMANDLINE//\\/\\\\}" \
+    -v "commandUpdateDelay=${EXTRACTMATCHES_COMMAND_UPDATE_DELAY}" \
+    -v "fileUpdateDelay=${EXTRACTMATCHES_FILE_UPDATE_DELAY}" \
+    -v "filePrefixExpr=${EXTRACTMATCHES_FILE_PREFIX_EXPR}" \
+    -v "fileSuffixExpr=${EXTRACTMATCHES_FILE_SUFFIX_EXPR}" \
+    -v "fileClearMatchTemplate=${EXTRACTMATCHES_FILE_CLEAR_MATCH_TEMPLATE//\\/\\\\}" \
+    -v "flashOnTime=${EXTRACTMATCHES_FLASH_ON_TIME}" \
+    -v "flashOffTime=${EXTRACTMATCHES_FLASH_OFF_TIME}" \
+    -v "flashRepeats=${EXTRACTMATCHES_FLASH_REPEATS}" \
+    -v "highlightPrefix=${EXTRACTMATCHES_HIGHLIGHT_PREFIX//\\/\\\\}" \
+    -v "highlightSuffix=${EXTRACTMATCHES_HIGHLIGHT_SUFFIX//\\/\\\\}" \
+    -v "countPrefix=${EXTRACTMATCHES_COUNT_PREFIX//\\/\\\\}" \
+    -v "countSuffix=${EXTRACTMATCHES_COUNT_SUFFIX//\\/\\\\}" \
+    -v "isMatchBeforeCount=${EXTRACTMATCHES_MATCH_BEFORE_COUNT}" \
+'
+BEGIN {
+    FS = "\n"
+
+    N = split(typeList, types)
+    if (split(patternList, patterns) != N) {
+	print "Assert: Mismatch in number of types and patterns." > "/dev/stderr"
+	exit 3
+    }
+    if (split(globalsList, globals) != N) {
+	print "Assert: Mismatch in number of globals and patterns." > "/dev/stderr"
+	exit 3
+    }
+    if (split(replacementList, replacements) != N + 1) {
+	print "Assert: Mismatch in number of replacements and patterns." > "/dev/stderr"
+	exit 3
+    }
+    if (split(nameList, names) != N + 1) {
+	print "Assert: Mismatch in number of names and patterns." > "/dev/stderr"
+	exit 3
+    }
+    if (split(priorityList, priorities) != N) {
+	print "Assert: Mismatch in number of priorities and patterns." > "/dev/stderr"
+	exit 3
+    }
+
+    PROCINFO["sorted_in"] = "@ind_str_asc"
+    delete delayedCounts    # Reify as array; else, the length(delayedCounts) will create it as a scalar instead.
+    delayTime = systime()
+}
+function getKeyMatch(key)
+{
+    return gensub(/^.*-/, "", 1, key)   # XXX: For match-count, both PATTERN and TEXT could contain the dash separator, so the extraction is not perfect here.
+}
+function compareByKeyArgumentOrder(i1, v1, i2, v2,      index1, index2, report1, report2)
+{
+    # Sort first by order of pattern arguments as given on the command-line
+    # (attribute "i"), then by the count report ascending (attribute "report").
+    index1 = v1["i"]
+    index2 = v2["i"]
+    report1 = v1["report"]
+    report2 = v2["report"]
+
+    if (index1 == index2) {
+	return (report1 == report2 ? 0 : report1 > report2 ? 1 : -1)
+    } else {
+	return (index1 == index2 ? 0 : index1 > index2 ? 1 : -1)
+    }
+
+}
+function compareByCount(i1, v1, i2, v2,      count1, count2)
+{
+    # Sort first by count descending, then by count report ascending.
+    count1 = v1["count"]
+    count2 = v2["count"]
+    report1 = v1["report"]
+    report2 = v2["report"]
+
+    if (count1 == count2) {
+	return (report1 == report2 ? 0 : report1 > report2 ? 1 : -1)
+    } else {
+	return (count1 > count2 ? -1 : 1)
+    }
+}
+function multiply(char, count,      tmp, i)
+{
+    for (i = 1; i <= count; ++i) tmp = tmp char
+    return tmp
+}
+function flash(onText, offText,      deleter, i, prefix)
+{
+    deleter = multiply("", length(onText))
+
+    for (i = 0; i < flashRepeats; ++i) {
+	if (i > 0) {
+	    printf "%s%s", deleter, onText
+	    prefix = deleter
+	    fflush()
+	}
+
+	system("sleep " flashOffTime)
+	printf prefix "[07m%s[0m", onText
+	fflush()
+	system("sleep " flashOnTime)
+    }
+    return deleter offText
+}
+function pad(text, padding)
+{
+    return (text == "" ? "" : padding)
+}
+function replace(text, pattern, replacement)
+{
+    return (replacement == "&" ? text : gensub(pattern, replacement, "g", text))
+}
+function resetMatch(key)
+{
+    renderReset(key, matches[key], "regexp")
+    matches[key] = 0
+}
+function resetCount(key)
+{
+    if (key == "") return
+    renderReset(key, counts[key], "count")
+    counts[key] = 0
+}
+function resetMatchCount(key)
+{
+    renderReset(key, matchCounts[key], "match-count")
+    matchCounts[key] = 0
+}
+function resetMatchCounts(key,      tmp)
+{
+    if (key == "") return
+
+    for (tmp in matchCounts) {
+	if (substr(tmp, 1, length(key)) == key) {
+	    resetMatchCount(tmp)
+	}
+    }
+}
+function evaluateShellExpression(expr,      commandLine, commandResult, output)
+{
+    if (expr == "") return ""
+
+    commandLine = "printf %s \"" expr "\""
+    commandResult = commandLine | getline output
+    close(commandLine)
+    if (commandResult == -1) {
+	print "ERROR: Failed to evaluate expression \"" expr "\"." > "/dev/stderr"
+	exit 3
+    }
+    return output
+}
+function writeToFile(text,      prefix, suffix)
+{
+    print evaluateShellExpression(filePrefixExpr) text evaluateShellExpression(fileSuffixExpr) > render
+    if (! isBuffered) fflush(render)
+}
+function preRenderLine()
+{
+    switch (render) {
+	case "overlay":
+	case "title":
+	case "command":
+	case "highlight":
+	    break
+	case "flash":
+	    flashAdditionalWidth = 0
+	    break
+	default:
+	    break
+    }
+}
+function postRenderLine()
+{
+    switch (render) {
+	case "overlay":
+	case "title":
+	case "command":
+	case "highlight":
+	    break
+	case "flash":
+	    if (flashAdditionalWidth > 0) {
+		$0 = $0 multiply(" ", flashAdditionalWidth) multiply("", flashAdditionalWidth)
+	    }
+	default:
+	    if ((fileUpdateDelay < 0 && NR % fileUpdateDelay == 0) || (fileUpdateDelay > 0 && systime() - delayTime >= fileUpdateDelay)) {
+		delayedFileRender()
+	    }
+    }
+}
+function postLine()
+{
+    switch (render) {
+	case "overlay":
+	    delayedOverlayRender()
+	    break
+	case "title":
+	    delayedTitleRender()
+	    break
+	case "command":
+	    if (commandUpdateDelay == 0 || (commandUpdateDelay < 0 && NR % commandUpdateDelay == 0) || (commandUpdateDelay > 0 && systime() - delayTime >= commandUpdateDelay)) {
+		delayedCommandRender()
+	    }
+	    break
+	case "highlight":
+	case "flash":
+	default:
+	    break
+    }
+}
+function delayedRender(resultList,      resultCnt, key, save_sorted_in)
+{
+    if (isMatchBeforeCount && delayedMatch != "") {
+	resultList[++resultCnt] = delayedMatch
+    }
+
+    if (length(delayedCounts) > 0) {
+	save_sorted_in = PROCINFO["sorted_in"]
+	PROCINFO["sorted_in"] = reportOrder
+	for (key in delayedCounts) {
+	    resultList[++resultCnt] = delayedCounts[key]["report"]
+	}
+	PROCINFO["sorted_in"] = save_sorted_in
+    }
+
+    if (! isMatchBeforeCount && delayedMatch != "") {
+	resultList[++resultCnt] = delayedMatch
+    }
+
+    return resultCnt
+}
+function delayedOverlayRender(      resultNum, resultList, i, result)
+{
+    resultNum = delayedRender(resultList)
+    for (i = 1; i <= resultNum; ++i) {
+	result = result (result == "" ? "" : overlaySeparator) resultList[i]
+    }
+    if (result == "") return
+
+    printf "%s%s%s%s%s", overlayJump, overlayPrefix, result, overlaySuffix, overlayReturn
+    if (isBuffered) fflush()	# Flushing will happen for unbuffered output, anyway, but we need this for buffered one as well.
+}
+function delayedTitleRender(      resultNum, resultList, i, result)
+{
+    if (! delayedChange) return
+
+    resultNum = delayedRender(resultList)
+    for (i = 1; i <= resultNum; ++i) {
+	result = result (result == "" ? "" : titleSeparator) resultList[i]
+    }
+    if (result == "") return
+
+    printf "%s%s%s%s%s", titleSet, titlePrefix, result, titleSuffix, titleFinish
+    if (isBuffered) fflush()	# Flushing will happen for unbuffered output, anyway, but we need this for buffered one as well.
+    delayedChange = 0
+}
+function delayedCommandRender(      resultNum, resultList, i, result, reportingCommandLine, commandResult)
+{
+    if (! delayedChange) return
+
+    resultNum = delayedRender(resultList)
+    for (i = 1; i <= resultNum; ++i) {
+	result = result (result == "" ? "" : commandSeparator) resultList[i]
+    }
+    if (result == "") return
+
+    reportingCommandLine = gensub(/\{\}/, "\047" gensub("\047", "\047\\\\\\\\\047\047", "g", result) "\047", "g", commandLine)
+    if (commandLine ~ /\{FILENAME\}/) reportingCommandLine = gensub(/\{FILENAME\}/, FILENAME, "g", reportingCommandLine)
+    if (commandLine ~ /\{FNR\}/) reportingCommandLine = gensub(/\{FNR\}/, FNR, "g", reportingCommandLine)
+
+    if (commandResult = system(reportingCommandLine) != 0) {
+	printf "ERROR: Failed to invoke \"%s\" (%d).\n", reportingCommandLine, commandResult  > "/dev/stderr"
+	exit 3
+    }
+
+    delayedChange = 0
+    delayTime = systime()
+}
+function delayedFileRender(      resultNum, resultList, i)
+{
+    resultNum = delayedRender(resultList)
+
+    # The match / counts have been reported to the file; do not do this again for following lines (only new counts).
+    delayedMatch = ""
+    delete delayedCounts
+
+    for (i = 1; i <= resultNum; ++i) {
+	writeToFile(resultList[i])
+    }
+
+    delayTime = systime()
+}
+function renderMatch(before, text, after)
+{
+    switch (render) {
+	case "overlay":
+	case "title":
+	case "command":
+	    delayedChange = delayedChange || (delayedMatch != text)
+	    delayedMatch = text
+	    break
+	case "highlight":
+	    $0 = before highlightPrefix text highlightSuffix after
+	    break
+	case "flash":
+	    printf "%s", before
+	    $0 = flash(text, text) after
+	    break
+	default:
+	    if (fileUpdateDelay != 0) {
+		delayedMatch = text
+	    } else {
+		writeToFile(text)
+	    }
+    }
+}
+function renderCount(key, before, text, count, after,      tmp)
+{
+    switch (render) {
+	case "overlay":
+	case "title":
+	case "command":
+	    tmp = text countPrefix count countSuffix
+	    delayedChange = delayedChange || (delayedCounts[key]["report"] != tmp)
+	    delayedCounts[key]["i"] = lowestI
+	    delayedCounts[key]["count"] = count
+	    delayedCounts[key]["report"] = tmp
+	    break
+	case "highlight":
+	    $0 = before highlightPrefix text countPrefix count countSuffix highlightSuffix after
+	    break
+	case "flash":
+	    tmp = countPrefix count countSuffix
+	    # Appending the count during the highlighting adds more characters
+	    # to the line. At the end, one instance of those trailing characters
+	    # will remain, as the original line is shorter. To avoid that, add
+	    # (and backspace) filler spaces to the end.
+	    flashAdditionalWidth = length(tmp)
+
+	    printf "%s", before
+	    $0 = flash(text tmp, text) after
+	    break
+	default:
+	    if (fileUpdateDelay != 0) {
+		delayedCounts[key]["i"] = lowestI
+		delayedCounts[key]["count"] = count
+		delayedCounts[key]["report"] = text countPrefix count countSuffix
+	    } else {
+		writeToFile(text countPrefix count countSuffix)
+	    }
+    }
+}
+function renderReset(key, previousCounts, type,      tmp) {
+    if (previousCounts == 0) return
+
+    switch (render) {
+	case "overlay":
+	case "title":
+	case "command":
+	    delayedChange = delayedChange || (delayedMatch != "") || (delayedCounts[key]["report"] != "")
+	    delayedMatch = ""
+	    delete delayedCounts[key]
+	    break
+	case "highlight":
+	    break
+	case "flash":
+	    break
+	default:
+	    if (type != "regexp") {
+		tmp = (type == "count" ? lastCountText[key] : getKeyMatch(key))
+		if (fileUpdateDelay != 0) {
+		    delayedCounts[key]["i"] = lowestI
+		    delayedCounts[key]["count"] = 0
+		    delayedCounts[key]["report"] = tmp countPrefix "0" countSuffix
+		} else {
+		    writeToFile(tmp countPrefix "0" countSuffix)
+		}
+	    } else if (fileClearMatchTemplate != "") {
+		writeToFile(gensub(/.*/, fileClearMatchTemplate, 1, lastMatchText))
+	    }
+    }
+}
+function process(type, start, len, pattern, replacement, name, priority,      key, tmp, namePattern) {
+    switch (type) {
+	case "regexp":
+	case "count":
+	case "match-count":
+	    if (lastPriority != "" && lastPriority > priority) return
+		lastPriority = priority
+	    break
+	case "reset":
+	case "reset-name":
+	    lastPriority = priority - 1
+	    break
+	default:
+	    print "Assert: Invalid type: " type > "/dev/stderr"
+	    exit 3
+    }
+    switch (type) {
+	case "regexp":
+	    tmp = replace(substr($0, start, len), pattern, replacement)
+	    lastMatchText = tmp
+	    key = (name == "" ? pattern : name)
+	    ++matches[key]
+	    renderMatch(substr($0, 1, start - 1), tmp, substr($0, start + len))
+	    break
+	case "count":
+	    tmp = replace(substr($0, start, len), pattern, replacement)
+	    key = (name == "" ? pattern : name)
+	    lastCountText[key] = tmp
+	    renderCount(key, substr($0, 1, start - 1), tmp, (++counts[key]), substr($0, start + len))
+	    break
+	case "match-count":
+	    tmp = replace(substr($0, start, len), pattern, replacement)
+	    key = name pad(name, "-") tmp
+	    renderCount(key, substr($0, 1, start - 1), replace(substr($0, start, len), pattern, replacement), (++matchCounts[key]), substr($0, start + len))
+	    break
+	case "reset":
+	    tmp = (name == "" ? pattern : name)
+	    resetMatch(tmp)
+	    resetCount(tmp)
+	    resetMatchCounts(name)
+	    break
+	case "reset-name":
+	    if (name ~ /^\/.*\/$/) {
+		namePattern = substr(name, 2, length(name) - 2)
+
+		for (tmp in matches) {
+		    if (tmp ~ namePattern) {
+			resetMatch(tmp)
+		    }
+		}
+		for (tmp in counts) {
+		    if (tmp ~ namePattern) {
+			resetCount(tmp)
+		    }
+		}
+		for (tmp in matchCounts) {
+		    if (tmp ~ namePattern) {
+			resetMatchCount(tmp)
+		    }
+		}
+	    } else {
+		resetMatch(name)
+		resetCount(name)
+		resetMatchCounts(name)
+	    }
+	    break
+	default:
+	    print "Assert: Invalid type: " type > "/dev/stderr"
+	    exit 3
+    }
+}
+{
+    preRenderLine()
+
+    if (skipPattern == "" || $0 !~ skipPattern) {
+	delete seen
+	startOffset = 0
+	do {
+	    lowestOffset = length($0)
+	    lowestI = 0
+	    for (i = 1; i <= N; i++) {
+		if (match(substr($0, startOffset + 1), patterns[i])) {
+		    # print "**** matched /" patterns[i] "/ in \"" substr($0, startOffset + RSTART, RLENGTH) "\""
+		    if (seen[i] && ! globals[i]) continue
+
+		    if (startOffset + RSTART < lowestOffset) {
+			lowestOffset = startOffset + RSTART
+			lowestLength = RLENGTH
+			lowestI = i
+		    }
+		}
+	    }
+
+	    if (lowestI == 0) break
+	    # print "**** picked " types[lowestI] " /" patterns[lowestI] "/ in \"" substr($0, lowestOffset, lowestLength) "\""
+
+	    seen[lowestI] = 1
+	    previousLength = length($0)
+	    process(types[lowestI], lowestOffset, lowestLength, patterns[lowestI], replacements[lowestI], names[lowestI], priorities[lowestI])
+	    replacementOffset = length($0) - previousLength
+	    startOffset = lowestOffset + lowestLength - 1 + replacementOffset
+
+	} while (1)
+    }
+
+    postRenderLine()
+    print
+    postLine()
+    if (! isBuffered) fflush()
+}
+END {
+    switch (render) {
+	case "overlay":
+	case "title":
+	case "highlight":
+	case "flash":
+	    break
+	case "command":
+	    delayedCommandRender()
+	    break
+	default:
+	    delayedFileRender()
+    }
+}
+' "$@"
