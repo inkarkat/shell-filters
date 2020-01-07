@@ -267,8 +267,6 @@ elif [ "$render" = 'flash' ] && [ "$isBuffered" ]; then
 elif [ "$render" = 'command' ]; then
     if [ -z "$EXTRACTMATCHES_COMMANDLINE" ]; then
 	echo >&2 'ERROR: Command reporting must define EXTRACTMATCHES_COMMANDLINE.'
-	echo >&2
-	printShortUsage "$0" >&2
 	exit 2
     fi
     if [ "$EXTRACTMATCHES_PRE_COMMANDLINE" ]; then

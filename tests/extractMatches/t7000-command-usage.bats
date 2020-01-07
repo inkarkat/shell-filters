@@ -3,8 +3,7 @@
 @test "error when no command is defined" {
     run extractMatches --to command --regexp fo+
     [ $status -eq 2 ]
-    [ "${lines[0]}" = "ERROR: Command reporting must define EXTRACTMATCHES_COMMANDLINE." ]
-    [ "${lines[1]%% *}" = 'Usage:' ]
+    [ "$output" = "ERROR: Command reporting must define EXTRACTMATCHES_COMMANDLINE." ]
 }
 
 @test "the error from a pre-command failure is returned" {
