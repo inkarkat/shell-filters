@@ -5,7 +5,7 @@ if [ "$RUNS" ]; then
     printf %s\\n "$*" >> "$RUNS"
     exit 0
 fi
-export EXTRACTMATCHES_NOTIFY_SEND="${BASH_SOURCE[0]}"	# Invoke ourselves as the test dummy.
+export EXTRACTMATCHES_NOTIFY_COMMANDLINE="\"${BASH_SOURCE[0]}\" \"extractMatches {FILENAME}\" -- {}"
 export RUNS="${BATS_TMPDIR}/runs"
 
 readonly PREFIX='extractMatches - -- '
