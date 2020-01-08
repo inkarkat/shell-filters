@@ -62,7 +62,7 @@ HELPDESCRIPTION
 			    --regexp|-e:      Clear reporting (potentially of
 					      several instances) via
 					      --reset-name.
-			    --count|-c:       Use NAME instead of PATTERN for
+			    --count|-c:       Prepend NAME- to PATTERN for
 					      keeping counts.
 			    --match-count|-M: Prepend NAME- to the match for
 					      keeping counts.
@@ -188,11 +188,12 @@ do
 				    exit 2
 				fi
 				types+=(reset); patterns+=("${1:?}"); replacements+=('&'); globals+=("${globals[-1]}"); priorities+=("${priorities[-1]}")
+				countPatternAppendix=; [ "${types[-2]}" = count ] && countPatternAppendix="-${patterns[-2]}"
 				if [ "${names[-1]}" ]; then
-				    names+=("${names[-1]}")
+				    names+=("${names[-1]}$countPatternAppendix")
 				else
 				    names=("${names[@]:0:$((${#names[@]} - 1))}" "${patterns[-2]}")
-				    names+=("${patterns[-2]}")
+				    names+=("${patterns[-2]}$countPatternAppendix")
 				fi
 				shift
 				;;
@@ -448,6 +449,14 @@ function resetMatchCount(key)
 {
     renderReset(key, matchCounts[key], "match-count")
     matchCounts[key] = 0
+}
+function resetCounts(key,      tmp)
+{
+    for (tmp in counts) {
+	if (substr(tmp, 1, length(key)) == key) {
+	    resetCount(tmp)
+	}
+    }
 }
 function resetMatchCounts(key,      tmp)
 {
@@ -728,7 +737,7 @@ function process(type, start, len, pattern, replacement, name, priority,      ke
 	    break
 	case "count":
 	    tmp = replace(substr($0, start, len), pattern, replacement)
-	    key = (name == "" ? pattern : name)
+	    key = name pad(name, "-") pattern
 	    lastCountText[key] = tmp
 	    renderCount(key, substr($0, 1, start - 1), tmp, (++counts[key]), substr($0, start + len))
 	    break
@@ -763,7 +772,7 @@ function process(type, start, len, pattern, replacement, name, priority,      ke
 		}
 	    } else {
 		resetMatch(name)
-		resetCount(name)
+		resetCounts(name)
 		resetMatchCounts(name)
 	    }
 	    break

@@ -11,6 +11,7 @@ All simple lines.
 More foooo here.
 Seriously.
 EOF
+echo >&3 \#"$output"
     [ "$output" = "Just some text.
 This has [foo (1)] in it.
 All simple lines.
@@ -27,19 +28,34 @@ EOF
 More [foooo (3)] and [foo (1)] here." ]
 }
 
-@test "two different counts in a line are highlighted" {
+@test "two different counts are reset" {
     run extractMatches --match-count fo+ --global --name foos --reset-name '[Aa]nd' --name foos --match-count '\<\w{4}\>' --global --name fours --reset-name '[Oo]r' --name fours <<-'EOF'
 Or some sexy text.
 This text has foo, or foo and foofoo in it.
-All simple text.
+All more simple text.
 And more foo text here.
 Or foo text.
 EOF
     [ "$output" = "Or [some (1)] [sexy (1)] [text (1)].
 [This (1)] [text (2)] has [foo (1)], or [foo (2)] and [foo (1)][foo (2)] in it.
-All simple [text (1)].
-And [more (1)] [foo (1)] [text (2)] [here (1)].
+All [more (1)] simple [text (1)].
+And [more (2)] [foo (1)] [text (2)] [here (1)].
 Or [foo (2)] [text (1)]." ]
+}
+
+@test "count and match-counts are reset" {
+    run extractMatches --count fo+ --global --name foos --reset-name '[Aa]nd' --name foos --match-count '\<\w{4}\>' --global --name fours --reset-name '[Oo]r' --name fours <<-'EOF'
+Or some sexy text.
+This text has foo, or foo and foofoo in it.
+All more simple text.
+And more foooo text here.
+Or foooooo text.
+EOF
+    [ "$output" = "Or [some (1)] [sexy (1)] [text (1)].
+[This (1)] [text (2)] has [foo (1)], or [foo (2)] and [foo (1)][foo (2)] in it.
+All [more (1)] simple [text (1)].
+And [more (2)] [foooo (1)] [text (2)] [here (1)].
+Or [foooooo (2)] [text (1)]." ]
 }
 
 @test "earlier counts consume those given later" {
