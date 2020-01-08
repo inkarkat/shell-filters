@@ -168,7 +168,7 @@ typeset -a replacements=()
 typeset -a globals=()
 typeset -a names=()
 typeset -a priorities=()
-isBuffered=t
+isBuffered=t; [ -t 1 ] && isBuffered=
 reportOrder='compareByKeyArgumentOrder'
 while [ $# -ne 0 ]
 do
