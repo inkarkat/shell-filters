@@ -14,4 +14,12 @@ case "$1" in
     --help|-h|-\?)	shift; printUsage "$0"; exit 0;;
 esac
 
-exec $EXTRACTMATCHES --count '\<FATAL\>' --count '\<ERROR\>' --count '\<WARN\>' --count '\<INFO\>' --count '\<DEBUG\>' --count '\<TRACE\>' "$@"
+exec $EXTRACTMATCHES \
+    --count '\<FATAL\>' --name levels \
+    --count '\<ERROR\>' --name levels \
+    --count '\<WARN\>' --name levels \
+    --count '\<INFO\>' --name levels \
+    --count '\<DEBUG\>' --name levels \
+    --count '\<TRACE\>' --name levels \
+    --count '\<Starting Application\>' --replacement 'starts' --reset-other levels \
+    "$@"
