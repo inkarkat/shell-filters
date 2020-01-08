@@ -1,8 +1,10 @@
 #!/bin/bash
 
+: ${EXTRACTMATCHES:=extractMatches}
+
 printUsage()
 {
-    extractMatches --help 2>&1 | sed \
+    $EXTRACTMATCHES --help 2>&1 | sed \
 	-e '1s#^.*$#Locate log levels (error, warning, info, etc.) in the input and duplicate their individual counts of occurrences to overlaid text in the terminal / the terminal'\''s window title.#' \
 	-e '2b removeFirstParagraphLoop' \
 	-e '/^\(Usage\|Example\):$/N' -e "/\(^\|\n\)\(Usage\|Example\): */{ s/\(^\|\n\)\(\(Usage\|Example\): *\)\?extractMatches /\1\2$(basename "$1") / }" \
@@ -12,4 +14,4 @@ case "$1" in
     --help|-h|-\?)	shift; printUsage "$0"; exit 0;;
 esac
 
-exec extractMatches --count '\<FATAL\>' --count '\<ERROR\>' --count '\<WARN\>' --count '\<INFO\>' --count '\<DEBUG\>' --count '\<TRACE\>' "$@"
+exec $EXTRACTMATCHES --count '\<FATAL\>' --count '\<ERROR\>' --count '\<WARN\>' --count '\<INFO\>' --count '\<DEBUG\>' --count '\<TRACE\>' "$@"
