@@ -738,9 +738,8 @@ function process(type, start, len, pattern, replacement, name, priority,      ke
 	    renderCount(key, substr($0, 1, start - 1), replace(substr($0, start, len), pattern, replacement), (++matchCounts[key]), substr($0, start + len))
 	    break
 	case "reset":
-	    tmp = (name == "" ? pattern : name)
-	    resetMatch(tmp)
-	    resetCount(tmp)
+	    resetMatch(name)
+	    resetCount(name)
 	    resetMatchCounts(name)
 	    break
 	case "reset-name":
