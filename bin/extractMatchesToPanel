@@ -5,8 +5,10 @@ printUsage()
     extractMatches --help 2>&1 | sed \
 	-e '1s#^.*$#Locate passed PATTERNs in the input and duplicate the last of (or count occurrences of) them to the panel in the terminal'\''s window title, in order to emphasize and persist the information.#' \
 	-e '2b removeFirstParagraphLoop' \
-	-e "/^Usage: /{ s/^\(Usage: \)\?extractMatches /\1$(basename "$1") /; s/\[-t|--to [^]]\+\]// }" \
-	-e b -e :removeFirstParagraphLoop -e '{ /\(^\|\n\)\(Useful\|$\)/{ s/^\(.*\n\)\?//; b; }; N; b removeFirstParagraphLoop }'
+	-e '/^ *--to|-t/b removeOptionLoop' \
+	-e '/^\(Usage\|Example\):$/N' -e "/\(^\|\n\)\(Usage\|Example\): */{ s/\(^\|\n\)\(\(Usage\|Example\): *\)\?extractMatches /\1\2$(basename "$1") /; s/\[-t|--to [^]]\+\]// }" \
+	-e b -e :removeFirstParagraphLoop -e '{ /\(^\|\n\)\(Useful\|$\)/{ s/^\(.*\n\)\?//; b; }; N; b removeFirstParagraphLoop }' \
+	-e b -e :removeOptionLoop -e '{ /\n *--to|-t[^\n]*$/{ N; b removeOptionLoop; }; /\n *--[^\n]*$\|^$/{ s/^\(.*\n\)\?//; b; }; N; b removeOptionLoop }'
 }
 case "$1" in
     --help|-h|-\?)	shift; printUsage "$0"; exit 0;;
