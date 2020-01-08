@@ -11,7 +11,6 @@ All simple lines.
 More foooo here.
 Seriously.
 EOF
-echo >&3 \#"$output"
     [ "$output" = "Just some text.
 This has [foo (1)] in it.
 All simple lines.

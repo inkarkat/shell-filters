@@ -5,7 +5,7 @@ printShortUsage()
 {
     # Note: short followed by long option; if the user knows the short one, she can
     # skim the long one.
-    printf 'Usage: %q %s\n' "$(basename "$1")" '[-u|--unbuffered] [-t|--to overlay|title|command|notify|highlight|flash|FILE] [-s|--skip PATTERN [...]] [-o|-- report-order by-arg|count-desc] (-e|--regexp [-r|--replacement REPLACEMENT] [-g|--global] [-p|--priority N] [-n|--name NAME] [-x|--reset RESET-PATTERN])(-c|--count|-M|--match-count [-r|--replacement REPLACEMENT] [-g|--global] [-p|--priority N] [-n|--name NAME] [-x|--reset RESET-PATTERN])(--reset-name PATTERN [-g|--global] -n|--name NAME|/NAME-PATTERN/) [...] [--] FILE [...][-?|-h|--help]'
+    printf 'Usage: %q %s\n' "$(basename "$1")" '[-u|--unbuffered] [-t|--to overlay|title|command|notify|highlight|flash|FILE] [-s|--skip PATTERN [...]] [-o|--report-order by-arg|count-desc] (-e|--regexp [-r|--replacement REPLACEMENT] [-g|--global] [-p|--priority N] [-n|--name NAME] [-k|--reset-other NAME|/NAME-PATTERN/] [-x|--reset RESET-PATTERN [-k|--reset-other NAME|/NAME-PATTERN/]])(-c|--count|-M|--match-count [-r|--replacement REPLACEMENT] [-g|--global] [-p|--priority N] [-n|--name NAME] [-k|--reset-other NAME|/NAME-PATTERN/] [-x|--reset RESET-PATTERN [-k|--reset-other NAME|/NAME-PATTERN/]])(--reset-name PATTERN [-g|--global] -n|--name NAME|/NAME-PATTERN/) [...] [--] FILE [...][-?|-h|--help]'
 }
 printUsage()
 {
@@ -58,6 +58,11 @@ HELPDESCRIPTION
 			    Clear the reporting / count of matches for PATTERN
 			    when RESET-PATTERN is encountered. This is connected
 			    to the corresponding --regexp|--count|--match-count.
+    --reset-other|-k NAME|/NAME-PATTERN/
+			    Also clear the reporting / count of matches for NAME
+			    or /NAME-PATTERN/ when reporting (or resetting, if
+			    passed after --reset) this match / count. This
+			    affects any other rule through NAME.
     --name|-n NAME	    Tweak the counting / resetting.
 			    --regexp|-e:      Clear reporting (potentially of
 					      several instances) via
@@ -166,6 +171,7 @@ typeset -a types=()
 typeset -a patterns=()
 typeset -a replacements=()
 typeset -a globals=()
+typeset -a others=()
 typeset -a names=()
 typeset -a priorities=()
 isBuffered=t; [ -t 1 ] && isBuffered=
@@ -176,10 +182,10 @@ do
 	--help|-h|-\?)	shift; printLongUsage "$0"; exit 0;;
 	--to|-t)	shift; render="$1"; shift;;
 	--skip|-s)	shift; skipPattern="${skipPattern}${skipPattern:+|}${1:?}"; shift;;
-	--regexp|-e)		shift; types+=(regexp); patterns+=("${1:?}"); replacements+=('&'); globals+=(0); names+=('') priorities+=(0); shift;;
-	--count|-c)		shift; types+=(count); patterns+=("${1:?}"); replacements+=('&'); globals+=(0); names+=('') priorities+=(0); shift;;
-	--match-count|-M)	shift; types+=(match-count); patterns+=("${1:?}"); replacements+=('&'); globals+=(0); names+=('') priorities+=(0); shift;;
-	--reset-name)		shift; types+=(reset-name); patterns+=("${1:?}"); replacements+=('&'); globals+=(0); names+=('') priorities+=(0); shift;;
+	--regexp|-e)		shift; types+=(regexp); patterns+=("${1:?}"); replacements+=('&'); globals+=(0); others+=(''); names+=('') priorities+=(0); shift;;
+	--count|-c)		shift; types+=(count); patterns+=("${1:?}"); replacements+=('&'); globals+=(0); others+=(''); names+=('') priorities+=(0); shift;;
+	--match-count|-M)	shift; types+=(match-count); patterns+=("${1:?}"); replacements+=('&'); globals+=(0); others+=(''); names+=('') priorities+=(0); shift;;
+	--reset-name)		shift; types+=(reset-name); patterns+=("${1:?}"); replacements+=('&'); globals+=(0); others+=(''); names+=('') priorities+=(0); shift;;
 	--reset|-x)		shift
 				if [ ${#types[@]} -eq 0 ] || [ "${types[-1]}" = reset-name ]; then
 				    echo >&2 "Need -e|--regexp|-c|--count|-M|--match-count PATTERN before passing RESET-PATTERN."
@@ -187,7 +193,7 @@ do
 				    printShortUsage "$0" >&2
 				    exit 2
 				fi
-				types+=(reset); patterns+=("${1:?}"); replacements+=('&'); globals+=("${globals[-1]}"); priorities+=("${priorities[-1]}")
+				types+=(reset); patterns+=("${1:?}"); replacements+=('&'); globals+=("${globals[-1]}"); others+=(''); priorities+=("${priorities[-1]}")	# Don't copy reset-other; as a following --reset-other can independently add a trigger for RESET-PATTERN.
 				countPatternAppendix=; [ "${types[-2]}" = count ] && countPatternAppendix="-${patterns[-2]}"
 				if [ "${names[-1]}" ]; then
 				    names+=("${names[-1]}$countPatternAppendix")
@@ -195,6 +201,16 @@ do
 				    names=("${names[@]:0:$((${#names[@]} - 1))}" "${patterns[-2]}")
 				    names+=("${patterns[-2]}$countPatternAppendix")
 				fi
+				shift
+				;;
+	--reset-other|-k)	shift
+				if [ ${#types[@]} -eq 0 ] || [ "${types[-1]}" = reset-name ]; then
+				    echo >&2 "Need -e|--regexp|-c|--count|-M|--match-count PATTERN before passing --reset-other NAME."
+				    echo >&2
+				    printShortUsage "$0" >&2
+				    exit 2
+				fi
+				others[-1]="$1"
 				shift
 				;;
 	--replacement|-r)	shift
@@ -297,7 +313,7 @@ elif [ "$render" = 'command' ]; then
 	trap "$EXTRACTMATCHES_POST_COMMANDLINE" EXIT
     fi
 fi
-replacements+=(''); names+=('')	# Add one empty element so that split() will yield at least one in case of a single empty one.
+replacements+=(''); others+=(''); names+=('')	# Add one empty element so that split() will yield at least one in case of a single empty one.
 : ${EXTRACTMATCHES_COUNT_PREFIX="$(getCountPrefix)"}
 : ${EXTRACTMATCHES_COUNT_SUFFIX="$(getCountSuffix)"}
 : ${EXTRACTMATCHES_MATCH_BEFORE_COUNT="$(getMatchBeforeCount)"}
@@ -310,6 +326,7 @@ $EXEC awk \
     -v "patternList=${patterns[*]//\\/\\\\}" \
     -v "replacementList=${replacements[*]//\\/\\\\}" \
     -v "globalsList=${globals[*]//\\/\\\\}" \
+    -v "othersList=${others[*]//\\/\\\\}" \
     -v "nameList=${names[*]//\\/\\\\}" \
     -v "priorityList=${priorities[*]//\\/\\\\}" \
     -v "skipPattern=${skipPattern//\\/\\\\}" \
@@ -350,6 +367,10 @@ BEGIN {
     }
     if (split(globalsList, globals) != N) {
 	print "Assert: Mismatch in number of globals and patterns." > "/dev/stderr"
+	exit 3
+    }
+    if (split(othersList, others) != N + 1) {
+	print "Assert: Mismatch in number of reset-others and patterns." > "/dev/stderr"
 	exit 3
     }
     if (split(replacementList, replacements) != N + 1) {
@@ -711,7 +732,33 @@ function renderReset(key, previousCounts, type,      tmp) {
 	    }
     }
 }
-function process(type, start, len, pattern, replacement, name, priority,      key, tmp, namePattern) {
+function resetByName(name,      tmp)
+{
+    if (name ~ /^\/.*\/$/) {
+	namePattern = substr(name, 2, length(name) - 2)
+
+	for (tmp in matches) {
+	    if (tmp ~ namePattern) {
+		resetMatch(tmp)
+	    }
+	}
+	for (tmp in counts) {
+	    if (tmp ~ namePattern) {
+		resetCount(tmp)
+	    }
+	}
+	for (tmp in matchCounts) {
+	    if (tmp ~ namePattern) {
+		resetMatchCount(tmp)
+	    }
+	}
+    } else {
+	resetMatch(name)
+	resetCounts(name)
+	resetMatchCounts(name)
+    }
+}
+function process(type, start, len, pattern, replacement, other, name, priority,      key, tmp, namePattern) {
     switch (type) {
 	case "regexp":
 	case "count":
@@ -752,34 +799,14 @@ function process(type, start, len, pattern, replacement, name, priority,      ke
 	    resetMatchCounts(name)
 	    break
 	case "reset-name":
-	    if (name ~ /^\/.*\/$/) {
-		namePattern = substr(name, 2, length(name) - 2)
-
-		for (tmp in matches) {
-		    if (tmp ~ namePattern) {
-			resetMatch(tmp)
-		    }
-		}
-		for (tmp in counts) {
-		    if (tmp ~ namePattern) {
-			resetCount(tmp)
-		    }
-		}
-		for (tmp in matchCounts) {
-		    if (tmp ~ namePattern) {
-			resetMatchCount(tmp)
-		    }
-		}
-	    } else {
-		resetMatch(name)
-		resetCounts(name)
-		resetMatchCounts(name)
-	    }
+	    resetByName(name)
 	    break
 	default:
 	    print "Assert: Invalid type: " type > "/dev/stderr"
 	    exit 3
     }
+
+    if (other != "") resetByName(other)
 }
 {
     preRenderLine()
@@ -806,7 +833,7 @@ function process(type, start, len, pattern, replacement, name, priority,      ke
 
 	    seen[lowestI] = 1
 	    previousLength = length($0)
-	    process(types[lowestI], lowestOffset, lowestLength, patterns[lowestI], replacements[lowestI], names[lowestI], priorities[lowestI])
+	    process(types[lowestI], lowestOffset, lowestLength, patterns[lowestI], replacements[lowestI], others[lowestI], names[lowestI], priorities[lowestI])
 	    replacementOffset = length($0) - previousLength
 	    startOffset = lowestOffset + lowestLength - 1 + replacementOffset
 
