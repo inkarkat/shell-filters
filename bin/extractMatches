@@ -295,6 +295,11 @@ if [ "$render" = 'notify' ]; then
     EXTRACTMATCHES_COMMANDLINE="$EXTRACTMATCHES_NOTIFY_COMMANDLINE"
     EXTRACTMATCHES_COMMAND_SEPARATOR="$EXTRACTMATCHES_NOTIFY_SEPARATOR"
     EXTRACTMATCHES_COMMAND_UPDATE_DELAY="$EXTRACTMATCHES_NOTIFY_UPDATE_DELAY"
+elif [ "$render" = 'title' ]; then
+    render='concatenated'
+    EXTRACTMATCHES_CONCATENATED_SEPARATOR="$EXTRACTMATCHES_TITLE_SEPARATOR"
+    EXTRACTMATCHES_CONCATENATED_PREFIX="${EXTRACTMATCHES_TITLE_SET}${EXTRACTMATCHES_TITLE_PREFIX}"
+    EXTRACTMATCHES_CONCATENATED_SUFFIX="${EXTRACTMATCHES_TITLE_SUFFIX}${EXTRACTMATCHES_TITLE_FINISH}"
 fi
 if [ "$render" = 'flash' ] && [ "$isBuffered" ]; then
     echo >&2 'ERROR: Flash reporting must be combined with --unbuffered.'
@@ -319,8 +324,8 @@ replacements+=(''); others+=(''); names+=('')	# Add one empty element so that sp
 : ${EXTRACTMATCHES_COUNT_SUFFIX="$(getCountSuffix)"}
 : ${EXTRACTMATCHES_MATCH_BEFORE_COUNT="$(getMatchBeforeCount)"}
 file='/dev/stdout'
-case "$render" in
-    overlay|title|highlight|flash|command) ;;
+case "$originalRender" in
+    overlay|title|command|notify|highlight|flash) ;;
     *)	file="$render"; render='file';;
 esac
 
@@ -341,9 +346,9 @@ $EXEC awk \
     -v "overlayPrefix=${EXTRACTMATCHES_OVERLAY_JUMP//\\/\\\\}${EXTRACTMATCHES_OVERLAY_PREFIX//\\/\\\\}" \
     -v "overlaySeparator=${EXTRACTMATCHES_OVERLAY_SEPARATOR//\\/\\\\}" \
     -v "overlaySuffix=${EXTRACTMATCHES_OVERLAY_SUFFIX//\\/\\\\}${EXTRACTMATCHES_OVERLAY_RETURN//\\/\\\\}" \
-    -v "titlePrefix=${EXTRACTMATCHES_TITLE_SET//\\/\\\\}${EXTRACTMATCHES_TITLE_PREFIX//\\/\\\\}" \
-    -v "titleSeparator=${EXTRACTMATCHES_TITLE_SEPARATOR//\\/\\\\}" \
-    -v "titleSuffix=${EXTRACTMATCHES_TITLE_SUFFIX//\\/\\\\}${EXTRACTMATCHES_TITLE_FINISH//\\/\\\\}" \
+    -v "concatenatedPrefix=${EXTRACTMATCHES_CONCATENATED_PREFIX//\\/\\\\}" \
+    -v "concatenatedSeparator=${EXTRACTMATCHES_CONCATENATED_SEPARATOR//\\/\\\\}" \
+    -v "concatenatedSuffix=${EXTRACTMATCHES_CONCATENATED_SUFFIX//\\/\\\\}" \
     -v "commandSeparator=${EXTRACTMATCHES_COMMAND_SEPARATOR//\\/\\\\}" \
     -v "commandLine=${EXTRACTMATCHES_COMMANDLINE//\\/\\\\}" \
     -v "commandUpdateDelay=${EXTRACTMATCHES_COMMAND_UPDATE_DELAY}" \
@@ -514,7 +519,7 @@ function preRenderLine()
 {
     switch (render) {
 	case "overlay":
-	case "title":
+	case "concatenated":
 	case "command":
 	case "highlight":
 	case "file":
@@ -531,7 +536,7 @@ function postRenderLine()
 {
     switch (render) {
 	case "overlay":
-	case "title":
+	case "concatenated":
 	case "command":
 	case "highlight":
 	    break
@@ -555,8 +560,8 @@ function postLine()
 	case "overlay":
 	    delayedOverlayRender()
 	    break
-	case "title":
-	    delayedTitleRender()
+	case "concatenated":
+	    delayedConcatenatedRender()
 	    break
 	case "command":
 	    if (commandUpdateDelay == 0 || (commandUpdateDelay < 0 && NR % commandUpdateDelay == 0) || (commandUpdateDelay > 0 && systime() - delayTime >= commandUpdateDelay)) {
@@ -613,11 +618,11 @@ function delayedOverlayRender()
 {
     writeConcatenatedToFile(overlayPrefix, overlaySeparator, overlaySuffix)
 }
-function delayedTitleRender()
+function delayedConcatenatedRender()
 {
     if (! delayedChange) return
 
-    writeConcatenatedToFile(titlePrefix, titleSeparator, titleSuffix)
+    writeConcatenatedToFile(concatenatedPrefix, concatenatedSeparator, concatenatedSuffix)
 
     delayedChange = 0
 }
@@ -658,7 +663,7 @@ function renderMatch(before, text, after)
 {
     switch (render) {
 	case "overlay":
-	case "title":
+	case "concatenated":
 	case "command":
 	    delayedChange = delayedChange || (delayedMatch != text)
 	    delayedMatch = text
@@ -686,7 +691,7 @@ function renderCount(key, before, text, count, after,      tmp)
 {
     switch (render) {
 	case "overlay":
-	case "title":
+	case "concatenated":
 	case "command":
 	    tmp = text countPrefix count countSuffix
 	    delayedChange = delayedChange || (delayedCounts[key]["report"] != tmp)
@@ -727,7 +732,7 @@ function renderReset(key, previousCounts, type,      tmp) {
 
     switch (render) {
 	case "overlay":
-	case "title":
+	case "concatenated":
 	case "command":
 	    delayedChange = delayedChange || (delayedMatch != "") || (delayedCounts[key]["report"] != "")
 	    delayedMatch = ""
@@ -872,7 +877,7 @@ function process(type, start, len, pattern, replacement, other, name, priority, 
 END {
     switch (render) {
 	case "overlay":
-	case "title":
+	case "concatenated":
 	case "highlight":
 	case "flash":
 	    break
