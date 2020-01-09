@@ -30,11 +30,18 @@ typeset -a levelCounting=(
 [ "$isIncludeWarnings" ] && levelCounting+=(
     --count '\<WARN\>' --name levels
 )
-[ "$isAll" ] && levelCounting+=(
-    --count '\<INFO\>' --name levels
-    --count '\<DEBUG\>' --name levels
-    --count '\<TRACE\>' --name levels
-)
+if [ "$isAll" ]; then
+    levelCounting+=(
+	--count '\<INFO\>' --name levels
+	--count '\<DEBUG\>' --name levels
+	--count '\<TRACE\>' --name levels
+    )
+
+    # As almost every log file line has a loglevel in it, there'll be many
+    # updates, and this will slow down most renderings. Therefore, adjust the
+    # defaults where they would be malignant.
+    [ "$EXTRACTMATCHES_PANEL_UPDATE_DELAY" ] || export EXTRACTMATCHES_PANEL_UPDATE_DELAY=1  # extractMatchesToPanel changes this to 0; undo that.
+fi
 
 exec $EXTRACTMATCHES \
     "${levelCounting[@]}" \
