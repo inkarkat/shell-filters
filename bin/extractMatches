@@ -5,7 +5,7 @@ printShortUsage()
 {
     # Note: short followed by long option; if the user knows the short one, she can
     # skim the long one.
-    printf 'Usage: %q %s\n' "$(basename "$1")" '[-u|--unbuffered] [-t|--to overlay|title|command|notify|highlight|flash|FILE] [-s|--skip PATTERN [...]] [-o|--report-order by-arg|count-desc] (-e|--regexp [-r|--replacement REPLACEMENT] [-g|--global] [-p|--priority N] [-n|--name NAME] [-k|--reset-other NAME|/NAME-PATTERN/] [-x|--reset RESET-PATTERN [-k|--reset-other NAME|/NAME-PATTERN/]])(-c|--count|-M|--match-count [-r|--replacement REPLACEMENT] [-g|--global] [-p|--priority N] [-n|--name NAME] [-k|--reset-other NAME|/NAME-PATTERN/] [-x|--reset RESET-PATTERN [-k|--reset-other NAME|/NAME-PATTERN/]])(--reset-name PATTERN [-g|--global] -n|--name NAME|/NAME-PATTERN/) [...] [--] FILE [...][-?|-h|--help]'
+    printf 'Usage: %q %s\n' "$(basename "$1")" '[-u|--unbuffered] [-q|--quiet] [-y|--summary|-Y|--summary-only] [-t|--to overlay|title|stderr|concatenated|command|notify|highlight|flash|FILE] [-s|--skip PATTERN [...]] [-o|--report-order by-arg|count-desc] (-e|--regexp [-r|--replacement REPLACEMENT] [-g|--global] [-p|--priority N] [-n|--name NAME] [-k|--reset-other NAME|/NAME-PATTERN/] [-x|--reset RESET-PATTERN [-k|--reset-other NAME|/NAME-PATTERN/]])(-c|--count|-M|--match-count [-r|--replacement REPLACEMENT] [-g|--global] [-p|--priority N] [-n|--name NAME] [-k|--reset-other NAME|/NAME-PATTERN/] [-x|--reset RESET-PATTERN [-k|--reset-other NAME|/NAME-PATTERN/]])(--reset-name PATTERN [-g|--global] -n|--name NAME|/NAME-PATTERN/) [...] [--] FILE [...][-?|-h|--help]'
 }
 printUsage()
 {
@@ -33,6 +33,18 @@ HELPDESCRIPTION
 			    terminal.
     --to|-t title	    Report in the terminal's window title via ANSI
 			    escape sequences.
+    --to|-t stderr	    Report as a single concatenated line (like with
+			    overlay and title), but inline to standart error.
+			    Set EXTRACTMATCHES_STDERR_UPDATE_DELAY to the number
+			    of seconds between reports, or to the negative
+			    number of input lines between reports.
+    --to|-t concatenated    Report as a single concatenated line (like with
+			    overlay and title), but inline directly in the
+			    output (or to EXTRACTMATCHES_CONCATENATED_FILE)
+			    whenever there are changes. Set
+			    EXTRACTMATCHES_CONCATENATED_UPDATE_DELAY to the
+			    number of seconds between reports, or to the
+			    negative number of input lines between reports.
     --to|-t command	    Report by invoking EXTRACTMATCHES_COMMANDLINE while
 			    replacing {} with the overlay-like report,
 			    {FILENAME} with the name of the current input file,
@@ -98,6 +110,13 @@ HELPDESCRIPTION
 			    In case the reporting happens only periodically,
 			    sort the number of matches from highest to lowest.
     --unbuffered|-u	    Immediately output each read line.
+    --quiet|-q		    Do not output the input text, just the reporting.
+    --summary|-y	    For stderr, concatenated, command, notify, or file
+			    reporting, only report once at the very end of the
+			    input file(s) instead of continuously.
+    --summary-only|-Y	    For stderr, concatenated, command, notify, or file
+			    reporting, do not print the input text, only the
+			    report after processing all input.
 
 Example:
 HELPTEXT
@@ -106,25 +125,25 @@ HELPTEXT
 
 getCountPrefix()
 {
-    case "$render" in
-	highlight|flash)	printf ' (';;
-	overlay|title|command)	printf ':';;
-	notify|*)		printf ': ';;
+    case "$originalRender" in
+	highlight|flash)				printf ' (';;
+	overlay|title|command|notify)			printf ':';;
+	stderr|concatenated|*)				printf ': ';;
     esac
 }
 getMatchBeforeCount()
 {
-    case "$render" in
-	overlay|title|command)	printf '';;
-	*)			printf 't';;
+    case "$originalRender" in
+	overlay|title|stderr|concatenated|command|notify)   printf '';;
+	highlight|flash|*)				    printf 't';;
     esac
 }
 getCountSuffix()
 {
-    case "$render" in
-	highlight|flash)	printf ')';;
-	overlay|title|command)	printf '';;
-	notify|*)		printf '';;
+    case "$originalRender" in
+	highlight|flash)				printf ')';;
+	overlay|title|stderr|concatenated|command)	printf '';;
+	notify|*)					printf '';;
     esac
 }
 : ${EXTRACTMATCHES_OVERLAY_JUMP=[s[1;1H}
@@ -148,9 +167,18 @@ case "$TERM" in
 	;;
 esac
 EXEC=exec
+: ${EXTRACTMATCHES_TITLE_UPDATE_DELAY:=0}
 : ${EXTRACTMATCHES_TITLE_PREFIX=[}
 : ${EXTRACTMATCHES_TITLE_SEPARATOR=|}
 : ${EXTRACTMATCHES_TITLE_SUFFIX=]}
+: ${EXTRACTMATCHES_STDERR_UPDATE_DELAY:=0}
+: ${EXTRACTMATCHES_STDERR_PREFIX=extracted matches: }
+: ${EXTRACTMATCHES_STDERR_SEPARATOR=, }
+: ${EXTRACTMATCHES_STDERR_SUFFIX=$'\n'}
+: ${EXTRACTMATCHES_CONCATENATED_UPDATE_DELAY:=0}
+: ${EXTRACTMATCHES_CONCATENATED_PREFIX=extracted matches: }
+: ${EXTRACTMATCHES_CONCATENATED_SEPARATOR=, }
+: ${EXTRACTMATCHES_CONCATENATED_SUFFIX=$'\n'}
 : ${EXTRACTMATCHES_COMMAND_SEPARATOR=|}
 : ${EXTRACTMATCHES_COMMAND_UPDATE_DELAY:=1}
 : ${EXTRACTMATCHES_NOTIFY_SEND:=notify-send}
@@ -175,6 +203,7 @@ typeset -a others=()
 typeset -a names=()
 typeset -a priorities=()
 isBuffered=t; [ -t 1 ] && isBuffered=
+isQuiet=
 reportOrder='compareByKeyArgumentOrder'
 while [ $# -ne 0 ]
 do
@@ -258,6 +287,16 @@ do
 				shift
 				;;
 	--unbuffered|-u)	shift; isBuffered=;;
+	--quiet|-q)		shift; isQuiet=t;;
+	--summary-only|-Y)	isQuiet=t
+				;&
+	--summary|-y)		shift
+				EXTRACTMATCHES_STDERR_UPDATE_DELAY=2147483647
+				EXTRACTMATCHES_CONCATENATED_UPDATE_DELAY=2147483647
+				EXTRACTMATCHES_COMMAND_UPDATE_DELAY=2147483647
+				EXTRACTMATCHES_NOTIFY_UPDATE_DELAY=2147483647
+				EXTRACTMATCHES_FILE_UPDATE_DELAY=2147483647
+				;;
 	--report-order|-o)	shift
 				case "$1" in
 				    by-arg)	reportOrder='compareByKeyArgumentOrder';;
@@ -281,6 +320,7 @@ if [ ${#types[@]} -eq 0 ]; then
     printShortUsage "$0" >&2
     exit 2
 fi
+originalRender="$render"
 if [ "$render" = 'notify' ]; then
     if [ -z "$EXTRACTMATCHES_NOTIFY_COMMANDLINE" ] && ! which "$EXTRACTMATCHES_NOTIFY_SEND" > /dev/null 2>&1; then
 	printf >&2 'ERROR: notify-send command (%s) not found.\n' "$EXTRACTMATCHES_NOTIFY_SEND"
@@ -294,6 +334,18 @@ if [ "$render" = 'notify' ]; then
     EXTRACTMATCHES_COMMANDLINE="$EXTRACTMATCHES_NOTIFY_COMMANDLINE"
     EXTRACTMATCHES_COMMAND_SEPARATOR="$EXTRACTMATCHES_NOTIFY_SEPARATOR"
     EXTRACTMATCHES_COMMAND_UPDATE_DELAY="$EXTRACTMATCHES_NOTIFY_UPDATE_DELAY"
+elif [ "$render" = 'title' ]; then
+    render='concatenated'
+    EXTRACTMATCHES_CONCATENATED_UPDATE_DELAY="$EXTRACTMATCHES_TITLE_UPDATE_DELAY"
+    EXTRACTMATCHES_CONCATENATED_SEPARATOR="$EXTRACTMATCHES_TITLE_SEPARATOR"
+    EXTRACTMATCHES_CONCATENATED_PREFIX="${EXTRACTMATCHES_TITLE_SET}${EXTRACTMATCHES_TITLE_PREFIX}"
+    EXTRACTMATCHES_CONCATENATED_SUFFIX="${EXTRACTMATCHES_TITLE_SUFFIX}${EXTRACTMATCHES_TITLE_FINISH}"
+elif [ "$render" = 'stderr' ]; then
+    render='concatenated'
+    EXTRACTMATCHES_CONCATENATED_UPDATE_DELAY="$EXTRACTMATCHES_STDERR_UPDATE_DELAY"
+    EXTRACTMATCHES_CONCATENATED_SEPARATOR="$EXTRACTMATCHES_STDERR_SEPARATOR"
+    EXTRACTMATCHES_CONCATENATED_PREFIX="$EXTRACTMATCHES_STDERR_PREFIX"
+    EXTRACTMATCHES_CONCATENATED_SUFFIX="$EXTRACTMATCHES_STDERR_SUFFIX"
 fi
 if [ "$render" = 'flash' ] && [ "$isBuffered" ]; then
     echo >&2 'ERROR: Flash reporting must be combined with --unbuffered.'
@@ -317,11 +369,22 @@ replacements+=(''); others+=(''); names+=('')	# Add one empty element so that sp
 : ${EXTRACTMATCHES_COUNT_PREFIX="$(getCountPrefix)"}
 : ${EXTRACTMATCHES_COUNT_SUFFIX="$(getCountSuffix)"}
 : ${EXTRACTMATCHES_MATCH_BEFORE_COUNT="$(getMatchBeforeCount)"}
+file='/dev/stdout'
+case "$originalRender" in
+    overlay|title|command|notify|highlight|flash) ;;
+    stderr)
+	file="/dev/stderr";;
+    concatenated)
+	file="${EXTRACTMATCHES_CONCATENATED_FILE:-$file}";;
+    *)	file="$render"; render='file';;
+esac
 
 IFS=$'\n'
 $EXEC awk \
     -v "render=$render" \
+    -v "file=${file//\\/\\\\}" \
     -v "isBuffered=$isBuffered" \
+    -v "isQuiet=$isQuiet" \
     -v "typeList=${types[*]}" \
     -v "patternList=${patterns[*]//\\/\\\\}" \
     -v "replacementList=${replacements[*]//\\/\\\\}" \
@@ -334,9 +397,10 @@ $EXEC awk \
     -v "overlayPrefix=${EXTRACTMATCHES_OVERLAY_JUMP//\\/\\\\}${EXTRACTMATCHES_OVERLAY_PREFIX//\\/\\\\}" \
     -v "overlaySeparator=${EXTRACTMATCHES_OVERLAY_SEPARATOR//\\/\\\\}" \
     -v "overlaySuffix=${EXTRACTMATCHES_OVERLAY_SUFFIX//\\/\\\\}${EXTRACTMATCHES_OVERLAY_RETURN//\\/\\\\}" \
-    -v "titlePrefix=${EXTRACTMATCHES_TITLE_SET//\\/\\\\}${EXTRACTMATCHES_TITLE_PREFIX//\\/\\\\}" \
-    -v "titleSeparator=${EXTRACTMATCHES_TITLE_SEPARATOR//\\/\\\\}" \
-    -v "titleSuffix=${EXTRACTMATCHES_TITLE_SUFFIX//\\/\\\\}${EXTRACTMATCHES_TITLE_FINISH//\\/\\\\}" \
+    -v "concatenatedUpdateDelay=${EXTRACTMATCHES_CONCATENATED_UPDATE_DELAY}" \
+    -v "concatenatedPrefix=${EXTRACTMATCHES_CONCATENATED_PREFIX//\\/\\\\}" \
+    -v "concatenatedSeparator=${EXTRACTMATCHES_CONCATENATED_SEPARATOR//\\/\\\\}" \
+    -v "concatenatedSuffix=${EXTRACTMATCHES_CONCATENATED_SUFFIX//\\/\\\\}" \
     -v "commandSeparator=${EXTRACTMATCHES_COMMAND_SEPARATOR//\\/\\\\}" \
     -v "commandLine=${EXTRACTMATCHES_COMMANDLINE//\\/\\\\}" \
     -v "commandUpdateDelay=${EXTRACTMATCHES_COMMAND_UPDATE_DELAY}" \
@@ -500,29 +564,31 @@ function evaluateShellExpression(expr,      commandLine, commandResult, output)
 }
 function writeToFile(text,      prefix, suffix)
 {
-    print evaluateShellExpression(filePrefixExpr) text evaluateShellExpression(fileSuffixExpr) > render
-    if (! isBuffered) fflush(render)
+    print evaluateShellExpression(filePrefixExpr) text evaluateShellExpression(fileSuffixExpr) > file
+    if (! isBuffered) fflush(file)
 }
 function preRenderLine()
 {
     switch (render) {
 	case "overlay":
-	case "title":
+	case "concatenated":
 	case "command":
 	case "highlight":
+	case "file":
 	    break
 	case "flash":
 	    flashAdditionalWidth = 0
 	    break
 	default:
-	    break
+	    print "Assert: Invalid render: " render > "/dev/stderr"
+	    exit 3
     }
 }
 function postRenderLine()
 {
     switch (render) {
 	case "overlay":
-	case "title":
+	case "concatenated":
 	case "command":
 	case "highlight":
 	    break
@@ -530,10 +596,14 @@ function postRenderLine()
 	    if (flashAdditionalWidth > 0) {
 		$0 = $0 multiply(" ", flashAdditionalWidth) multiply("", flashAdditionalWidth)
 	    }
-	default:
+	case "file":
 	    if ((fileUpdateDelay < 0 && NR % fileUpdateDelay == 0) || (fileUpdateDelay > 0 && systime() - delayTime >= fileUpdateDelay)) {
 		delayedFileRender()
 	    }
+	    break
+	default:
+	    print "Assert: Invalid render: " render > "/dev/stderr"
+	    exit 3
     }
 }
 function postLine()
@@ -542,8 +612,10 @@ function postLine()
 	case "overlay":
 	    delayedOverlayRender()
 	    break
-	case "title":
-	    delayedTitleRender()
+	case "concatenated":
+	    if (concatenatedUpdateDelay == 0 || (concatenatedUpdateDelay < 0 && NR % concatenatedUpdateDelay == 0) || (concatenatedUpdateDelay > 0 && systime() - delayTime >= concatenatedUpdateDelay)) {
+		delayedConcatenatedRender()
+	    }
 	    break
 	case "command":
 	    if (commandUpdateDelay == 0 || (commandUpdateDelay < 0 && NR % commandUpdateDelay == 0) || (commandUpdateDelay > 0 && systime() - delayTime >= commandUpdateDelay)) {
@@ -552,8 +624,11 @@ function postLine()
 	    break
 	case "highlight":
 	case "flash":
-	default:
+	case "file":
 	    break
+	default:
+	    print "Assert: Invalid render: " render > "/dev/stderr"
+	    exit 3
     }
 }
 function delayedRender(resultList,      resultCnt, key, save_sorted_in)
@@ -577,37 +652,40 @@ function delayedRender(resultList,      resultCnt, key, save_sorted_in)
 
     return resultCnt
 }
-function delayedInlineRender(prefix, separator, suffix,      resultNum, resultList, i, result)
+function concatenateResults(separator,      resultNum, resultList, i, result)
 {
     resultNum = delayedRender(resultList)
     for (i = 1; i <= resultNum; ++i) {
 	result = result (result == "" ? "" : separator) resultList[i]
     }
+    return result
+}
+function writeConcatenatedToFile(prefix, separator, suffix,      result)
+{
+    result = concatenateResults(separator)
     if (result == "") return
 
-    printf "%s%s%s", prefix, result, suffix
-    if (isBuffered) fflush()	# Flushing will happen for unbuffered output, anyway, but we need this for buffered one as well.
+    printf "%s%s%s", prefix, result, suffix > file
+    if (isBuffered) fflush(file)	# Flushing will happen for unbuffered output, anyway, but we need this for buffered one as well.
 }
-function delayedOverlayRender(      resultNum, resultList, i, result)
+function delayedOverlayRender()
 {
-    delayedInlineRender(overlayPrefix, overlaySeparator, overlaySuffix)
+    writeConcatenatedToFile(overlayPrefix, overlaySeparator, overlaySuffix)
 }
-function delayedTitleRender(      resultNum, resultList, i, result)
+function delayedConcatenatedRender()
 {
     if (! delayedChange) return
 
-    delayedInlineRender(titlePrefix, titleSeparator, titleSuffix)
+    writeConcatenatedToFile(concatenatedPrefix, concatenatedSeparator, concatenatedSuffix)
 
     delayedChange = 0
+    delayTime = systime()
 }
-function delayedCommandRender(      resultNum, resultList, i, result, reportingCommandLine, commandResult)
+function delayedCommandRender(      result, reportingCommandLine, commandResult)
 {
     if (! delayedChange) return
 
-    resultNum = delayedRender(resultList)
-    for (i = 1; i <= resultNum; ++i) {
-	result = result (result == "" ? "" : commandSeparator) resultList[i]
-    }
+    result = concatenateResults(commandSeparator)
     if (result == "") return
 
     reportingCommandLine = gensub(/\{\}/, "\047" gensub("\047", "\047\\\\\\\\\047\047", "g", result) "\047", "g", commandLine)
@@ -640,7 +718,7 @@ function renderMatch(before, text, after)
 {
     switch (render) {
 	case "overlay":
-	case "title":
+	case "concatenated":
 	case "command":
 	    delayedChange = delayedChange || (delayedMatch != text)
 	    delayedMatch = text
@@ -649,22 +727,32 @@ function renderMatch(before, text, after)
 	    $0 = before highlightPrefix text highlightSuffix after
 	    break
 	case "flash":
-	    printf "%s", before
-	    $0 = flash(text, text) after
+	    if (isQuiet) {
+		printf "%s", flash(text, text)
+		fflush()
+		$0 = after
+	    } else {
+		printf "%s", before
+		$0 = flash(text, text) after
+	    }
 	    break
-	default:
+	case "file":
 	    if (fileUpdateDelay != 0) {
 		delayedMatch = text
 	    } else {
 		writeToFile(text)
 	    }
+	    break
+	default:
+	    print "Assert: Invalid render: " render > "/dev/stderr"
+	    exit 3
     }
 }
 function renderCount(key, before, text, count, after,      tmp)
 {
     switch (render) {
 	case "overlay":
-	case "title":
+	case "concatenated":
 	case "command":
 	    tmp = text countPrefix count countSuffix
 	    delayedChange = delayedChange || (delayedCounts[key]["report"] != tmp)
@@ -683,10 +771,16 @@ function renderCount(key, before, text, count, after,      tmp)
 	    # (and backspace) filler spaces to the end.
 	    flashAdditionalWidth = length(tmp)
 
-	    printf "%s", before
-	    $0 = flash(text tmp, text) after
+	    if (isQuiet) {
+		printf "%s", flash(text tmp, text)
+		fflush()
+		$0 = after
+	    } else {
+		printf "%s", before
+		$0 = flash(text tmp, text) after
+	    }
 	    break
-	default:
+	case "file":
 	    if (fileUpdateDelay != 0) {
 		delayedCounts[key]["i"] = lowestI
 		delayedCounts[key]["count"] = count
@@ -694,6 +788,10 @@ function renderCount(key, before, text, count, after,      tmp)
 	    } else {
 		writeToFile(text countPrefix count countSuffix)
 	    }
+	    break
+	default:
+	    print "Assert: Invalid render: " render > "/dev/stderr"
+	    exit 3
     }
 }
 function renderReset(key, previousCounts, type,      tmp) {
@@ -701,7 +799,7 @@ function renderReset(key, previousCounts, type,      tmp) {
 
     switch (render) {
 	case "overlay":
-	case "title":
+	case "concatenated":
 	case "command":
 	    delayedChange = delayedChange || (delayedMatch != "") || (delayedCounts[key]["report"] != "")
 	    delayedMatch = ""
@@ -711,7 +809,7 @@ function renderReset(key, previousCounts, type,      tmp) {
 	    break
 	case "flash":
 	    break
-	default:
+	case "file":
 	    if (type != "regexp") {
 		tmp = (type == "count" ? lastCountText[key] : getKeyMatch(key))
 		if (fileUpdateDelay != 0) {
@@ -724,6 +822,10 @@ function renderReset(key, previousCounts, type,      tmp) {
 	    } else if (fileClearMatchTemplate != "") {
 		writeToFile(gensub(/.*/, fileClearMatchTemplate, 1, lastMatchText))
 	    }
+	    break
+	default:
+	    print "Assert: Invalid render: " render > "/dev/stderr"
+	    exit 3
     }
 }
 function resetByName(name,      tmp)
@@ -835,22 +937,28 @@ function process(type, start, len, pattern, replacement, other, name, priority, 
     }
 
     postRenderLine()
-    print
+    if (! isQuiet) print
     postLine()
     if (! isBuffered) fflush()
 }
 END {
     switch (render) {
 	case "overlay":
-	case "title":
 	case "highlight":
 	case "flash":
+	    break
+	case "concatenated":
+	    delayedConcatenatedRender()
 	    break
 	case "command":
 	    delayedCommandRender()
 	    break
-	default:
+	case "file":
 	    delayedFileRender()
+	    break
+	default:
+	    print "Assert: Invalid render: " render > "/dev/stderr"
+	    exit 3
     }
 }
 ' "$@"
