@@ -5,7 +5,7 @@ printShortUsage()
 {
     # Note: short followed by long option; if the user knows the short one, she can
     # skim the long one.
-    printf 'Usage: %q %s\n' "$(basename "$1")" '[-u|--unbuffered] [-y|--summary-only] [-t|--to overlay|title|stderr|concatenated|command|notify|highlight|flash|FILE] [-s|--skip PATTERN [...]] [-o|--report-order by-arg|count-desc] (-e|--regexp [-r|--replacement REPLACEMENT] [-g|--global] [-p|--priority N] [-n|--name NAME] [-k|--reset-other NAME|/NAME-PATTERN/] [-x|--reset RESET-PATTERN [-k|--reset-other NAME|/NAME-PATTERN/]])(-c|--count|-M|--match-count [-r|--replacement REPLACEMENT] [-g|--global] [-p|--priority N] [-n|--name NAME] [-k|--reset-other NAME|/NAME-PATTERN/] [-x|--reset RESET-PATTERN [-k|--reset-other NAME|/NAME-PATTERN/]])(--reset-name PATTERN [-g|--global] -n|--name NAME|/NAME-PATTERN/) [...] [--] FILE [...][-?|-h|--help]'
+    printf 'Usage: %q %s\n' "$(basename "$1")" '[-u|--unbuffered] [-y|--summary] [-t|--to overlay|title|stderr|concatenated|command|notify|highlight|flash|FILE] [-s|--skip PATTERN [...]] [-o|--report-order by-arg|count-desc] (-e|--regexp [-r|--replacement REPLACEMENT] [-g|--global] [-p|--priority N] [-n|--name NAME] [-k|--reset-other NAME|/NAME-PATTERN/] [-x|--reset RESET-PATTERN [-k|--reset-other NAME|/NAME-PATTERN/]])(-c|--count|-M|--match-count [-r|--replacement REPLACEMENT] [-g|--global] [-p|--priority N] [-n|--name NAME] [-k|--reset-other NAME|/NAME-PATTERN/] [-x|--reset RESET-PATTERN [-k|--reset-other NAME|/NAME-PATTERN/]])(--reset-name PATTERN [-g|--global] -n|--name NAME|/NAME-PATTERN/) [...] [--] FILE [...][-?|-h|--help]'
 }
 printUsage()
 {
@@ -110,7 +110,7 @@ HELPDESCRIPTION
 			    In case the reporting happens only periodically,
 			    sort the number of matches from highest to lowest.
     --unbuffered|-u	    Immediately output each read line.
-    --summary-only|-y	    For stderr, concatenated, command, notify, or file
+    --summary|-y	    For stderr, concatenated, command, notify, or file
 			    reporting, only report once at the very end of the
 			    input file(s) instead of continuously.
 
@@ -282,7 +282,7 @@ do
 				shift
 				;;
 	--unbuffered|-u)	shift; isBuffered=;;
-	--summary-only|-y)	shift
+	--summary|-y)		shift
 				EXTRACTMATCHES_STDERR_UPDATE_DELAY=2147483647
 				EXTRACTMATCHES_CONCATENATED_UPDATE_DELAY=2147483647
 				EXTRACTMATCHES_COMMAND_UPDATE_DELAY=2147483647

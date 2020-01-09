@@ -1,12 +1,12 @@
 #!/usr/bin/env bats
 
-@test "matches and counts are shown in concatenated line at the end" {
+@test "matches and counts are printed to stderr at the end" {
     input="Just some text.
 This has foo in it.
 All simple lines.
 More foooo here.
 Seriously."
-    run extractMatches --summary-only --to concatenated --regexp fo+ --count '\<\w{4}\>' --global --match-count '\<i\w\>' --global <<<"$input"
+    run extractMatches --unbuffered --summary --to stderr --regexp fo+ --count '\<\w{4}\>' --global --match-count '\<i\w\>' --global <<<"$input"
     [ "$output" = "Just some text.
 This has foo in it.
 All simple lines.
