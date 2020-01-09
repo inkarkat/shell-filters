@@ -5,7 +5,7 @@ printShortUsage()
 {
     # Note: short followed by long option; if the user knows the short one, she can
     # skim the long one.
-    printf 'Usage: %q %s\n' "$(basename "$1")" '[-u|--unbuffered] [-y|--summary] [-t|--to overlay|title|stderr|concatenated|command|notify|highlight|flash|FILE] [-s|--skip PATTERN [...]] [-o|--report-order by-arg|count-desc] (-e|--regexp [-r|--replacement REPLACEMENT] [-g|--global] [-p|--priority N] [-n|--name NAME] [-k|--reset-other NAME|/NAME-PATTERN/] [-x|--reset RESET-PATTERN [-k|--reset-other NAME|/NAME-PATTERN/]])(-c|--count|-M|--match-count [-r|--replacement REPLACEMENT] [-g|--global] [-p|--priority N] [-n|--name NAME] [-k|--reset-other NAME|/NAME-PATTERN/] [-x|--reset RESET-PATTERN [-k|--reset-other NAME|/NAME-PATTERN/]])(--reset-name PATTERN [-g|--global] -n|--name NAME|/NAME-PATTERN/) [...] [--] FILE [...][-?|-h|--help]'
+    printf 'Usage: %q %s\n' "$(basename "$1")" '[-u|--unbuffered] [-q|--quiet] [-y|--summary] [-t|--to overlay|title|stderr|concatenated|command|notify|highlight|flash|FILE] [-s|--skip PATTERN [...]] [-o|--report-order by-arg|count-desc] (-e|--regexp [-r|--replacement REPLACEMENT] [-g|--global] [-p|--priority N] [-n|--name NAME] [-k|--reset-other NAME|/NAME-PATTERN/] [-x|--reset RESET-PATTERN [-k|--reset-other NAME|/NAME-PATTERN/]])(-c|--count|-M|--match-count [-r|--replacement REPLACEMENT] [-g|--global] [-p|--priority N] [-n|--name NAME] [-k|--reset-other NAME|/NAME-PATTERN/] [-x|--reset RESET-PATTERN [-k|--reset-other NAME|/NAME-PATTERN/]])(--reset-name PATTERN [-g|--global] -n|--name NAME|/NAME-PATTERN/) [...] [--] FILE [...][-?|-h|--help]'
 }
 printUsage()
 {
@@ -110,6 +110,7 @@ HELPDESCRIPTION
 			    In case the reporting happens only periodically,
 			    sort the number of matches from highest to lowest.
     --unbuffered|-u	    Immediately output each read line.
+    --quiet|-q		    Do not output the input text, just the reporting.
     --summary|-y	    For stderr, concatenated, command, notify, or file
 			    reporting, only report once at the very end of the
 			    input file(s) instead of continuously.
@@ -199,6 +200,7 @@ typeset -a others=()
 typeset -a names=()
 typeset -a priorities=()
 isBuffered=t; [ -t 1 ] && isBuffered=
+isQuiet=
 reportOrder='compareByKeyArgumentOrder'
 while [ $# -ne 0 ]
 do
@@ -282,6 +284,7 @@ do
 				shift
 				;;
 	--unbuffered|-u)	shift; isBuffered=;;
+	--quiet|-q)		shift; isQuiet=t;;
 	--summary|-y)		shift
 				EXTRACTMATCHES_STDERR_UPDATE_DELAY=2147483647
 				EXTRACTMATCHES_CONCATENATED_UPDATE_DELAY=2147483647
@@ -376,6 +379,7 @@ $EXEC awk \
     -v "render=$render" \
     -v "file=${file//\\/\\\\}" \
     -v "isBuffered=$isBuffered" \
+    -v "isQuiet=$isQuiet" \
     -v "typeList=${types[*]}" \
     -v "patternList=${patterns[*]//\\/\\\\}" \
     -v "replacementList=${replacements[*]//\\/\\\\}" \
@@ -718,8 +722,14 @@ function renderMatch(before, text, after)
 	    $0 = before highlightPrefix text highlightSuffix after
 	    break
 	case "flash":
-	    printf "%s", before
-	    $0 = flash(text, text) after
+	    if (isQuiet) {
+		printf "%s", flash(text, text)
+		fflush()
+		$0 = after
+	    } else {
+		printf "%s", before
+		$0 = flash(text, text) after
+	    }
 	    break
 	case "file":
 	    if (fileUpdateDelay != 0) {
@@ -756,8 +766,14 @@ function renderCount(key, before, text, count, after,      tmp)
 	    # (and backspace) filler spaces to the end.
 	    flashAdditionalWidth = length(tmp)
 
-	    printf "%s", before
-	    $0 = flash(text tmp, text) after
+	    if (isQuiet) {
+		printf "%s", flash(text tmp, text)
+		fflush()
+		$0 = after
+	    } else {
+		printf "%s", before
+		$0 = flash(text tmp, text) after
+	    }
 	    break
 	case "file":
 	    if (fileUpdateDelay != 0) {
@@ -916,7 +932,7 @@ function process(type, start, len, pattern, replacement, other, name, priority, 
     }
 
     postRenderLine()
-    print
+    if (! isQuiet) print
     postLine()
     if (! isBuffered) fflush()
 }
