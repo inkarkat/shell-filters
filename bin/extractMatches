@@ -577,29 +577,27 @@ function delayedRender(resultList,      resultCnt, key, save_sorted_in)
 
     return resultCnt
 }
-function delayedOverlayRender(      resultNum, resultList, i, result)
+function delayedInlineRender(prefix, separator, suffix,      resultNum, resultList, i, result)
 {
     resultNum = delayedRender(resultList)
     for (i = 1; i <= resultNum; ++i) {
-	result = result (result == "" ? "" : overlaySeparator) resultList[i]
+	result = result (result == "" ? "" : separator) resultList[i]
     }
     if (result == "") return
 
-    printf "%s%s%s", overlayPrefix, result, overlaySuffix
+    printf "%s%s%s", prefix, result, suffix
     if (isBuffered) fflush()	# Flushing will happen for unbuffered output, anyway, but we need this for buffered one as well.
+}
+function delayedOverlayRender(      resultNum, resultList, i, result)
+{
+    delayedInlineRender(overlayPrefix, overlaySeparator, overlaySuffix)
 }
 function delayedTitleRender(      resultNum, resultList, i, result)
 {
     if (! delayedChange) return
 
-    resultNum = delayedRender(resultList)
-    for (i = 1; i <= resultNum; ++i) {
-	result = result (result == "" ? "" : titleSeparator) resultList[i]
-    }
-    if (result == "") return
+    delayedInlineRender(titlePrefix, titleSeparator, titleSuffix)
 
-    printf "%s%s%s", titlePrefix, result, titleSuffix
-    if (isBuffered) fflush()	# Flushing will happen for unbuffered output, anyway, but we need this for buffered one as well.
     delayedChange = 0
 }
 function delayedCommandRender(      resultNum, resultList, i, result, reportingCommandLine, commandResult)
