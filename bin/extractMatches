@@ -5,7 +5,7 @@ printShortUsage()
 {
     # Note: short followed by long option; if the user knows the short one, she can
     # skim the long one.
-    printf 'Usage: %q %s\n' "$(basename "$1")" '[-u|--unbuffered] [-q|--quiet] [-y|--summary] [-t|--to overlay|title|stderr|concatenated|command|notify|highlight|flash|FILE] [-s|--skip PATTERN [...]] [-o|--report-order by-arg|count-desc] (-e|--regexp [-r|--replacement REPLACEMENT] [-g|--global] [-p|--priority N] [-n|--name NAME] [-k|--reset-other NAME|/NAME-PATTERN/] [-x|--reset RESET-PATTERN [-k|--reset-other NAME|/NAME-PATTERN/]])(-c|--count|-M|--match-count [-r|--replacement REPLACEMENT] [-g|--global] [-p|--priority N] [-n|--name NAME] [-k|--reset-other NAME|/NAME-PATTERN/] [-x|--reset RESET-PATTERN [-k|--reset-other NAME|/NAME-PATTERN/]])(--reset-name PATTERN [-g|--global] -n|--name NAME|/NAME-PATTERN/) [...] [--] FILE [...][-?|-h|--help]'
+    printf 'Usage: %q %s\n' "$(basename "$1")" '[-u|--unbuffered] [-q|--quiet] [-y|--summary|-Y|--summary-only] [-t|--to overlay|title|stderr|concatenated|command|notify|highlight|flash|FILE] [-s|--skip PATTERN [...]] [-o|--report-order by-arg|count-desc] (-e|--regexp [-r|--replacement REPLACEMENT] [-g|--global] [-p|--priority N] [-n|--name NAME] [-k|--reset-other NAME|/NAME-PATTERN/] [-x|--reset RESET-PATTERN [-k|--reset-other NAME|/NAME-PATTERN/]])(-c|--count|-M|--match-count [-r|--replacement REPLACEMENT] [-g|--global] [-p|--priority N] [-n|--name NAME] [-k|--reset-other NAME|/NAME-PATTERN/] [-x|--reset RESET-PATTERN [-k|--reset-other NAME|/NAME-PATTERN/]])(--reset-name PATTERN [-g|--global] -n|--name NAME|/NAME-PATTERN/) [...] [--] FILE [...][-?|-h|--help]'
 }
 printUsage()
 {
@@ -114,6 +114,9 @@ HELPDESCRIPTION
     --summary|-y	    For stderr, concatenated, command, notify, or file
 			    reporting, only report once at the very end of the
 			    input file(s) instead of continuously.
+    --summary-only|-Y	    For stderr, concatenated, command, notify, or file
+			    reporting, do not print the input text, only the
+			    report after processing all input.
 
 Example:
 HELPTEXT
@@ -285,6 +288,8 @@ do
 				;;
 	--unbuffered|-u)	shift; isBuffered=;;
 	--quiet|-q)		shift; isQuiet=t;;
+	--summary-only|-Y)	isQuiet=t
+				;&
 	--summary|-y)		shift
 				EXTRACTMATCHES_STDERR_UPDATE_DELAY=2147483647
 				EXTRACTMATCHES_CONCATENATED_UPDATE_DELAY=2147483647
