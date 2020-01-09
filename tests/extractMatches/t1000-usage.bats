@@ -73,6 +73,12 @@
     [ "${lines[0]}" = "Need -e|--regexp|-c|--count|-M|--match-count PATTERN before passing RESET-PATTERN." ]
 }
 
+@test "error when reset-other is passed after reset-name" {
+    run extractMatches --reset-name foo --reset-other fox
+    [ $status -eq 2 ]
+    [ "${lines[0]}" = "Need -e|--regexp|-c|--count|-M|--match-count PATTERN before passing --reset-other NAME." ]
+}
+
 @test "error when pattern argument is missing" {
     run extractMatches --regexp
     [ $status -eq 1 ]
