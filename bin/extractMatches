@@ -106,25 +106,25 @@ HELPTEXT
 
 getCountPrefix()
 {
-    case "$render" in
-	highlight|flash)	printf ' (';;
-	overlay|title|command)	printf ':';;
-	notify|*)		printf ': ';;
+    case "$originalRender" in
+	highlight|flash)			printf ' (';;
+	overlay|title|command|notify)		printf ':';;
+	*)					printf ': ';;
     esac
 }
 getMatchBeforeCount()
 {
-    case "$render" in
-	overlay|title|command)	printf '';;
-	*)			printf 't';;
+    case "$originalRender" in
+	overlay|title|command|notify)		printf '';;
+	highlight|flash|*)			printf 't';;
     esac
 }
 getCountSuffix()
 {
-    case "$render" in
-	highlight|flash)	printf ')';;
-	overlay|title|command)	printf '';;
-	notify|*)		printf '';;
+    case "$originalRender" in
+	highlight|flash)			printf ')';;
+	overlay|title|command)			printf '';;
+	notify|*)				printf '';;
     esac
 }
 : ${EXTRACTMATCHES_OVERLAY_JUMP=[s[1;1H}
@@ -281,6 +281,7 @@ if [ ${#types[@]} -eq 0 ]; then
     printShortUsage "$0" >&2
     exit 2
 fi
+originalRender="$render"
 if [ "$render" = 'notify' ]; then
     if [ -z "$EXTRACTMATCHES_NOTIFY_COMMANDLINE" ] && ! which "$EXTRACTMATCHES_NOTIFY_SEND" > /dev/null 2>&1; then
 	printf >&2 'ERROR: notify-send command (%s) not found.\n' "$EXTRACTMATCHES_NOTIFY_SEND"
