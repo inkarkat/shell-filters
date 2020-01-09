@@ -5,7 +5,7 @@ printShortUsage()
 {
     # Note: short followed by long option; if the user knows the short one, she can
     # skim the long one.
-    printf 'Usage: %q %s\n' "$(basename "$1")" '[-u|--unbuffered] [-t|--to overlay|title|concatenated|command|notify|highlight|flash|FILE] [-s|--skip PATTERN [...]] [-o|--report-order by-arg|count-desc] (-e|--regexp [-r|--replacement REPLACEMENT] [-g|--global] [-p|--priority N] [-n|--name NAME] [-k|--reset-other NAME|/NAME-PATTERN/] [-x|--reset RESET-PATTERN [-k|--reset-other NAME|/NAME-PATTERN/]])(-c|--count|-M|--match-count [-r|--replacement REPLACEMENT] [-g|--global] [-p|--priority N] [-n|--name NAME] [-k|--reset-other NAME|/NAME-PATTERN/] [-x|--reset RESET-PATTERN [-k|--reset-other NAME|/NAME-PATTERN/]])(--reset-name PATTERN [-g|--global] -n|--name NAME|/NAME-PATTERN/) [...] [--] FILE [...][-?|-h|--help]'
+    printf 'Usage: %q %s\n' "$(basename "$1")" '[-u|--unbuffered] [-y|--summary-only] [-t|--to overlay|title|concatenated|command|notify|highlight|flash|FILE] [-s|--skip PATTERN [...]] [-o|--report-order by-arg|count-desc] (-e|--regexp [-r|--replacement REPLACEMENT] [-g|--global] [-p|--priority N] [-n|--name NAME] [-k|--reset-other NAME|/NAME-PATTERN/] [-x|--reset RESET-PATTERN [-k|--reset-other NAME|/NAME-PATTERN/]])(-c|--count|-M|--match-count [-r|--replacement REPLACEMENT] [-g|--global] [-p|--priority N] [-n|--name NAME] [-k|--reset-other NAME|/NAME-PATTERN/] [-x|--reset RESET-PATTERN [-k|--reset-other NAME|/NAME-PATTERN/]])(--reset-name PATTERN [-g|--global] -n|--name NAME|/NAME-PATTERN/) [...] [--] FILE [...][-?|-h|--help]'
 }
 printUsage()
 {
@@ -105,6 +105,9 @@ HELPDESCRIPTION
 			    In case the reporting happens only periodically,
 			    sort the number of matches from highest to lowest.
     --unbuffered|-u	    Immediately output each read line.
+    --summary-only|-y	    For concatenated, command, notify, or file
+			    reporting, only report once at the very end of the
+			    input file(s) instead of continuously.
 
 Example:
 HELPTEXT
@@ -269,6 +272,12 @@ do
 				shift
 				;;
 	--unbuffered|-u)	shift; isBuffered=;;
+	--summary-only|-y)	shift
+				EXTRACTMATCHES_CONCATENATED_UPDATE_DELAY=2147483647
+				EXTRACTMATCHES_COMMAND_UPDATE_DELAY=2147483647
+				EXTRACTMATCHES_NOTIFY_UPDATE_DELAY=2147483647
+				EXTRACTMATCHES_FILE_UPDATE_DELAY=2147483647
+				;;
 	--report-order|-o)	shift
 				case "$1" in
 				    by-arg)	reportOrder='compareByKeyArgumentOrder';;
