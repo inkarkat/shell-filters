@@ -77,8 +77,8 @@ HELPDESCRIPTION
     --replacement|-r REPLACEMENT
 			    Use REPLACEMENT (that can refer to PATTERN capture
 			    groups via \1 etc.) instead of the original match
-			    (for reporting with --regexp, for counting with
-			    --match-count)
+			    (for reporting with --regexp and --count, for
+			    counting with --match-count)
     --global|-g		    Report / count all occurrences of PATTERN in a line,
 			    not just the first one.
     --priority|-p N	    Only report the match / count if previous one(s) had
