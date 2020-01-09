@@ -317,10 +317,16 @@ replacements+=(''); others+=(''); names+=('')	# Add one empty element so that sp
 : ${EXTRACTMATCHES_COUNT_PREFIX="$(getCountPrefix)"}
 : ${EXTRACTMATCHES_COUNT_SUFFIX="$(getCountSuffix)"}
 : ${EXTRACTMATCHES_MATCH_BEFORE_COUNT="$(getMatchBeforeCount)"}
+file='/dev/stdout'
+case "$render" in
+    overlay|title|highlight|flash|command) ;;
+    *)	file="$render"; render='file';;
+esac
 
 IFS=$'\n'
 $EXEC awk \
     -v "render=$render" \
+    -v "file=${file//\\/\\\\}" \
     -v "isBuffered=$isBuffered" \
     -v "typeList=${types[*]}" \
     -v "patternList=${patterns[*]//\\/\\\\}" \
@@ -500,8 +506,8 @@ function evaluateShellExpression(expr,      commandLine, commandResult, output)
 }
 function writeToFile(text,      prefix, suffix)
 {
-    print evaluateShellExpression(filePrefixExpr) text evaluateShellExpression(fileSuffixExpr) > render
-    if (! isBuffered) fflush(render)
+    print evaluateShellExpression(filePrefixExpr) text evaluateShellExpression(fileSuffixExpr) > file
+    if (! isBuffered) fflush(file)
 }
 function preRenderLine()
 {
@@ -510,12 +516,14 @@ function preRenderLine()
 	case "title":
 	case "command":
 	case "highlight":
+	case "file":
 	    break
 	case "flash":
 	    flashAdditionalWidth = 0
 	    break
 	default:
-	    break
+	    print "Assert: Invalid render: " render > "/dev/stderr"
+	    exit 3
     }
 }
 function postRenderLine()
@@ -530,10 +538,14 @@ function postRenderLine()
 	    if (flashAdditionalWidth > 0) {
 		$0 = $0 multiply(" ", flashAdditionalWidth) multiply("", flashAdditionalWidth)
 	    }
-	default:
+	case "file":
 	    if ((fileUpdateDelay < 0 && NR % fileUpdateDelay == 0) || (fileUpdateDelay > 0 && systime() - delayTime >= fileUpdateDelay)) {
 		delayedFileRender()
 	    }
+	    break
+	default:
+	    print "Assert: Invalid render: " render > "/dev/stderr"
+	    exit 3
     }
 }
 function postLine()
@@ -552,8 +564,11 @@ function postLine()
 	    break
 	case "highlight":
 	case "flash":
-	default:
+	case "file":
 	    break
+	default:
+	    print "Assert: Invalid render: " render > "/dev/stderr"
+	    exit 3
     }
 }
 function delayedRender(resultList,      resultCnt, key, save_sorted_in)
@@ -654,12 +669,16 @@ function renderMatch(before, text, after)
 	    printf "%s", before
 	    $0 = flash(text, text) after
 	    break
-	default:
+	case "file":
 	    if (fileUpdateDelay != 0) {
 		delayedMatch = text
 	    } else {
 		writeToFile(text)
 	    }
+	    break
+	default:
+	    print "Assert: Invalid render: " render > "/dev/stderr"
+	    exit 3
     }
 }
 function renderCount(key, before, text, count, after,      tmp)
@@ -688,7 +707,7 @@ function renderCount(key, before, text, count, after,      tmp)
 	    printf "%s", before
 	    $0 = flash(text tmp, text) after
 	    break
-	default:
+	case "file":
 	    if (fileUpdateDelay != 0) {
 		delayedCounts[key]["i"] = lowestI
 		delayedCounts[key]["count"] = count
@@ -696,6 +715,10 @@ function renderCount(key, before, text, count, after,      tmp)
 	    } else {
 		writeToFile(text countPrefix count countSuffix)
 	    }
+	    break
+	default:
+	    print "Assert: Invalid render: " render > "/dev/stderr"
+	    exit 3
     }
 }
 function renderReset(key, previousCounts, type,      tmp) {
@@ -713,7 +736,7 @@ function renderReset(key, previousCounts, type,      tmp) {
 	    break
 	case "flash":
 	    break
-	default:
+	case "file":
 	    if (type != "regexp") {
 		tmp = (type == "count" ? lastCountText[key] : getKeyMatch(key))
 		if (fileUpdateDelay != 0) {
@@ -726,6 +749,10 @@ function renderReset(key, previousCounts, type,      tmp) {
 	    } else if (fileClearMatchTemplate != "") {
 		writeToFile(gensub(/.*/, fileClearMatchTemplate, 1, lastMatchText))
 	    }
+	    break
+	default:
+	    print "Assert: Invalid render: " render > "/dev/stderr"
+	    exit 3
     }
 }
 function resetByName(name,      tmp)
@@ -851,8 +878,12 @@ END {
 	case "command":
 	    delayedCommandRender()
 	    break
-	default:
+	case "file":
 	    delayedFileRender()
+	    break
+	default:
+	    print "Assert: Invalid render: " render > "/dev/stderr"
+	    exit 3
     }
 }
 ' "$@"
