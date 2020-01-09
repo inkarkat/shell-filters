@@ -36,7 +36,10 @@ HELPDESCRIPTION
     --to|-t concatenated    Report as a single concatenated line (like with
 			    overlay and title), but inline directly in the
 			    output (or to EXTRACTMATCHES_CONCATENATED_FILE)
-			    whenever there are changes.
+			    whenever there are changes. Set
+			    EXTRACTMATCHES_CONCATENATED_UPDATE_DELAY to the
+			    number of seconds between reports, or to the
+			    negative number of input lines between reports.
     --to|-t command	    Report by invoking EXTRACTMATCHES_COMMANDLINE while
 			    replacing {} with the overlay-like report,
 			    {FILENAME} with the name of the current input file,
@@ -155,6 +158,7 @@ EXEC=exec
 : ${EXTRACTMATCHES_TITLE_PREFIX=[}
 : ${EXTRACTMATCHES_TITLE_SEPARATOR=|}
 : ${EXTRACTMATCHES_TITLE_SUFFIX=]}
+: ${EXTRACTMATCHES_CONCATENATED_UPDATE_DELAY:=0}
 : ${EXTRACTMATCHES_CONCATENATED_PREFIX=extracted matches: }
 : ${EXTRACTMATCHES_CONCATENATED_SEPARATOR=, }
 : ${EXTRACTMATCHES_CONCATENATED_SUFFIX=$'\n'}
@@ -355,6 +359,7 @@ $EXEC awk \
     -v "overlayPrefix=${EXTRACTMATCHES_OVERLAY_JUMP//\\/\\\\}${EXTRACTMATCHES_OVERLAY_PREFIX//\\/\\\\}" \
     -v "overlaySeparator=${EXTRACTMATCHES_OVERLAY_SEPARATOR//\\/\\\\}" \
     -v "overlaySuffix=${EXTRACTMATCHES_OVERLAY_SUFFIX//\\/\\\\}${EXTRACTMATCHES_OVERLAY_RETURN//\\/\\\\}" \
+    -v "concatenatedUpdateDelay=${EXTRACTMATCHES_CONCATENATED_UPDATE_DELAY}" \
     -v "concatenatedPrefix=${EXTRACTMATCHES_CONCATENATED_PREFIX//\\/\\\\}" \
     -v "concatenatedSeparator=${EXTRACTMATCHES_CONCATENATED_SEPARATOR//\\/\\\\}" \
     -v "concatenatedSuffix=${EXTRACTMATCHES_CONCATENATED_SUFFIX//\\/\\\\}" \
@@ -570,7 +575,9 @@ function postLine()
 	    delayedOverlayRender()
 	    break
 	case "concatenated":
-	    delayedConcatenatedRender()
+	    if (concatenatedUpdateDelay == 0 || (concatenatedUpdateDelay < 0 && NR % concatenatedUpdateDelay == 0) || (concatenatedUpdateDelay > 0 && systime() - delayTime >= concatenatedUpdateDelay)) {
+		delayedConcatenatedRender()
+	    }
 	    break
 	case "command":
 	    if (commandUpdateDelay == 0 || (commandUpdateDelay < 0 && NR % commandUpdateDelay == 0) || (commandUpdateDelay > 0 && systime() - delayTime >= commandUpdateDelay)) {
@@ -634,6 +641,7 @@ function delayedConcatenatedRender()
     writeConcatenatedToFile(concatenatedPrefix, concatenatedSeparator, concatenatedSuffix)
 
     delayedChange = 0
+    delayTime = systime()
 }
 function delayedCommandRender(      result, reportingCommandLine, commandResult)
 {
@@ -886,9 +894,11 @@ function process(type, start, len, pattern, replacement, other, name, priority, 
 END {
     switch (render) {
 	case "overlay":
-	case "concatenated":
 	case "highlight":
 	case "flash":
+	    break
+	case "concatenated":
+	    delayedConcatenatedRender()
 	    break
 	case "command":
 	    delayedCommandRender()
