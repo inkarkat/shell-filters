@@ -331,16 +331,12 @@ $EXEC awk \
     -v "priorityList=${priorities[*]//\\/\\\\}" \
     -v "skipPattern=${skipPattern//\\/\\\\}" \
     -v "reportOrder=${reportOrder//\\/\\\\}" \
-    -v "overlayJump=${EXTRACTMATCHES_OVERLAY_JUMP//\\/\\\\}" \
-    -v "overlayPrefix=${EXTRACTMATCHES_OVERLAY_PREFIX//\\/\\\\}" \
+    -v "overlayPrefix=${EXTRACTMATCHES_OVERLAY_JUMP//\\/\\\\}${EXTRACTMATCHES_OVERLAY_PREFIX//\\/\\\\}" \
     -v "overlaySeparator=${EXTRACTMATCHES_OVERLAY_SEPARATOR//\\/\\\\}" \
-    -v "overlaySuffix=${EXTRACTMATCHES_OVERLAY_SUFFIX//\\/\\\\}" \
-    -v "overlayReturn=${EXTRACTMATCHES_OVERLAY_RETURN//\\/\\\\}" \
-    -v "titleSet=${EXTRACTMATCHES_TITLE_SET//\\/\\\\}" \
-    -v "titlePrefix=${EXTRACTMATCHES_TITLE_PREFIX//\\/\\\\}" \
+    -v "overlaySuffix=${EXTRACTMATCHES_OVERLAY_SUFFIX//\\/\\\\}${EXTRACTMATCHES_OVERLAY_RETURN//\\/\\\\}" \
+    -v "titlePrefix=${EXTRACTMATCHES_TITLE_SET//\\/\\\\}${EXTRACTMATCHES_TITLE_PREFIX//\\/\\\\}" \
     -v "titleSeparator=${EXTRACTMATCHES_TITLE_SEPARATOR//\\/\\\\}" \
-    -v "titleSuffix=${EXTRACTMATCHES_TITLE_SUFFIX//\\/\\\\}" \
-    -v "titleFinish=${EXTRACTMATCHES_TITLE_FINISH//\\/\\\\}" \
+    -v "titleSuffix=${EXTRACTMATCHES_TITLE_SUFFIX//\\/\\\\}${EXTRACTMATCHES_TITLE_FINISH//\\/\\\\}" \
     -v "commandSeparator=${EXTRACTMATCHES_COMMAND_SEPARATOR//\\/\\\\}" \
     -v "commandLine=${EXTRACTMATCHES_COMMANDLINE//\\/\\\\}" \
     -v "commandUpdateDelay=${EXTRACTMATCHES_COMMAND_UPDATE_DELAY}" \
@@ -589,7 +585,7 @@ function delayedOverlayRender(      resultNum, resultList, i, result)
     }
     if (result == "") return
 
-    printf "%s%s%s%s%s", overlayJump, overlayPrefix, result, overlaySuffix, overlayReturn
+    printf "%s%s%s", overlayPrefix, result, overlaySuffix
     if (isBuffered) fflush()	# Flushing will happen for unbuffered output, anyway, but we need this for buffered one as well.
 }
 function delayedTitleRender(      resultNum, resultList, i, result)
@@ -602,7 +598,7 @@ function delayedTitleRender(      resultNum, resultList, i, result)
     }
     if (result == "") return
 
-    printf "%s%s%s%s%s", titleSet, titlePrefix, result, titleSuffix, titleFinish
+    printf "%s%s%s", titlePrefix, result, titleSuffix
     if (isBuffered) fflush()	# Flushing will happen for unbuffered output, anyway, but we need this for buffered one as well.
     delayedChange = 0
 }
