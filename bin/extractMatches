@@ -5,7 +5,7 @@ printShortUsage()
 {
     # Note: short followed by long option; if the user knows the short one, she can
     # skim the long one.
-    printf 'Usage: %q %s\n' "$(basename "$1")" '[-u|--unbuffered] [-y|--summary-only] [-t|--to overlay|title|concatenated|command|notify|highlight|flash|FILE] [-s|--skip PATTERN [...]] [-o|--report-order by-arg|count-desc] (-e|--regexp [-r|--replacement REPLACEMENT] [-g|--global] [-p|--priority N] [-n|--name NAME] [-k|--reset-other NAME|/NAME-PATTERN/] [-x|--reset RESET-PATTERN [-k|--reset-other NAME|/NAME-PATTERN/]])(-c|--count|-M|--match-count [-r|--replacement REPLACEMENT] [-g|--global] [-p|--priority N] [-n|--name NAME] [-k|--reset-other NAME|/NAME-PATTERN/] [-x|--reset RESET-PATTERN [-k|--reset-other NAME|/NAME-PATTERN/]])(--reset-name PATTERN [-g|--global] -n|--name NAME|/NAME-PATTERN/) [...] [--] FILE [...][-?|-h|--help]'
+    printf 'Usage: %q %s\n' "$(basename "$1")" '[-u|--unbuffered] [-y|--summary-only] [-t|--to overlay|title|stderr|concatenated|command|notify|highlight|flash|FILE] [-s|--skip PATTERN [...]] [-o|--report-order by-arg|count-desc] (-e|--regexp [-r|--replacement REPLACEMENT] [-g|--global] [-p|--priority N] [-n|--name NAME] [-k|--reset-other NAME|/NAME-PATTERN/] [-x|--reset RESET-PATTERN [-k|--reset-other NAME|/NAME-PATTERN/]])(-c|--count|-M|--match-count [-r|--replacement REPLACEMENT] [-g|--global] [-p|--priority N] [-n|--name NAME] [-k|--reset-other NAME|/NAME-PATTERN/] [-x|--reset RESET-PATTERN [-k|--reset-other NAME|/NAME-PATTERN/]])(--reset-name PATTERN [-g|--global] -n|--name NAME|/NAME-PATTERN/) [...] [--] FILE [...][-?|-h|--help]'
 }
 printUsage()
 {
@@ -33,6 +33,11 @@ HELPDESCRIPTION
 			    terminal.
     --to|-t title	    Report in the terminal's window title via ANSI
 			    escape sequences.
+    --to|-t stderr	    Report as a single concatenated line (like with
+			    overlay and title), but inline to standart error.
+			    Set EXTRACTMATCHES_STDERR_UPDATE_DELAY to the number
+			    of seconds between reports, or to the negative
+			    number of input lines between reports.
     --to|-t concatenated    Report as a single concatenated line (like with
 			    overlay and title), but inline directly in the
 			    output (or to EXTRACTMATCHES_CONCATENATED_FILE)
@@ -105,7 +110,7 @@ HELPDESCRIPTION
 			    In case the reporting happens only periodically,
 			    sort the number of matches from highest to lowest.
     --unbuffered|-u	    Immediately output each read line.
-    --summary-only|-y	    For concatenated, command, notify, or file
+    --summary-only|-y	    For stderr, concatenated, command, notify, or file
 			    reporting, only report once at the very end of the
 			    input file(s) instead of continuously.
 
@@ -119,21 +124,21 @@ getCountPrefix()
     case "$originalRender" in
 	highlight|flash)				printf ' (';;
 	overlay|title|command|notify)			printf ':';;
-	concatenated|*)					printf ': ';;
+	stderr|concatenated|*)				printf ': ';;
     esac
 }
 getMatchBeforeCount()
 {
     case "$originalRender" in
-	overlay|title|concatenated|command|notify)	printf '';;
-	highlight|flash|*)				printf 't';;
+	overlay|title|stderr|concatenated|command|notify)   printf '';;
+	highlight|flash|*)				    printf 't';;
     esac
 }
 getCountSuffix()
 {
     case "$originalRender" in
 	highlight|flash)				printf ')';;
-	overlay|title|concatenated|command)		printf '';;
+	overlay|title|stderr|concatenated|command)	printf '';;
 	notify|*)					printf '';;
     esac
 }
@@ -158,9 +163,14 @@ case "$TERM" in
 	;;
 esac
 EXEC=exec
+: ${EXTRACTMATCHES_TITLE_UPDATE_DELAY:=0}
 : ${EXTRACTMATCHES_TITLE_PREFIX=[}
 : ${EXTRACTMATCHES_TITLE_SEPARATOR=|}
 : ${EXTRACTMATCHES_TITLE_SUFFIX=]}
+: ${EXTRACTMATCHES_STDERR_UPDATE_DELAY:=0}
+: ${EXTRACTMATCHES_STDERR_PREFIX=extracted matches: }
+: ${EXTRACTMATCHES_STDERR_SEPARATOR=, }
+: ${EXTRACTMATCHES_STDERR_SUFFIX=$'\n'}
 : ${EXTRACTMATCHES_CONCATENATED_UPDATE_DELAY:=0}
 : ${EXTRACTMATCHES_CONCATENATED_PREFIX=extracted matches: }
 : ${EXTRACTMATCHES_CONCATENATED_SEPARATOR=, }
@@ -273,6 +283,7 @@ do
 				;;
 	--unbuffered|-u)	shift; isBuffered=;;
 	--summary-only|-y)	shift
+				EXTRACTMATCHES_STDERR_UPDATE_DELAY=2147483647
 				EXTRACTMATCHES_CONCATENATED_UPDATE_DELAY=2147483647
 				EXTRACTMATCHES_COMMAND_UPDATE_DELAY=2147483647
 				EXTRACTMATCHES_NOTIFY_UPDATE_DELAY=2147483647
@@ -317,9 +328,16 @@ if [ "$render" = 'notify' ]; then
     EXTRACTMATCHES_COMMAND_UPDATE_DELAY="$EXTRACTMATCHES_NOTIFY_UPDATE_DELAY"
 elif [ "$render" = 'title' ]; then
     render='concatenated'
+    EXTRACTMATCHES_CONCATENATED_UPDATE_DELAY="$EXTRACTMATCHES_TITLE_UPDATE_DELAY"
     EXTRACTMATCHES_CONCATENATED_SEPARATOR="$EXTRACTMATCHES_TITLE_SEPARATOR"
     EXTRACTMATCHES_CONCATENATED_PREFIX="${EXTRACTMATCHES_TITLE_SET}${EXTRACTMATCHES_TITLE_PREFIX}"
     EXTRACTMATCHES_CONCATENATED_SUFFIX="${EXTRACTMATCHES_TITLE_SUFFIX}${EXTRACTMATCHES_TITLE_FINISH}"
+elif [ "$render" = 'stderr' ]; then
+    render='concatenated'
+    EXTRACTMATCHES_CONCATENATED_UPDATE_DELAY="$EXTRACTMATCHES_STDERR_UPDATE_DELAY"
+    EXTRACTMATCHES_CONCATENATED_SEPARATOR="$EXTRACTMATCHES_STDERR_SEPARATOR"
+    EXTRACTMATCHES_CONCATENATED_PREFIX="$EXTRACTMATCHES_STDERR_PREFIX"
+    EXTRACTMATCHES_CONCATENATED_SUFFIX="$EXTRACTMATCHES_STDERR_SUFFIX"
 fi
 if [ "$render" = 'flash' ] && [ "$isBuffered" ]; then
     echo >&2 'ERROR: Flash reporting must be combined with --unbuffered.'
@@ -346,6 +364,8 @@ replacements+=(''); others+=(''); names+=('')	# Add one empty element so that sp
 file='/dev/stdout'
 case "$originalRender" in
     overlay|title|command|notify|highlight|flash) ;;
+    stderr)
+	file="/dev/stderr";;
     concatenated)
 	file="${EXTRACTMATCHES_CONCATENATED_FILE:-$file}";;
     *)	file="$render"; render='file';;
