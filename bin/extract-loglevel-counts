@@ -5,21 +5,38 @@
 printUsage()
 {
     $EXTRACTMATCHES --help 2>&1 | sed \
-	-e '1s#^.*$#Locate log levels (error, warning, info, etc.) in the input and duplicate their individual counts of occurrences to overlaid text in the terminal / the terminal'\''s window title.#' \
+	-e '1s#^.*$#Locate problematic log levels (fatal, error, warning (unless --no-warnings is given); with -a|--all also info, debug, trace) in the input and duplicate their individual counts of occurrences to overlaid text in the terminal / the terminal'\''s window title.#' \
 	-e '2b removeFirstParagraphLoop' \
-	-e '/^\(Usage\|Example\):$/N' -e "/\(^\|\n\)\(Usage\|Example\): */{ s/\(^\|\n\)\(\(Usage\|Example\): *\)\?extractMatches /\1\2$(basename "$1") / }" \
+	-e '/^Usage:$/N' -e "/\(^\|\n\)Usage: */{ s/\(^\|\n\)\(Usage: *\)\?extractMatches /\1\2$(basename "$1") [--no-warnings|-a|--all] / }" \
+	-e '/^Example:$/N' -e "/\(^\|\n\)Example: */{ s/\(^\|\n\)\(Example: *\)\?extractMatches --regexp .*\$/\1\2$(basename "$1") --all/ }" \
 	-e b -e :removeFirstParagraphLoop -e '{ /\(^\|\n\)$/{ s/^\(.*\n\)\?//; b; }; N; b removeFirstParagraphLoop }'
 }
 case "$1" in
     --help|-h|-\?)	shift; printUsage "$0"; exit 0;;
 esac
 
+isIncludeWarnings=t
+isAll=
+case "$1" in
+    --help|-h|-\?)	shift; printUsage "$0"; exit 0;;
+    --no-warnings)	shift; isIncludeWarnings=;;
+    --all|-a)		shift; isAll=t;;
+esac
+
+typeset -a levelCounting=(
+    --count '\<FATAL\>' --name levels
+    --count '\<ERROR\>' --name levels
+)
+[ "$isIncludeWarnings" ] && levelCounting+=(
+    --count '\<WARN\>' --name levels
+)
+[ "$isAll" ] && levelCounting+=(
+    --count '\<INFO\>' --name levels
+    --count '\<DEBUG\>' --name levels
+    --count '\<TRACE\>' --name levels
+)
+
 exec $EXTRACTMATCHES \
-    --count '\<FATAL\>' --name levels \
-    --count '\<ERROR\>' --name levels \
-    --count '\<WARN\>' --name levels \
-    --count '\<INFO\>' --name levels \
-    --count '\<DEBUG\>' --name levels \
-    --count '\<TRACE\>' --name levels \
+    "${levelCounting[@]}" \
     --count '\<Starting Application\>' --replacement 'starts' --reset-other levels \
     "$@"
