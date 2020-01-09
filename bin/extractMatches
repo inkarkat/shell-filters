@@ -577,22 +577,27 @@ function delayedRender(resultList,      resultCnt, key, save_sorted_in)
 
     return resultCnt
 }
-function delayedInlineRender(prefix, separator, suffix,      resultNum, resultList, i, result)
+function concatenateResults(separator,      resultNum, resultList, i, result)
 {
     resultNum = delayedRender(resultList)
     for (i = 1; i <= resultNum; ++i) {
 	result = result (result == "" ? "" : separator) resultList[i]
     }
+    return result
+}
+function delayedInlineRender(prefix, separator, suffix,      result)
+{
+    result = concatenateResults(separator)
     if (result == "") return
 
     printf "%s%s%s", prefix, result, suffix
     if (isBuffered) fflush()	# Flushing will happen for unbuffered output, anyway, but we need this for buffered one as well.
 }
-function delayedOverlayRender(      resultNum, resultList, i, result)
+function delayedOverlayRender()
 {
     delayedInlineRender(overlayPrefix, overlaySeparator, overlaySuffix)
 }
-function delayedTitleRender(      resultNum, resultList, i, result)
+function delayedTitleRender()
 {
     if (! delayedChange) return
 
@@ -600,14 +605,11 @@ function delayedTitleRender(      resultNum, resultList, i, result)
 
     delayedChange = 0
 }
-function delayedCommandRender(      resultNum, resultList, i, result, reportingCommandLine, commandResult)
+function delayedCommandRender(      result, reportingCommandLine, commandResult)
 {
     if (! delayedChange) return
 
-    resultNum = delayedRender(resultList)
-    for (i = 1; i <= resultNum; ++i) {
-	result = result (result == "" ? "" : commandSeparator) resultList[i]
-    }
+    result = concatenateResults(commandSeparator)
     if (result == "") return
 
     reportingCommandLine = gensub(/\{\}/, "\047" gensub("\047", "\047\\\\\\\\\047\047", "g", result) "\047", "g", commandLine)
