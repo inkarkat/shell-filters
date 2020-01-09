@@ -5,7 +5,7 @@ printShortUsage()
 {
     # Note: short followed by long option; if the user knows the short one, she can
     # skim the long one.
-    printf 'Usage: %q %s\n' "$(basename "$1")" '[-u|--unbuffered] [-t|--to overlay|title|command|notify|highlight|flash|FILE] [-s|--skip PATTERN [...]] [-o|--report-order by-arg|count-desc] (-e|--regexp [-r|--replacement REPLACEMENT] [-g|--global] [-p|--priority N] [-n|--name NAME] [-k|--reset-other NAME|/NAME-PATTERN/] [-x|--reset RESET-PATTERN [-k|--reset-other NAME|/NAME-PATTERN/]])(-c|--count|-M|--match-count [-r|--replacement REPLACEMENT] [-g|--global] [-p|--priority N] [-n|--name NAME] [-k|--reset-other NAME|/NAME-PATTERN/] [-x|--reset RESET-PATTERN [-k|--reset-other NAME|/NAME-PATTERN/]])(--reset-name PATTERN [-g|--global] -n|--name NAME|/NAME-PATTERN/) [...] [--] FILE [...][-?|-h|--help]'
+    printf 'Usage: %q %s\n' "$(basename "$1")" '[-u|--unbuffered] [-t|--to overlay|title|concatenated|command|notify|highlight|flash|FILE] [-s|--skip PATTERN [...]] [-o|--report-order by-arg|count-desc] (-e|--regexp [-r|--replacement REPLACEMENT] [-g|--global] [-p|--priority N] [-n|--name NAME] [-k|--reset-other NAME|/NAME-PATTERN/] [-x|--reset RESET-PATTERN [-k|--reset-other NAME|/NAME-PATTERN/]])(-c|--count|-M|--match-count [-r|--replacement REPLACEMENT] [-g|--global] [-p|--priority N] [-n|--name NAME] [-k|--reset-other NAME|/NAME-PATTERN/] [-x|--reset RESET-PATTERN [-k|--reset-other NAME|/NAME-PATTERN/]])(--reset-name PATTERN [-g|--global] -n|--name NAME|/NAME-PATTERN/) [...] [--] FILE [...][-?|-h|--help]'
 }
 printUsage()
 {
@@ -33,6 +33,10 @@ HELPDESCRIPTION
 			    terminal.
     --to|-t title	    Report in the terminal's window title via ANSI
 			    escape sequences.
+    --to|-t concatenated    Report as a single concatenated line (like with
+			    overlay and title), but inline directly in the
+			    output (or to EXTRACTMATCHES_CONCATENATED_FILE)
+			    whenever there are changes.
     --to|-t command	    Report by invoking EXTRACTMATCHES_COMMANDLINE while
 			    replacing {} with the overlay-like report,
 			    {FILENAME} with the name of the current input file,
@@ -107,24 +111,24 @@ HELPTEXT
 getCountPrefix()
 {
     case "$originalRender" in
-	highlight|flash)			printf ' (';;
-	overlay|title|command|notify)		printf ':';;
-	*)					printf ': ';;
+	highlight|flash)				printf ' (';;
+	overlay|title|command|notify)			printf ':';;
+	concatenated|*)					printf ': ';;
     esac
 }
 getMatchBeforeCount()
 {
     case "$originalRender" in
-	overlay|title|command|notify)		printf '';;
-	highlight|flash|*)			printf 't';;
+	overlay|title|concatenated|command|notify)	printf '';;
+	highlight|flash|*)				printf 't';;
     esac
 }
 getCountSuffix()
 {
     case "$originalRender" in
-	highlight|flash)			printf ')';;
-	overlay|title|command)			printf '';;
-	notify|*)				printf '';;
+	highlight|flash)				printf ')';;
+	overlay|title|concatenated|command)		printf '';;
+	notify|*)					printf '';;
     esac
 }
 : ${EXTRACTMATCHES_OVERLAY_JUMP=[s[1;1H}
@@ -151,6 +155,9 @@ EXEC=exec
 : ${EXTRACTMATCHES_TITLE_PREFIX=[}
 : ${EXTRACTMATCHES_TITLE_SEPARATOR=|}
 : ${EXTRACTMATCHES_TITLE_SUFFIX=]}
+: ${EXTRACTMATCHES_CONCATENATED_PREFIX=extracted matches: }
+: ${EXTRACTMATCHES_CONCATENATED_SEPARATOR=, }
+: ${EXTRACTMATCHES_CONCATENATED_SUFFIX=$'\n'}
 : ${EXTRACTMATCHES_COMMAND_SEPARATOR=|}
 : ${EXTRACTMATCHES_COMMAND_UPDATE_DELAY:=1}
 : ${EXTRACTMATCHES_NOTIFY_SEND:=notify-send}
@@ -326,6 +333,8 @@ replacements+=(''); others+=(''); names+=('')	# Add one empty element so that sp
 file='/dev/stdout'
 case "$originalRender" in
     overlay|title|command|notify|highlight|flash) ;;
+    concatenated)
+	file="${EXTRACTMATCHES_CONCATENATED_FILE:-$file}";;
     *)	file="$render"; render='file';;
 esac
 
