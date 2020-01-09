@@ -600,23 +600,23 @@ function concatenateResults(separator,      resultNum, resultList, i, result)
     }
     return result
 }
-function delayedInlineRender(prefix, separator, suffix,      result)
+function writeConcatenatedToFile(prefix, separator, suffix,      result)
 {
     result = concatenateResults(separator)
     if (result == "") return
 
-    printf "%s%s%s", prefix, result, suffix
-    if (isBuffered) fflush()	# Flushing will happen for unbuffered output, anyway, but we need this for buffered one as well.
+    printf "%s%s%s", prefix, result, suffix > file
+    if (isBuffered) fflush(file)	# Flushing will happen for unbuffered output, anyway, but we need this for buffered one as well.
 }
 function delayedOverlayRender()
 {
-    delayedInlineRender(overlayPrefix, overlaySeparator, overlaySuffix)
+    writeConcatenatedToFile(overlayPrefix, overlaySeparator, overlaySuffix)
 }
 function delayedTitleRender()
 {
     if (! delayedChange) return
 
-    delayedInlineRender(titlePrefix, titleSeparator, titleSuffix)
+    writeConcatenatedToFile(titlePrefix, titleSeparator, titleSuffix)
 
     delayedChange = 0
 }
