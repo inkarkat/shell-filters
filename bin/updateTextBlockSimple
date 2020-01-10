@@ -1,13 +1,13 @@
 #!/bin/sh
 
-readonly updateFile=$1
-readonly file=$2
+readonly updateFile="$1"
+readonly file="$2"
 
 [ "$updateFile" ] || { echo >&2 "ERROR: Must pass inputfile used for the update."; exit 2; }
 [ -r "$updateFile" ] || { echo >&2 "ERROR: inputfile \"${updateFile}\" does not exist."; exit 2; }
 [ "$file" ] || { echo >&2 "ERROR: Must pass file to process."; exit 2; }
 
-sed -i.bak -e "
+exec sed -i.bak -e "
 \$a\\
 # INCLUDED-CONTENT-BEGIN
 \$r $updateFile
