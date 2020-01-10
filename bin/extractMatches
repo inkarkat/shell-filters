@@ -117,6 +117,7 @@ HELPDESCRIPTION
     --summary-only|-Y	    For stderr, concatenated, command, notify, or file
 			    reporting, do not print the input text, only the
 			    report after processing all input.
+All PATTERNs are AWK-style extended regular expressions.
 
 Example:
 HELPTEXT

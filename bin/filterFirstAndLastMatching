@@ -19,16 +19,19 @@ printLongUsage()
     # This is the long "man page" when launched with the help argument.
     # It is printed to stdout to allow paging with 'more'.
     cat <<HELPDESCRIPTION
-Only print the first and last [N] line(s) of adjacent lines where PATTERN
-(extended regular expression) has an identical match (or does not match at all).
-    -M|--no-match-separated no matches form a distinct group and are not put
+Only print the first and last [N] line(s) of adjacent lines where PATTERN has an
+identical match (or does not match at all).
+    --match|-m PATTERN	    Only print first and last line(s) where PATTERN has
+			    an identical match.
+    --no-match-separated|-M No matches form a distinct group and are not put
 			    together with the current PATTERN match.
-    -v|--verbose	    Insert a summary line between first and last
+    --verbose|-v	    Insert a summary line between first and last
 			    occurrences that tells how many inner lines of the
 			    block have been filtered away.
-    -c|--count N	    Include more than one first and last lines.
-    -s|--start-count N	    Separately influence the number of included first
-    -e|--end-count N	    and last lines.
+    --count|-c N	    Include more than one first and last lines.
+    --start-count|-s N	    Separately influence the number of included first
+    --end-count|-e N	    and last lines.
+All PATTERNs are AWK-style extended regular expressions.
 HELPDESCRIPTION
     echo
     printShortUsage "$1"

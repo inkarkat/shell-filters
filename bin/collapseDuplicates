@@ -56,6 +56,8 @@ HELPDESCRIPTION
 		    escape sequences to update counts / spinner / flashing.
 		    Without this,  consecutive duplicate lines will be silently
 		    consumed until a different line is encountered.
+All PATTERNs are AWK-style extended regular expressions.
+
 Example:
 HELPTEXT
     printf '%q %s\n' "$(basename "$1")" '--foo bar /tmp/foobar'
@@ -102,7 +104,7 @@ fi
 replacements+=('')  # Add one empty element so that split() will yield at least one in case of a single empty one.
 
 IFS=$'\n'
-awk \
+exec awk \
     -v "render=$render" \
     -v "isBuffered=$isBuffered" \
     -v "typeList=${types[*]}" \
