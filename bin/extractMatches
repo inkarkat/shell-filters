@@ -34,7 +34,7 @@ HELPDESCRIPTION
     --to|-t title	    Report in the terminal's window title via ANSI
 			    escape sequences.
     --to|-t stderr	    Report as a single concatenated line (like with
-			    overlay and title), but inline to standart error.
+			    overlay and title), but inline to standard error.
 			    Set EXTRACTMATCHES_STDERR_UPDATE_DELAY to the number
 			    of seconds between reports, or to the negative
 			    number of input lines between reports.
