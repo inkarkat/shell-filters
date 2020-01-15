@@ -3,7 +3,7 @@
 printUsage()
 {
     cat <<HELPTEXT
-Convert line(s) of MM:SS into seconds. Other lines are ignored and passed through.
+Convert matches of MM:SS into seconds.
 HELPTEXT
     printf 'Usage: cat FILE [...] | %q %s\n' "$(basename "$1")" '[-?|-h|--help]'
 }
@@ -11,8 +11,28 @@ case "$1" in
     --help|-h|-\?)	shift; printUsage "$0"; exit 0;;
 esac
 
-awk -F ':' \
+awk -F $'\n' \
 '
-/^[[:digit:]]{1,}:[[:digit:]]{2}$/ { $0 = ($1 * 60) + $2 }
-{ print }
+function convert(duration,      n, tuples)
+{
+    n = split(duration, tuples, /:/)
+    if (n == 2)
+	return tuples[1] * 60 + tuples[2]
+    else
+	return duration
+}
+{
+    n = split($0, durations, /\<[[:digit:]]+:[[:digit:]]{2}\>/, separators)
+    for (i = 1; i <= n; ++i) {
+	separators[i] = convert(separators[i])
+    }
+
+    result = ""
+    for (i = 1; i <= n; ++i) {
+	result = result durations[i] separators[i]
+    }
+    result = result durations[++i]
+    $0 = result
+    print
+}
 '
