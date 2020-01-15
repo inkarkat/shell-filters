@@ -24,16 +24,16 @@ function convert(duration,      n, tuples)
 	return duration
 }
 {
-    n = split($0, durations, /\<[[:digit:]]+(:[[:digit:]]{2}){1,2}\>/, separators)
+    n = split($0, rest, /\<[[:digit:]]+(:[[:digit:]]{2}){1,2}\>/, durations)
     for (i = 1; i <= n; ++i) {
-	separators[i] = convert(separators[i])
+	durations[i] = convert(durations[i])
     }
 
     result = ""
     for (i = 1; i <= n; ++i) {
-	result = result durations[i] separators[i]
+	result = result rest[i] durations[i]
     }
-    result = result durations[++i]
+    result = result rest[++i]
     $0 = result
     print
 }
