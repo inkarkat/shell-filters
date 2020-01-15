@@ -3,7 +3,7 @@
 printUsage()
 {
     cat <<HELPTEXT
-Convert matches of MM:SS into seconds.
+Convert matches of [HH:]MM:SS into seconds.
 HELPTEXT
     printf 'Usage: cat FILE [...] | %q %s\n' "$(basename "$1")" '[-?|-h|--help]'
 }
@@ -18,11 +18,13 @@ function convert(duration,      n, tuples)
     n = split(duration, tuples, /:/)
     if (n == 2)
 	return tuples[1] * 60 + tuples[2]
+    else if (n == 3)
+	return tuples[1] * 3600 + tuples[2] * 60 + tuples[3]
     else
 	return duration
 }
 {
-    n = split($0, durations, /\<[[:digit:]]+:[[:digit:]]{2}\>/, separators)
+    n = split($0, durations, /\<[[:digit:]]+(:[[:digit:]]{2}){1,2}\>/, separators)
     for (i = 1; i <= n; ++i) {
 	separators[i] = convert(separators[i])
     }
