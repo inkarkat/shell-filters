@@ -1,6 +1,7 @@
 #!/usr/bin/env bats
 
-export EXTRACTMATCHES_FILE_UPDATE_DELAY=0
+export EXTRACTMATCHES_FILE_UPDATE_MATCH_DELAY=0
+export EXTRACTMATCHES_FILE_UPDATE_COUNT_DELAY=0
 export input="This has foo in it.
 More fooo here."
 load log

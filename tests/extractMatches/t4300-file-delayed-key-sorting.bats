@@ -14,7 +14,8 @@ This almost concludes it; barB.
 This really mostly ends soon; barA.
 Seriously; barC."
 
-export EXTRACTMATCHES_FILE_UPDATE_DELAY=-10
+export EXTRACTMATCHES_FILE_UPDATE_MATCH_DELAY=-10
+export EXTRACTMATCHES_FILE_UPDATE_COUNT_DELAY=-10
 load log
 
 @test "counts are written every 10 lines with default sorting by argument order" {

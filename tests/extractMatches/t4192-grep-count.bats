@@ -7,7 +7,9 @@ More simple lines.
 More foooo about it.
 Seriously."
     run extractMatches --grep-count --regexp fo+ --global --count "\<[Mm]ore\>" --match-count '\<i\w\>' --global <<<"$input"
-    [ "$output" = "foooo
+    [ "$output" = "foo
+foo
+foooo
 More: 2
 in: 1
 it: 2" ]
