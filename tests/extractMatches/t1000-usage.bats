@@ -88,3 +88,15 @@
     run extractMatches --regexp ''
     [ $status -eq 1 ]
 }
+
+@test "error when multiple --to are passed" {
+    run extractMatches --to title --to overlay --regexp foo
+    [ $status -eq 2 ]
+    [ "${lines[0]}" = "ERROR: There can be only one --to / --grep-..." ]
+}
+
+@test "error when --to and --grep-only-matching are passed" {
+    run extractMatches --to title --grep-only-matching --regexp foo
+    [ $status -eq 2 ]
+    [ "${lines[0]}" = "ERROR: There can be only one --to / --grep-..." ]
+}
