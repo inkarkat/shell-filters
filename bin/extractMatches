@@ -635,12 +635,13 @@ function postRenderLine(      currentTime, isRenderMatchesNow, isRenderCountsNow
 		delayedFileRender()
 	    } else {
 		if (isRenderMatchesNow) {
-		    resultNum = renderIt(delayedMatch, EMPTY_ARRAY, resultList)
+		    resultNum = renderIt(delayedMatchReset, delayedMatch, EMPTY_ARRAY, resultList)
+		    delayedMatchReset = ""
 		    delayedMatch = ""
 		    delayMatchTime = currentTime
 		}
 		if (isRenderCountsNow) {
-		    resultNum = renderIt("", delayedCounts, resultList)
+		    resultNum = renderIt("", "", delayedCounts, resultList)
 		    delete delayedCounts
 		    delayCountTime = currentTime
 		}
@@ -679,8 +680,11 @@ function postLine()
 	    exit 3
     }
 }
-function renderIt(theMatch, theCounts, resultList,      resultCnt, key, save_sorted_in)
+function renderIt(theMatchReset, theMatch, theCounts, resultList,      resultCnt, key, save_sorted_in)
 {
+    if (isMatchBeforeCount && theMatchReset != "") {
+	resultList[++resultCnt] = theMatchReset
+    }
     if (isMatchBeforeCount && theMatch != "") {
 	resultList[++resultCnt] = theMatch
     }
@@ -694,6 +698,9 @@ function renderIt(theMatch, theCounts, resultList,      resultCnt, key, save_sor
 	PROCINFO["sorted_in"] = save_sorted_in
     }
 
+    if (! isMatchBeforeCount && theMatchReset != "") {
+	resultList[++resultCnt] = theMatchReset
+    }
     if (! isMatchBeforeCount && theMatch != "") {
 	resultList[++resultCnt] = theMatch
     }
@@ -702,7 +709,7 @@ function renderIt(theMatch, theCounts, resultList,      resultCnt, key, save_sor
 }
 function delayedRender(resultList,      resultCnt, key, save_sorted_in)
 {
-    return renderIt(delayedMatch, delayedCounts, resultList)
+    return renderIt("", delayedMatch, delayedCounts, resultList)
 }
 function concatenateResults(separator,      resultNum, resultList, i, result)
 {
@@ -754,9 +761,10 @@ function delayedCommandRender(      result, reportingCommandLine, commandResult)
 }
 function delayedFileRender(      resultNum, resultList, i)
 {
-    resultNum = delayedRender(resultList)
+    resultNum = renderIt(delayedMatchReset, delayedMatch, delayedCounts, resultList)
 
     # The match / counts have been reported to the file; do not do this again for following lines (only new counts).
+    delayedMatchReset = ""
     delayedMatch = ""
     delete delayedCounts
 
@@ -872,7 +880,12 @@ function renderReset(key, previousCounts, type,      tmp) {
 		    writeToFile(tmp countPrefix "0" countSuffix)
 		}
 	    } else if (fileClearMatchTemplate != "") {
-		writeToFile(gensub(/.*/, fileClearMatchTemplate, 1, lastMatchText))
+		tmp = gensub(/.*/, fileClearMatchTemplate, 1, lastMatchText)
+		if (fileUpdateMatchDelay != 0) {
+		    delayedMatchReset = tmp
+		} else {
+		    writeToFile(tmp)
+		}
 	    }
 	    break
 	default:

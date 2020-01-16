@@ -13,6 +13,24 @@ Off: This
 More"
 }
 
+@test "multiple match resets within a line and subsequent lines are all written to a file" {
+    run extractMatches --to "$LOG" --regexp 'foo[0-9]+|it' --global --reset 'in|All|here|Rex|Last' <<<"$DELAY_INPUT"
+    [ "$output" = "$DELAY_INPUT" ]
+    assert_log "foo2
+Off: foo2
+it
+Off: it
+foo3
+foo4
+Off: foo4
+foo5
+Off: foo5
+foo6
+foo7
+Off: foo7
+foo8"
+}
+
 @test "match resets are not written to a file if the template is empty" {
     export EXTRACTMATCHES_FILE_CLEAR_MATCH_TEMPLATE=
     run extractMatches --to "$LOG" --regexp '\<\w{4}\>' --reset All <<<"$SIMPLE_INPUT"
