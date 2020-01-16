@@ -1,6 +1,7 @@
 #!/usr/bin/env bats
 
-export EXTRACTMATCHES_FILE_UPDATE_DELAY=0
+export EXTRACTMATCHES_FILE_UPDATE_MATCH_DELAY=0
+export EXTRACTMATCHES_FILE_UPDATE_COUNT_DELAY=0
 load log
 
 @test "matches and counts are written to a file with custom static prefix and suffix" {

@@ -35,9 +35,9 @@ HELPDESCRIPTION
 			    escape sequences.
     --to|-t stderr	    Report as a single concatenated line (like with
 			    overlay and title), but inline to standard error.
-			    Set EXTRACTMATCHES_STDERR_UPDATE_DELAY to the number
-			    of seconds between reports, or to the negative
-			    number of input lines between reports.
+			    Set EXTRACTMATCHES_STDERR_UPDATE__DELAY to the
+			    number of seconds between reports, or to the
+			    negative number of input lines between reports.
     --to|-t concatenated    Report as a single concatenated line (like with
 			    overlay and title), but inline directly in the
 			    output (or to EXTRACTMATCHES_CONCATENATED_FILE)
@@ -56,18 +56,21 @@ HELPDESCRIPTION
 			    count) to highlight it. Must be used with
 			    --unbuffered.
     --to|-t FILE	    Append the report to FILE. Set
-			    EXTRACTMATCHES_FILE_UPDATE_DELAY to 0 for immediate
-			    updates. Additionally pass --unbuffered to observe
-			    the file contents immediately.
+			    EXTRACTMATCHES_FILE_UPDATE_MATCH__DELAY /
+			    EXTRACTMATCHES_FILE_UPDATE_COUNT_DELAY to 0 for
+			    immediate updates. Additionally pass --unbuffered to
+			    observe the file contents immediately.
     --grep-only-matching    Immediately report only matches (and counts) to
 			    standard output, so that the command works like
 			    grep -o|--only-matching (but additionally with the
 			    possibility to do replacements).
-			    Shortcut for EXTRACTMATCHES_FILE_UPDATE_DELAY=0 --to
+			    Shortcut for EXTRACTMATCHES_FILE_UPDATE_DELAY=0
+			    EXTRACTMATCHES_FILE_UPDATE_COUNT_DELAY=0 --to
 			    /dev/stdout --quiet.
-    --grep-count	    Report only counts (and the last matches) to
-			    standard output after processing all input, so that
-			    the command works like grep -c|--count.
+    --grep-count	    Report only counts to standard output after
+			    processing all input, so that the command works like
+			    grep -c|--count. Matches are reported immediately,
+			    like with --grep-only-matching.
 			    Shortcut for --to /dev/stdout --summary-only.
     --regexp|-e PATTERN	    Report matches of PATTERN in a line.
     --count|-c PATTERN	    Report the number of matches of PATTERN in a line.
@@ -172,7 +175,8 @@ setInfiniteDelays()
     EXTRACTMATCHES_CONCATENATED_UPDATE_DELAY=2147483647
     EXTRACTMATCHES_COMMAND_UPDATE_DELAY=2147483647
     EXTRACTMATCHES_NOTIFY_UPDATE_DELAY=2147483647
-    EXTRACTMATCHES_FILE_UPDATE_DELAY=2147483647
+    EXTRACTMATCHES_FILE_UPDATE_MATCH_DELAY=2147483647
+    EXTRACTMATCHES_FILE_UPDATE_COUNT_DELAY=2147483647
 }
 : ${EXTRACTMATCHES_OVERLAY_JUMP=[s[1;1H}
 : ${EXTRACTMATCHES_OVERLAY_PREFIX=[37;44m[}
@@ -212,7 +216,8 @@ EXEC=exec
 : ${EXTRACTMATCHES_NOTIFY_SEND:=notify-send}
 : ${EXTRACTMATCHES_NOTIFY_SEPARATOR=, }
 : ${EXTRACTMATCHES_NOTIFY_UPDATE_DELAY:=10}
-: ${EXTRACTMATCHES_FILE_UPDATE_DELAY:=1}
+: ${EXTRACTMATCHES_FILE_UPDATE_MATCH_DELAY:=1}
+: ${EXTRACTMATCHES_FILE_UPDATE_COUNT_DELAY:=1}
 : ${EXTRACTMATCHES_FILE_PREFIX_EXPR:=}
 : ${EXTRACTMATCHES_FILE_SUFFIX_EXPR:=}
 : ${EXTRACTMATCHES_FILE_CLEAR_MATCH_TEMPLATE='Off: &'}
@@ -238,8 +243,8 @@ do
     case "$1" in
 	--help|-h|-\?)	shift; printLongUsage "$0"; exit 0;;
 	--to|-t)	shift; singleRenderCheck "$0"; render="$1"; shift;;
-	--grep-only-matching)	shift; singleRenderCheck "$0"; render='/dev/stdout'; isQuiet=t; EXTRACTMATCHES_FILE_UPDATE_DELAY=0;;
-	--grep-count)		shift; singleRenderCheck "$0"; render='/dev/stdout'; isQuiet=t; setInfiniteDelays;;
+	--grep-only-matching)	shift; singleRenderCheck "$0"; render='/dev/stdout'; isQuiet=t; EXTRACTMATCHES_FILE_UPDATE_MATCH_DELAY=0; EXTRACTMATCHES_FILE_UPDATE_COUNT_DELAY=0;;
+	--grep-count)		shift; singleRenderCheck "$0"; render='/dev/stdout'; isQuiet=t; setInfiniteDelays; EXTRACTMATCHES_FILE_UPDATE_MATCH_DELAY=0;;
 	--skip|-s)	shift; skipPattern="${skipPattern}${skipPattern:+|}${1:?}"; shift;;
 	--regexp|-e)		shift; types+=(regexp); patterns+=("${1:?}"); replacements+=('&'); globals+=(0); others+=(''); names+=('') priorities+=(0); shift;;
 	--count|-c)		shift; types+=(count); patterns+=("${1:?}"); replacements+=('&'); globals+=(0); others+=(''); names+=('') priorities+=(0); shift;;
@@ -428,7 +433,8 @@ $EXEC awk \
     -v "commandSeparator=${EXTRACTMATCHES_COMMAND_SEPARATOR//\\/\\\\}" \
     -v "commandLine=${EXTRACTMATCHES_COMMANDLINE//\\/\\\\}" \
     -v "commandUpdateDelay=${EXTRACTMATCHES_COMMAND_UPDATE_DELAY}" \
-    -v "fileUpdateDelay=${EXTRACTMATCHES_FILE_UPDATE_DELAY}" \
+    -v "fileUpdateMatchDelay=${EXTRACTMATCHES_FILE_UPDATE_MATCH_DELAY}" \
+    -v "fileUpdateCountDelay=${EXTRACTMATCHES_FILE_UPDATE_COUNT_DELAY}" \
     -v "filePrefixExpr=${EXTRACTMATCHES_FILE_PREFIX_EXPR}" \
     -v "fileSuffixExpr=${EXTRACTMATCHES_FILE_SUFFIX_EXPR}" \
     -v "fileClearMatchTemplate=${EXTRACTMATCHES_FILE_CLEAR_MATCH_TEMPLATE//\\/\\\\}" \
@@ -443,6 +449,7 @@ $EXEC awk \
 '
 BEGIN {
     FS = "\n"
+    split("", EMPTY_ARRAY)
 
     N = split(typeList, types)
     if (split(patternList, patterns) != N) {
@@ -472,7 +479,7 @@ BEGIN {
 
     PROCINFO["sorted_in"] = "@ind_str_asc"
     delete delayedCounts    # Reify as array; else, the length(delayedCounts) will create it as a scalar instead.
-    delayTime = systime()
+    delayTime = delayMatchTime = delayCountTime = systime()
 }
 function getKeyMatch(key)
 {
@@ -608,7 +615,7 @@ function preRenderLine()
 	    exit 3
     }
 }
-function postRenderLine()
+function postRenderLine(      currentTime, isRenderMatchesNow, isRenderCountsNow, resultNum, resultList, i)
 {
     switch (render) {
 	case "overlay":
@@ -621,8 +628,26 @@ function postRenderLine()
 		$0 = $0 multiply(" ", flashAdditionalWidth) multiply("", flashAdditionalWidth)
 	    }
 	case "file":
-	    if ((fileUpdateDelay < 0 && NR % fileUpdateDelay == 0) || (fileUpdateDelay > 0 && systime() - delayTime >= fileUpdateDelay)) {
+	    currentTime = systime()
+	    isRenderMatchesNow = ((fileUpdateMatchDelay < 0 && NR % fileUpdateMatchDelay == 0) || (fileUpdateMatchDelay > 0 && currentTime - delayMatchTime >= fileUpdateMatchDelay))
+	    isRenderCountsNow = ((fileUpdateCountDelay < 0 && NR % fileUpdateCountDelay == 0) || (fileUpdateCountDelay > 0 && currentTime - delayCountTime >= fileUpdateCountDelay))
+	    if (isRenderMatchesNow && isRenderCountsNow) {
 		delayedFileRender()
+	    } else {
+		if (isRenderMatchesNow) {
+		    resultNum = renderIt(delayedMatchReset, delayedMatch, EMPTY_ARRAY, resultList)
+		    delayedMatchReset = ""
+		    delayedMatch = ""
+		    delayMatchTime = currentTime
+		}
+		if (isRenderCountsNow) {
+		    resultNum = renderIt("", "", delayedCounts, resultList)
+		    delete delayedCounts
+		    delayCountTime = currentTime
+		}
+		for (i = 1; i <= resultNum; ++i) {
+		    writeToFile(resultList[i])
+		}
 	    }
 	    break
 	default:
@@ -655,26 +680,36 @@ function postLine()
 	    exit 3
     }
 }
-function delayedRender(resultList,      resultCnt, key, save_sorted_in)
+function renderIt(theMatchReset, theMatch, theCounts, resultList,      resultCnt, key, save_sorted_in)
 {
-    if (isMatchBeforeCount && delayedMatch != "") {
-	resultList[++resultCnt] = delayedMatch
+    if (isMatchBeforeCount && theMatchReset != "") {
+	resultList[++resultCnt] = theMatchReset
+    }
+    if (isMatchBeforeCount && theMatch != "") {
+	resultList[++resultCnt] = theMatch
     }
 
-    if (length(delayedCounts) > 0) {
+    if (length(theCounts) > 0) {
 	save_sorted_in = PROCINFO["sorted_in"]
 	PROCINFO["sorted_in"] = reportOrder
-	for (key in delayedCounts) {
-	    resultList[++resultCnt] = delayedCounts[key]["report"]
+	for (key in theCounts) {
+	    resultList[++resultCnt] = theCounts[key]["report"]
 	}
 	PROCINFO["sorted_in"] = save_sorted_in
     }
 
-    if (! isMatchBeforeCount && delayedMatch != "") {
-	resultList[++resultCnt] = delayedMatch
+    if (! isMatchBeforeCount && theMatchReset != "") {
+	resultList[++resultCnt] = theMatchReset
+    }
+    if (! isMatchBeforeCount && theMatch != "") {
+	resultList[++resultCnt] = theMatch
     }
 
     return resultCnt
+}
+function delayedRender(resultList,      resultCnt, key, save_sorted_in)
+{
+    return renderIt("", delayedMatch, delayedCounts, resultList)
 }
 function concatenateResults(separator,      resultNum, resultList, i, result)
 {
@@ -726,9 +761,10 @@ function delayedCommandRender(      result, reportingCommandLine, commandResult)
 }
 function delayedFileRender(      resultNum, resultList, i)
 {
-    resultNum = delayedRender(resultList)
+    resultNum = renderIt(delayedMatchReset, delayedMatch, delayedCounts, resultList)
 
     # The match / counts have been reported to the file; do not do this again for following lines (only new counts).
+    delayedMatchReset = ""
     delayedMatch = ""
     delete delayedCounts
 
@@ -736,7 +772,7 @@ function delayedFileRender(      resultNum, resultList, i)
 	writeToFile(resultList[i])
     }
 
-    delayTime = systime()
+    delayMatchTime = delayCountTime = systime()
 }
 function renderMatch(before, text, after)
 {
@@ -761,7 +797,7 @@ function renderMatch(before, text, after)
 	    }
 	    break
 	case "file":
-	    if (fileUpdateDelay != 0) {
+	    if (fileUpdateMatchDelay != 0) {
 		delayedMatch = text
 	    } else {
 		writeToFile(text)
@@ -805,7 +841,7 @@ function renderCount(key, before, text, count, after,      tmp)
 	    }
 	    break
 	case "file":
-	    if (fileUpdateDelay != 0) {
+	    if (fileUpdateCountDelay != 0) {
 		delayedCounts[key]["i"] = lowestI
 		delayedCounts[key]["count"] = count
 		delayedCounts[key]["report"] = text countPrefix count countSuffix
@@ -836,7 +872,7 @@ function renderReset(key, previousCounts, type,      tmp) {
 	case "file":
 	    if (type != "regexp") {
 		tmp = (type == "count" ? lastCountText[key] : getKeyMatch(key))
-		if (fileUpdateDelay != 0) {
+		if (fileUpdateCountDelay != 0) {
 		    delayedCounts[key]["i"] = lowestI
 		    delayedCounts[key]["count"] = 0
 		    delayedCounts[key]["report"] = tmp countPrefix "0" countSuffix
@@ -844,7 +880,12 @@ function renderReset(key, previousCounts, type,      tmp) {
 		    writeToFile(tmp countPrefix "0" countSuffix)
 		}
 	    } else if (fileClearMatchTemplate != "") {
-		writeToFile(gensub(/.*/, fileClearMatchTemplate, 1, lastMatchText))
+		tmp = gensub(/.*/, fileClearMatchTemplate, 1, lastMatchText)
+		if (fileUpdateMatchDelay != 0) {
+		    delayedMatchReset = tmp
+		} else {
+		    writeToFile(tmp)
+		}
 	    }
 	    break
 	default:

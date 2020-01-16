@@ -1,6 +1,7 @@
 #!/usr/bin/env bats
 
-export EXTRACTMATCHES_FILE_UPDATE_DELAY=-3
+export EXTRACTMATCHES_FILE_UPDATE_MATCH_DELAY=-3
+export EXTRACTMATCHES_FILE_UPDATE_COUNT_DELAY=-3
 load log
 
 @test "single counts in a line are written to a file every 3 lines and at the end" {

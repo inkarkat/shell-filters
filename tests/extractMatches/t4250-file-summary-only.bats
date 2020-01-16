@@ -1,6 +1,7 @@
 #!/usr/bin/env bats
 
-export EXTRACTMATCHES_FILE_UPDATE_DELAY=-3
+export EXTRACTMATCHES_FILE_UPDATE_MATCH_DELAY=-3
+export EXTRACTMATCHES_FILE_UPDATE_COUNT_DELAY=-3
 load log
 
 @test "only matches and counts are written at the end" {

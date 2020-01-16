@@ -1,6 +1,7 @@
 #!/usr/bin/env bats
 
-export EXTRACTMATCHES_FILE_UPDATE_DELAY=-3
+export EXTRACTMATCHES_FILE_UPDATE_MATCH_DELAY=-3
+export EXTRACTMATCHES_FILE_UPDATE_COUNT_DELAY=-3
 load log
 
 @test "match resets are written to a file every 3 lines and at the end" {
@@ -11,6 +12,17 @@ foo3
 foo6
 Off: foo6
 foo8" ]
+}
+
+@test "multiple match resets within a line and 3 line blocks are reduced to the last and only that is written to a file" {
+    run extractMatches --to "$LOG" --regexp 'foo[0-9]+|it' --global --reset 'in|All|here|Rex|Last' <<<"$DELAY_INPUT"
+    [ "$output" = "$DELAY_INPUT" ]
+    assert_log "Off: it
+foo3
+Off: foo5
+foo6
+Off: foo7
+foo8"
 }
 
 @test "match resets are not written to a file every 3 lines and at the end if the template is empty" {
