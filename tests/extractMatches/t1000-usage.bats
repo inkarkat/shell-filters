@@ -100,3 +100,15 @@
     [ $status -eq 2 ]
     [ "${lines[0]}" = "ERROR: There can be only one --to / --grep-..." ]
 }
+
+@test "error when --to and --grep-count are passed" {
+    run extractMatches --to title --grep-count --regexp foo
+    [ $status -eq 2 ]
+    [ "${lines[0]}" = "ERROR: There can be only one --to / --grep-..." ]
+}
+
+@test "error when --grep-only-matching and --grep-count are passed" {
+    run extractMatches --grep-only-matching --grep-count --regexp foo
+    [ $status -eq 2 ]
+    [ "${lines[0]}" = "ERROR: There can be only one --to / --grep-..." ]
+}
