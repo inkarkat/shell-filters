@@ -5,7 +5,7 @@ printShortUsage()
 {
     # Note: short followed by long option; if the user knows the short one, she can
     # skim the long one.
-    printf 'Usage: %q %s\n' "$(basename "$1")" '[-u|--unbuffered] [-q|--quiet] [-y|--summary|-Y|--summary-only] [-t|--to overlay|title|stderr|concatenated|command|notify|highlight|flash|FILE] [-s|--skip PATTERN [...]] [-o|--report-order by-arg|count-desc] (-e|--regexp [-r|--replacement REPLACEMENT] [-g|--global] [-p|--priority N] [-n|--name NAME] [-k|--reset-other NAME|/NAME-PATTERN/] [-x|--reset RESET-PATTERN [-k|--reset-other NAME|/NAME-PATTERN/]])(-c|--count|-M|--match-count [-r|--replacement REPLACEMENT] [-g|--global] [-p|--priority N] [-n|--name NAME] [-k|--reset-other NAME|/NAME-PATTERN/] [-x|--reset RESET-PATTERN [-k|--reset-other NAME|/NAME-PATTERN/]])(--reset-name PATTERN [-g|--global] -n|--name NAME|/NAME-PATTERN/) [...] [--] FILE [...][-?|-h|--help]'
+    printf 'Usage: %q %s\n' "$(basename "$1")" '[-u|--unbuffered] [-q|--quiet] [-y|--summary|-Y|--summary-only] [-t|--to overlay|title|stderr|concatenated|command|notify|highlight|flash|FILE|--grep-only-matching|--grep-count] [-s|--skip PATTERN [...]] [-o|--report-order by-arg|count-desc] (-e|--regexp [-r|--replacement REPLACEMENT] [-g|--global] [-p|--priority N] [-n|--name NAME] [-k|--reset-other NAME|/NAME-PATTERN/] [-x|--reset RESET-PATTERN [-k|--reset-other NAME|/NAME-PATTERN/]])(-c|--count|-M|--match-count [-r|--replacement REPLACEMENT] [-g|--global] [-p|--priority N] [-n|--name NAME] [-k|--reset-other NAME|/NAME-PATTERN/] [-x|--reset RESET-PATTERN [-k|--reset-other NAME|/NAME-PATTERN/]])(--reset-name PATTERN [-g|--global] -n|--name NAME|/NAME-PATTERN/) [...] [--] FILE [...][-?|-h|--help]'
 }
 printUsage()
 {
@@ -59,6 +59,16 @@ HELPDESCRIPTION
 			    EXTRACTMATCHES_FILE_UPDATE_DELAY to 0 for immediate
 			    updates. Additionally pass --unbuffered to observe
 			    the file contents immediately.
+    --grep-only-matching    Immediately report only matches (and counts) to
+			    standard output, so that the command works like
+			    grep -o|--only-matching (but additionally with the
+			    possibility to do replacements).
+			    Shortcut for EXTRACTMATCHES_FILE_UPDATE_DELAY=0 --to
+			    /dev/stdout --quiet.
+    --grep-count	    Report only counts (and the last matches) to
+			    standard output after processing all input, so that
+			    the command works like grep -c|--count.
+			    Shortcut for --to /dev/stdout --summary-only.
     --regexp|-e PATTERN	    Report matches of PATTERN in a line.
     --count|-c PATTERN	    Report the number of matches of PATTERN in a line.
     --match-count|-M PATTERN
@@ -123,6 +133,15 @@ Example:
 HELPTEXT
     printf '%q %s\n' "$(basename "$1")" '--regexp "FATAL:.*" --name err --regexp "ERROR:.*" --name err --count Restarted --reset Restarted --name err'
 }
+singleRenderCheck()
+{
+    if [ "$render" ]; then
+	echo >&2 "ERROR: There can be only one --to / --grep-..."
+	echo >&2
+	printShortUsage "$1" >&2
+	exit 2
+    fi
+}
 
 getCountPrefix()
 {
@@ -146,6 +165,14 @@ getCountSuffix()
 	overlay|title|stderr|concatenated|command)	printf '';;
 	notify|*)					printf '';;
     esac
+}
+setInfiniteDelays()
+{
+    EXTRACTMATCHES_STDERR_UPDATE_DELAY=2147483647
+    EXTRACTMATCHES_CONCATENATED_UPDATE_DELAY=2147483647
+    EXTRACTMATCHES_COMMAND_UPDATE_DELAY=2147483647
+    EXTRACTMATCHES_NOTIFY_UPDATE_DELAY=2147483647
+    EXTRACTMATCHES_FILE_UPDATE_DELAY=2147483647
 }
 : ${EXTRACTMATCHES_OVERLAY_JUMP=[s[1;1H}
 : ${EXTRACTMATCHES_OVERLAY_PREFIX=[37;44m[}
@@ -194,7 +221,7 @@ EXEC=exec
 : ${EXTRACTMATCHES_FLASH_REPEATS:=3}
 : ${EXTRACTMATCHES_HIGHLIGHT_PREFIX=[07m}
 : ${EXTRACTMATCHES_HIGHLIGHT_SUFFIX=[0m}
-render='highlight'
+render=
 skipPattern=
 typeset -a types=()
 typeset -a patterns=()
@@ -210,7 +237,9 @@ while [ $# -ne 0 ]
 do
     case "$1" in
 	--help|-h|-\?)	shift; printLongUsage "$0"; exit 0;;
-	--to|-t)	shift; render="$1"; shift;;
+	--to|-t)	shift; singleRenderCheck "$0"; render="$1"; shift;;
+	--grep-only-matching)	shift; singleRenderCheck "$0"; render='/dev/stdout'; isQuiet=t; EXTRACTMATCHES_FILE_UPDATE_DELAY=0;;
+	--grep-count)		shift; singleRenderCheck "$0"; render='/dev/stdout'; isQuiet=t; setInfiniteDelays;;
 	--skip|-s)	shift; skipPattern="${skipPattern}${skipPattern:+|}${1:?}"; shift;;
 	--regexp|-e)		shift; types+=(regexp); patterns+=("${1:?}"); replacements+=('&'); globals+=(0); others+=(''); names+=('') priorities+=(0); shift;;
 	--count|-c)		shift; types+=(count); patterns+=("${1:?}"); replacements+=('&'); globals+=(0); others+=(''); names+=('') priorities+=(0); shift;;
@@ -291,13 +320,7 @@ do
 	--quiet|-q)		shift; isQuiet=t;;
 	--summary-only|-Y)	isQuiet=t
 				;&
-	--summary|-y)		shift
-				EXTRACTMATCHES_STDERR_UPDATE_DELAY=2147483647
-				EXTRACTMATCHES_CONCATENATED_UPDATE_DELAY=2147483647
-				EXTRACTMATCHES_COMMAND_UPDATE_DELAY=2147483647
-				EXTRACTMATCHES_NOTIFY_UPDATE_DELAY=2147483647
-				EXTRACTMATCHES_FILE_UPDATE_DELAY=2147483647
-				;;
+	--summary|-y)		shift; setInfiniteDelays;;
 	--report-order|-o)	shift
 				case "$1" in
 				    by-arg)	reportOrder='compareByKeyArgumentOrder';;
@@ -321,7 +344,7 @@ if [ ${#types[@]} -eq 0 ]; then
     printShortUsage "$0" >&2
     exit 2
 fi
-originalRender="$render"
+originalRender="${render:=highlight}"
 if [ "$render" = 'notify' ]; then
     if [ -z "$EXTRACTMATCHES_NOTIFY_COMMANDLINE" ] && ! which "$EXTRACTMATCHES_NOTIFY_SEND" > /dev/null 2>&1; then
 	printf >&2 'ERROR: notify-send command (%s) not found.\n' "$EXTRACTMATCHES_NOTIFY_SEND"
