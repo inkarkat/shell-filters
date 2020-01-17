@@ -965,8 +965,8 @@ function addPercentage(name, key, count,      n, np, npPattern, tmp, sum, percen
 	}
 
 	if (sum > 0) {
-	    percentage = int(100 * count / sum + 0.5)
-	    return gensub(/^(.*) (.*)$/, namePercentageTemplate, 1, count " " percentage)
+	    percentage = 100 * count / sum
+	    return gensub(/^(.*) (.*)$/, namePercentageTemplate, 1, sprintf("%d %.0f", count, percentage))
 	}
     }
 
