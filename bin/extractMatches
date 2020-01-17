@@ -909,7 +909,7 @@ function renderReset(key, previousCounts, type,      tmp) {
 	    exit 3
     }
 }
-function resetByName(name,      tmp)
+function resetByName(name,      namePattern, tmp)
 {
     if (name ~ /^\/.*\/$/) {
 	namePattern = substr(name, 2, length(name) - 2)
@@ -935,7 +935,7 @@ function resetByName(name,      tmp)
 	resetMatchCounts(name)
     }
 }
-function addPercentage(name, key, count,      n, np, npPattern, tmp, sum, percentage, renderedPercentage)
+function addPercentage(key, count,      n, np, npPattern, tmp, sum, percentage, renderedPercentage)
 {
     for (n = 1; n <= namePercentagesNum; ++n) {
 	np = namePercentages[n]
@@ -977,7 +977,7 @@ function addPercentage(name, key, count,      n, np, npPattern, tmp, sum, percen
 
     return count
 }
-function process(type, start, len, pattern, replacement, other, name, priority,      key, tmp, namePattern) {
+function process(type, start, len, pattern, replacement, other, name, priority,      key, tmp) {
     switch (type) {
 	case "regexp":
 	case "count":
@@ -1005,12 +1005,12 @@ function process(type, start, len, pattern, replacement, other, name, priority, 
 	    tmp = replace(substr($0, start, len), pattern, replacement)
 	    key = name pad(name, "-") pattern
 	    lastCountText[key] = tmp
-	    renderCount(key, substr($0, 1, start - 1), tmp, addPercentage(name, key, ++counts[key]), substr($0, start + len))
+	    renderCount(key, substr($0, 1, start - 1), tmp, addPercentage(key, ++counts[key]), substr($0, start + len))
 	    break
 	case "match-count":
 	    tmp = replace(substr($0, start, len), pattern, replacement)
 	    key = name pad(name, "-") tmp
-	    renderCount(key, substr($0, 1, start - 1), replace(substr($0, start, len), pattern, replacement), addPercentage(name, key, ++matchCounts[key]), substr($0, start + len))
+	    renderCount(key, substr($0, 1, start - 1), replace(substr($0, start, len), pattern, replacement), addPercentage(key, ++matchCounts[key]), substr($0, start + len))
 	    break
 	case "reset":
 	    resetMatch(name)
