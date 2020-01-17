@@ -5,7 +5,7 @@ printShortUsage()
 {
     # Note: short followed by long option; if the user knows the short one, she can
     # skim the long one.
-    printf 'Usage: %q %s\n' "$(basename "$1")" '[-u|--unbuffered] [-q|--quiet] [-y|--summary|-Y|--summary-only] [-t|--to overlay|title|stderr|concatenated|command|notify|highlight|flash|FILE|--grep-only-matching|--grep-count] [-s|--skip PATTERN [...]] [-o|--report-order by-arg|count-desc] (-e|--regexp [-r|--replacement REPLACEMENT] [-g|--global] [-p|--priority N] [-n|--name NAME] [-k|--reset-other NAME|/NAME-PATTERN/] [-x|--reset RESET-PATTERN [-k|--reset-other NAME|/NAME-PATTERN/]])(-c|--count|-M|--match-count [-r|--replacement REPLACEMENT] [-g|--global] [-p|--priority N] [-n|--name NAME] [-k|--reset-other NAME|/NAME-PATTERN/] [-x|--reset RESET-PATTERN [-k|--reset-other NAME|/NAME-PATTERN/]])(--reset-name PATTERN [-g|--global] -n|--name NAME|/NAME-PATTERN/) [...] [--] FILE [...][-?|-h|--help]'
+    printf 'Usage: %q %s\n' "$(basename "$1")" '[-u|--unbuffered] [-q|--quiet] [-y|--summary|-Y|--summary-only] [-%|--name-percentages NAME|/NAME-PATTERN/ [...]] [-t|--to overlay|title|stderr|concatenated|command|notify|highlight|flash|FILE|--grep-only-matching|--grep-count] [-s|--skip PATTERN [...]] [-o|--report-order by-arg|count-desc] (-e|--regexp [-r|--replacement REPLACEMENT] [-g|--global] [-p|--priority N] [-n|--name NAME] [-k|--reset-other NAME|/NAME-PATTERN/] [-x|--reset RESET-PATTERN [-k|--reset-other NAME|/NAME-PATTERN/]])(-c|--count|-M|--match-count [-r|--replacement REPLACEMENT] [-g|--global] [-p|--priority N] [-n|--name NAME] [-k|--reset-other NAME|/NAME-PATTERN/] [-x|--reset RESET-PATTERN [-k|--reset-other NAME|/NAME-PATTERN/]])(--reset-name PATTERN [-g|--global] -n|--name NAME|/NAME-PATTERN/) [...] [--] FILE [...][-?|-h|--help]'
 }
 printUsage()
 {
@@ -130,6 +130,11 @@ HELPDESCRIPTION
     --summary-only|-Y	    For stderr, concatenated, command, notify, or file
 			    reporting, do not print the input text, only the
 			    report after processing all input.
+    --name-percentages|-% NAME|/NAME-PATTERN/
+			    After the reported count, also include the
+			    percentage that a count for something starting with
+			    NAME or matching /NAME-PATTERN/ represents (from
+			    that group of named counts).
 All PATTERNs are AWK-style extended regular expressions.
 
 Example:
@@ -235,6 +240,7 @@ typeset -a globals=()
 typeset -a others=()
 typeset -a names=()
 typeset -a priorities=()
+typeset -a namePercentages=()
 isBuffered=t; [ -t 1 ] && isBuffered=
 isQuiet=
 reportOrder='compareByKeyArgumentOrder'
@@ -338,6 +344,7 @@ do
 				esac
 				shift
 				;;
+	--name-percentages|-%)	shift; namePercentages+=("$1"); shift;;
 	--)		shift; break;;
 	-*)		{ echo "ERROR: Unknown option \"$1\"!"; echo; printShortUsage "$0"; } >&2; exit 2;;
 	*)		break;;
@@ -421,6 +428,7 @@ $EXEC awk \
     -v "othersList=${others[*]//\\/\\\\}" \
     -v "nameList=${names[*]//\\/\\\\}" \
     -v "priorityList=${priorities[*]//\\/\\\\}" \
+    -v "namePercentageList=${namePercentages[*]//\\/\\\\}" \
     -v "skipPattern=${skipPattern//\\/\\\\}" \
     -v "reportOrder=${reportOrder//\\/\\\\}" \
     -v "overlayPrefix=${EXTRACTMATCHES_OVERLAY_JUMP//\\/\\\\}${EXTRACTMATCHES_OVERLAY_PREFIX//\\/\\\\}" \
@@ -476,6 +484,8 @@ BEGIN {
 	print "Assert: Mismatch in number of priorities and patterns." > "/dev/stderr"
 	exit 3
     }
+
+    namePercentagesNum = split(namePercentageList, namePercentages)
 
     PROCINFO["sorted_in"] = "@ind_str_asc"
     delete delayedCounts    # Reify as array; else, the length(delayedCounts) will create it as a scalar instead.
@@ -919,6 +929,47 @@ function resetByName(name,      tmp)
 	resetMatchCounts(name)
     }
 }
+function addPercentage(name, key, count,      n, np, npPattern, tmp, sum, percentage)
+{
+    for (n = 1; n <= namePercentagesNum; ++n) {
+	np = namePercentages[n]
+	if (np ~ /^\/.*\/$/) {
+	    npPattern = substr(np, 2, length(np) - 2)
+	    if (key !~ npPattern) continue
+
+	    for (tmp in counts) {
+		if (tmp ~ npPattern) {
+		    sum += counts[tmp]
+		}
+	    }
+	    for (tmp in matchCounts) {
+		if (tmp ~ npPattern) {
+		    sum += matchCounts[tmp]
+		}
+	    }
+	} else {
+	    if (substr(key, 1, length(np)) != np) continue
+
+	    for (tmp in counts) {
+		if (substr(tmp, 1, length(np)) == np) {
+		    sum += counts[tmp]
+		}
+	    }
+	    for (tmp in matchCounts) {
+		if (substr(tmp, 1, length(np)) == np) {
+		    sum += matchCounts[tmp]
+		}
+	    }
+	}
+
+	if (sum > 0) {
+	    percentage = int(100 * count / sum + 0.5)
+	    return count " = " percentage "%"
+	}
+    }
+
+    return count
+}
 function process(type, start, len, pattern, replacement, other, name, priority,      key, tmp, namePattern) {
     switch (type) {
 	case "regexp":
@@ -947,12 +998,12 @@ function process(type, start, len, pattern, replacement, other, name, priority, 
 	    tmp = replace(substr($0, start, len), pattern, replacement)
 	    key = name pad(name, "-") pattern
 	    lastCountText[key] = tmp
-	    renderCount(key, substr($0, 1, start - 1), tmp, (++counts[key]), substr($0, start + len))
+	    renderCount(key, substr($0, 1, start - 1), tmp, addPercentage(name, key, ++counts[key]), substr($0, start + len))
 	    break
 	case "match-count":
 	    tmp = replace(substr($0, start, len), pattern, replacement)
 	    key = name pad(name, "-") tmp
-	    renderCount(key, substr($0, 1, start - 1), replace(substr($0, start, len), pattern, replacement), (++matchCounts[key]), substr($0, start + len))
+	    renderCount(key, substr($0, 1, start - 1), replace(substr($0, start, len), pattern, replacement), addPercentage(name, key, ++matchCounts[key]), substr($0, start + len))
 	    break
 	case "reset":
 	    resetMatch(name)
