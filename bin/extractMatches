@@ -231,6 +231,7 @@ EXEC=exec
 : ${EXTRACTMATCHES_FLASH_REPEATS:=3}
 : ${EXTRACTMATCHES_HIGHLIGHT_PREFIX=[07m}
 : ${EXTRACTMATCHES_HIGHLIGHT_SUFFIX=[0m}
+: ${EXTRACTMATCHES_NAME_PERCENTAGES_TEMPLATE:='\1 = \2%'}
 render=
 skipPattern=
 typeset -a types=()
@@ -429,6 +430,7 @@ $EXEC awk \
     -v "nameList=${names[*]//\\/\\\\}" \
     -v "priorityList=${priorities[*]//\\/\\\\}" \
     -v "namePercentageList=${namePercentages[*]//\\/\\\\}" \
+    -v "namePercentageTemplate=${EXTRACTMATCHES_NAME_PERCENTAGES_TEMPLATE//\\/\\\\}" \
     -v "skipPattern=${skipPattern//\\/\\\\}" \
     -v "reportOrder=${reportOrder//\\/\\\\}" \
     -v "overlayPrefix=${EXTRACTMATCHES_OVERLAY_JUMP//\\/\\\\}${EXTRACTMATCHES_OVERLAY_PREFIX//\\/\\\\}" \
@@ -964,7 +966,7 @@ function addPercentage(name, key, count,      n, np, npPattern, tmp, sum, percen
 
 	if (sum > 0) {
 	    percentage = int(100 * count / sum + 0.5)
-	    return count " = " percentage "%"
+	    return gensub(/^(.*) (.*)$/, namePercentageTemplate, 1, count " " percentage)
 	}
     }
 
