@@ -62,8 +62,8 @@ EOF
     [ "$output" = "Or [some (1 = 100%)] [sexy (1 = 50%)] [text (1 = 33%)].
 [This (1 = 25%)] [text (2 = 40%)] has [foo (1 = 17%)], or [foooo (1 = 14%)] and [foo (2 = 25%)][foo (3 = 33%)] in it.
 All [more (1 = 10%)] simple [text (3 = 27%)].
-And [more (2 = 17%)] [foo (4 = 31%)] [text (4 = 29%)] [here (1 = 7%)].
-Or [fooo (1 = 6%)] [text (5 = 29%)]." ]
+And [more (2 = 17%)] [foo (4 = 31%)] [text (4 = 29%)] [here (1 = 6.7%)].
+Or [fooo (1 = 6.2%)] [text (5 = 29%)]." ]
 }
 
 @test "pattern percentages for selected match-counts from multiple names" {
@@ -92,7 +92,7 @@ EOF
     [ "$output" = "Or [some (1 = 100%)] [sexy (1 = 50%)] [text (1 = 33%)].
 [This (1 = 25%)] [text (2 = 40%)] has [foo (1 = 17%)], or [foooo (2 = 29%)] and [foo (3 = 38%)][foo (4 = 44%)] in it.
 All [more (1 = 10%)] simple [text (3 = 27%)].
-And [more (2 = 17%)] [foooo (5 = 38%)] [text (4 = 29%)] [here (1 = 7%)].
+And [more (2 = 17%)] [foooo (5 = 38%)] [text (4 = 29%)] [here (1 = 6.7%)].
 Or [fooo (6 = 38%)] [text (5 = 29%)]." ]
 }
 

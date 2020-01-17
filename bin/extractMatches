@@ -232,6 +232,8 @@ EXEC=exec
 : ${EXTRACTMATCHES_HIGHLIGHT_PREFIX=[07m}
 : ${EXTRACTMATCHES_HIGHLIGHT_SUFFIX=[0m}
 : ${EXTRACTMATCHES_NAME_PERCENTAGES_TEMPLATE:='\1 = \2%'}
+: ${EXTRACTMATCHES_NAME_PERCENTAGES_SINGLE_DIGIT_PRECISION:=1}
+: ${EXTRACTMATCHES_NAME_PERCENTAGES_MULTI_DIGIT_PRECISION:=0}
 render=
 skipPattern=
 typeset -a types=()
@@ -431,6 +433,8 @@ $EXEC awk \
     -v "priorityList=${priorities[*]//\\/\\\\}" \
     -v "namePercentageList=${namePercentages[*]//\\/\\\\}" \
     -v "namePercentageTemplate=${EXTRACTMATCHES_NAME_PERCENTAGES_TEMPLATE//\\/\\\\}" \
+    -v "namePercentageSingleDigitPrecision=$EXTRACTMATCHES_NAME_PERCENTAGES_SINGLE_DIGIT_PRECISION" \
+    -v "namePercentageMultiDigitPrecision=$EXTRACTMATCHES_NAME_PERCENTAGES_MULTI_DIGIT_PRECISION" \
     -v "skipPattern=${skipPattern//\\/\\\\}" \
     -v "reportOrder=${reportOrder//\\/\\\\}" \
     -v "overlayPrefix=${EXTRACTMATCHES_OVERLAY_JUMP//\\/\\\\}${EXTRACTMATCHES_OVERLAY_PREFIX//\\/\\\\}" \
@@ -931,7 +935,7 @@ function resetByName(name,      tmp)
 	resetMatchCounts(name)
     }
 }
-function addPercentage(name, key, count,      n, np, npPattern, tmp, sum, percentage)
+function addPercentage(name, key, count,      n, np, npPattern, tmp, sum, percentage, renderedPercentage)
 {
     for (n = 1; n <= namePercentagesNum; ++n) {
 	np = namePercentages[n]
@@ -966,7 +970,8 @@ function addPercentage(name, key, count,      n, np, npPattern, tmp, sum, percen
 
 	if (sum > 0) {
 	    percentage = 100 * count / sum
-	    return gensub(/^(.*) (.*)$/, namePercentageTemplate, 1, sprintf("%d %.0f", count, percentage))
+	    renderedPercentage = sprintf("%d %." (percentage < 10 ? namePercentageSingleDigitPrecision : namePercentageMultiDigitPrecision) "f", count, percentage)
+	    return gensub(/^(.*) (.*)$/, namePercentageTemplate, 1, renderedPercentage)
 	}
     }
 
