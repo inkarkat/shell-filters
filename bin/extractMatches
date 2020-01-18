@@ -837,10 +837,10 @@ function renderCount(key, before, text, count, after,      tmp)
 	    delayedCounts[key]["report"] = tmp
 	    break
 	case "highlight":
-	    $0 = before highlightPrefix text countPrefix count countSuffix highlightSuffix after
+	    $0 = before highlightPrefix text countPrefix addPercentage(key, count) countSuffix highlightSuffix after
 	    break
 	case "flash":
-	    tmp = countPrefix count countSuffix
+	    tmp = countPrefix addPercentage(key, count) countSuffix
 	    # Appending the count during the highlighting adds more characters
 	    # to the line. At the end, one instance of those trailing characters
 	    # will remain, as the original line is shorter. To avoid that, add
@@ -862,7 +862,7 @@ function renderCount(key, before, text, count, after,      tmp)
 		delayedCounts[key]["count"] = count
 		delayedCounts[key]["report"] = text countPrefix count countSuffix
 	    } else {
-		writeToFile(text countPrefix count countSuffix)
+	    writeToFile(text countPrefix addPercentage(key, count) countSuffix)
 	    }
 	    break
 	default:
@@ -1005,12 +1005,12 @@ function process(type, start, len, pattern, replacement, other, name, priority, 
 	    tmp = replace(substr($0, start, len), pattern, replacement)
 	    key = name pad(name, "-") pattern
 	    lastCountText[key] = tmp
-	    renderCount(key, substr($0, 1, start - 1), tmp, addPercentage(key, ++counts[key]), substr($0, start + len))
+	    renderCount(key, substr($0, 1, start - 1), tmp, ++counts[key], substr($0, start + len))
 	    break
 	case "match-count":
 	    tmp = replace(substr($0, start, len), pattern, replacement)
 	    key = name pad(name, "-") tmp
-	    renderCount(key, substr($0, 1, start - 1), replace(substr($0, start, len), pattern, replacement), addPercentage(key, ++matchCounts[key]), substr($0, start + len))
+	    renderCount(key, substr($0, 1, start - 1), replace(substr($0, start, len), pattern, replacement), ++matchCounts[key], substr($0, start + len))
 	    break
 	case "reset":
 	    resetMatch(name)
