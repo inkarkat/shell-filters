@@ -501,17 +501,17 @@ function getKeyMatch(key)
 {
     return gensub(/^.*-/, "", 1, key)   # XXX: For match-count, both PATTERN and TEXT could contain the dash separator, so the extraction is not perfect here.
 }
-function compareByKeyArgumentOrder(i1, v1, i2, v2,      index1, index2, report1, report2)
+function compareByKeyArgumentOrder(i1, v1, i2, v2,      index1, index2, text1, text2)
 {
     # Sort first by order of pattern arguments as given on the command-line
-    # (attribute "i"), then by the count report ascending (attribute "report").
+    # (attribute "i"), then by the count text ascending (attribute "text").
     index1 = v1["i"]
     index2 = v2["i"]
-    report1 = v1["report"]
-    report2 = v2["report"]
+    text1 = v1["text"]
+    text2 = v2["text"]
 
     if (index1 == index2) {
-	return (report1 == report2 ? 0 : report1 > report2 ? 1 : -1)
+	return (text1 == text2 ? 0 : text1 > text2 ? 1 : -1)
     } else {
 	return (index1 == index2 ? 0 : index1 > index2 ? 1 : -1)
     }
@@ -519,14 +519,14 @@ function compareByKeyArgumentOrder(i1, v1, i2, v2,      index1, index2, report1,
 }
 function compareByCount(i1, v1, i2, v2,      count1, count2)
 {
-    # Sort first by count descending, then by count report ascending.
+    # Sort first by count descending, then by count text ascending.
     count1 = v1["count"]
     count2 = v2["count"]
-    report1 = v1["report"]
-    report2 = v2["report"]
+    text1 = v1["text"]
+    text2 = v2["text"]
 
     if (count1 == count2) {
-	return (report1 == report2 ? 0 : report1 > report2 ? 1 : -1)
+	return (text1 == text2 ? 0 : text1 > text2 ? 1 : -1)
     } else {
 	return (count1 > count2 ? -1 : 1)
     }
@@ -708,9 +708,11 @@ function renderIt(theMatchReset, theMatch, theCounts, resultList,      resultCnt
     if (length(theCounts) > 0) {
 	save_sorted_in = PROCINFO["sorted_in"]
 	PROCINFO["sorted_in"] = reportOrder
-	for (key in theCounts) {
-	    resultList[++resultCnt] = theCounts[key]["report"]
-	}
+	    for (key in theCounts) {
+		PROCINFO["sorted_in"] = save_sorted_in
+		    resultList[++resultCnt] = theCounts[key]["text"] countPrefix addPercentage(key, theCounts[key]["count"]) countSuffix
+		PROCINFO["sorted_in"] = reportOrder
+	    }
 	PROCINFO["sorted_in"] = save_sorted_in
     }
 
@@ -830,11 +832,10 @@ function renderCount(key, before, text, count, after,      tmp)
 	case "overlay":
 	case "concatenated":
 	case "command":
-	    tmp = text countPrefix count countSuffix
-	    delayedChange = delayedChange || (delayedCounts[key]["report"] != tmp)
+	    delayedChange = delayedChange || delayedCounts[key]["count"] != count || delayedCounts[key]["text"] != text
 	    delayedCounts[key]["i"] = lowestI
 	    delayedCounts[key]["count"] = count
-	    delayedCounts[key]["report"] = tmp
+	    delayedCounts[key]["text"] = text
 	    break
 	case "highlight":
 	    $0 = before highlightPrefix text countPrefix addPercentage(key, count) countSuffix highlightSuffix after
@@ -860,7 +861,7 @@ function renderCount(key, before, text, count, after,      tmp)
 	    if (fileUpdateCountDelay != 0) {
 		delayedCounts[key]["i"] = lowestI
 		delayedCounts[key]["count"] = count
-		delayedCounts[key]["report"] = text countPrefix count countSuffix
+		delayedCounts[key]["text"] = text
 	    } else {
 	    writeToFile(text countPrefix addPercentage(key, count) countSuffix)
 	    }
@@ -877,7 +878,7 @@ function renderReset(key, previousCounts, type,      tmp) {
 	case "overlay":
 	case "concatenated":
 	case "command":
-	    delayedChange = delayedChange || (delayedMatch != "") || (delayedCounts[key]["report"] != "")
+	    delayedChange = delayedChange || (delayedMatch != "") || delayedCounts[key]["count"] != "" || delayedCounts[key]["text"] != ""
 	    delayedMatch = ""
 	    delete delayedCounts[key]
 	    break
@@ -891,7 +892,7 @@ function renderReset(key, previousCounts, type,      tmp) {
 		if (fileUpdateCountDelay != 0) {
 		    delayedCounts[key]["i"] = lowestI
 		    delayedCounts[key]["count"] = 0
-		    delayedCounts[key]["report"] = tmp countPrefix "0" countSuffix
+		    delayedCounts[key]["text"] = tmp
 		} else {
 		    writeToFile(tmp countPrefix "0" countSuffix)
 		}
