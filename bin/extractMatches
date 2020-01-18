@@ -5,7 +5,7 @@ printShortUsage()
 {
     # Note: short followed by long option; if the user knows the short one, she can
     # skim the long one.
-    printf 'Usage: %q %s\n' "$(basename "$1")" '[-u|--unbuffered] [-q|--quiet] [-y|--summary|-Y|--summary-only] [-t|--to overlay|title|stderr|concatenated|command|notify|highlight|flash|FILE|--grep-only-matching|--grep-count] [-s|--skip PATTERN [...]] [-o|--report-order by-arg|count-desc] (-e|--regexp [-r|--replacement REPLACEMENT] [-g|--global] [-p|--priority N] [-n|--name NAME] [-k|--reset-other NAME|/NAME-PATTERN/] [-x|--reset RESET-PATTERN [-k|--reset-other NAME|/NAME-PATTERN/]])(-c|--count|-M|--match-count [-r|--replacement REPLACEMENT] [-g|--global] [-p|--priority N] [-n|--name NAME] [-k|--reset-other NAME|/NAME-PATTERN/] [-x|--reset RESET-PATTERN [-k|--reset-other NAME|/NAME-PATTERN/]])(--reset-name PATTERN [-g|--global] -n|--name NAME|/NAME-PATTERN/) [...] [--] FILE [...][-?|-h|--help]'
+    printf 'Usage: %q %s\n' "$(basename "$1")" '[-u|--unbuffered] [-q|--quiet] [-y|--summary|-Y|--summary-only] [-%|--name-percentages NAME|/NAME-PATTERN/ [...]] [-t|--to overlay|title|stderr|concatenated|command|notify|highlight|flash|FILE|--grep-only-matching|--grep-count] [-s|--skip PATTERN [...]] [-o|--report-order by-arg|count-desc] (-e|--regexp [-r|--replacement REPLACEMENT] [-g|--global] [-p|--priority N] [-n|--name NAME] [-k|--reset-other NAME|/NAME-PATTERN/] [-x|--reset RESET-PATTERN [-k|--reset-other NAME|/NAME-PATTERN/]])(-c|--count|-M|--match-count [-r|--replacement REPLACEMENT] [-g|--global] [-p|--priority N] [-n|--name NAME] [-k|--reset-other NAME|/NAME-PATTERN/] [-x|--reset RESET-PATTERN [-k|--reset-other NAME|/NAME-PATTERN/]])(--reset-name PATTERN [-g|--global] -n|--name NAME|/NAME-PATTERN/) [...] [--] FILE [...][-?|-h|--help]'
 }
 printUsage()
 {
@@ -130,6 +130,11 @@ HELPDESCRIPTION
     --summary-only|-Y	    For stderr, concatenated, command, notify, or file
 			    reporting, do not print the input text, only the
 			    report after processing all input.
+    --name-percentages|-% NAME|/NAME-PATTERN/
+			    After the reported count, also include the
+			    percentage that a count for something starting with
+			    NAME or matching /NAME-PATTERN/ represents (from
+			    that group of named counts).
 All PATTERNs are AWK-style extended regular expressions.
 
 Example:
@@ -226,6 +231,9 @@ EXEC=exec
 : ${EXTRACTMATCHES_FLASH_REPEATS:=3}
 : ${EXTRACTMATCHES_HIGHLIGHT_PREFIX=[07m}
 : ${EXTRACTMATCHES_HIGHLIGHT_SUFFIX=[0m}
+: ${EXTRACTMATCHES_NAME_PERCENTAGES_TEMPLATE:='\1 = \2%'}
+: ${EXTRACTMATCHES_NAME_PERCENTAGES_SINGLE_DIGIT_PRECISION:=1}
+: ${EXTRACTMATCHES_NAME_PERCENTAGES_MULTI_DIGIT_PRECISION:=0}
 render=
 skipPattern=
 typeset -a types=()
@@ -235,6 +243,7 @@ typeset -a globals=()
 typeset -a others=()
 typeset -a names=()
 typeset -a priorities=()
+typeset -a namePercentages=()
 isBuffered=t; [ -t 1 ] && isBuffered=
 isQuiet=
 reportOrder='compareByKeyArgumentOrder'
@@ -338,6 +347,7 @@ do
 				esac
 				shift
 				;;
+	--name-percentages|-%)	shift; namePercentages+=("$1"); shift;;
 	--)		shift; break;;
 	-*)		{ echo "ERROR: Unknown option \"$1\"!"; echo; printShortUsage "$0"; } >&2; exit 2;;
 	*)		break;;
@@ -421,6 +431,10 @@ $EXEC awk \
     -v "othersList=${others[*]//\\/\\\\}" \
     -v "nameList=${names[*]//\\/\\\\}" \
     -v "priorityList=${priorities[*]//\\/\\\\}" \
+    -v "namePercentageList=${namePercentages[*]//\\/\\\\}" \
+    -v "namePercentageTemplate=${EXTRACTMATCHES_NAME_PERCENTAGES_TEMPLATE//\\/\\\\}" \
+    -v "namePercentageSingleDigitPrecision=$EXTRACTMATCHES_NAME_PERCENTAGES_SINGLE_DIGIT_PRECISION" \
+    -v "namePercentageMultiDigitPrecision=$EXTRACTMATCHES_NAME_PERCENTAGES_MULTI_DIGIT_PRECISION" \
     -v "skipPattern=${skipPattern//\\/\\\\}" \
     -v "reportOrder=${reportOrder//\\/\\\\}" \
     -v "overlayPrefix=${EXTRACTMATCHES_OVERLAY_JUMP//\\/\\\\}${EXTRACTMATCHES_OVERLAY_PREFIX//\\/\\\\}" \
@@ -477,6 +491,8 @@ BEGIN {
 	exit 3
     }
 
+    namePercentagesNum = split(namePercentageList, namePercentages)
+
     PROCINFO["sorted_in"] = "@ind_str_asc"
     delete delayedCounts    # Reify as array; else, the length(delayedCounts) will create it as a scalar instead.
     delayTime = delayMatchTime = delayCountTime = systime()
@@ -485,17 +501,17 @@ function getKeyMatch(key)
 {
     return gensub(/^.*-/, "", 1, key)   # XXX: For match-count, both PATTERN and TEXT could contain the dash separator, so the extraction is not perfect here.
 }
-function compareByKeyArgumentOrder(i1, v1, i2, v2,      index1, index2, report1, report2)
+function compareByKeyArgumentOrder(i1, v1, i2, v2,      index1, index2, text1, text2)
 {
     # Sort first by order of pattern arguments as given on the command-line
-    # (attribute "i"), then by the count report ascending (attribute "report").
+    # (attribute "i"), then by the count text ascending (attribute "text").
     index1 = v1["i"]
     index2 = v2["i"]
-    report1 = v1["report"]
-    report2 = v2["report"]
+    text1 = v1["text"]
+    text2 = v2["text"]
 
     if (index1 == index2) {
-	return (report1 == report2 ? 0 : report1 > report2 ? 1 : -1)
+	return (text1 == text2 ? 0 : text1 > text2 ? 1 : -1)
     } else {
 	return (index1 == index2 ? 0 : index1 > index2 ? 1 : -1)
     }
@@ -503,14 +519,14 @@ function compareByKeyArgumentOrder(i1, v1, i2, v2,      index1, index2, report1,
 }
 function compareByCount(i1, v1, i2, v2,      count1, count2)
 {
-    # Sort first by count descending, then by count report ascending.
+    # Sort first by count descending, then by count text ascending.
     count1 = v1["count"]
     count2 = v2["count"]
-    report1 = v1["report"]
-    report2 = v2["report"]
+    text1 = v1["text"]
+    text2 = v2["text"]
 
     if (count1 == count2) {
-	return (report1 == report2 ? 0 : report1 > report2 ? 1 : -1)
+	return (text1 == text2 ? 0 : text1 > text2 ? 1 : -1)
     } else {
 	return (count1 > count2 ? -1 : 1)
     }
@@ -692,9 +708,11 @@ function renderIt(theMatchReset, theMatch, theCounts, resultList,      resultCnt
     if (length(theCounts) > 0) {
 	save_sorted_in = PROCINFO["sorted_in"]
 	PROCINFO["sorted_in"] = reportOrder
-	for (key in theCounts) {
-	    resultList[++resultCnt] = theCounts[key]["report"]
-	}
+	    for (key in theCounts) {
+		PROCINFO["sorted_in"] = save_sorted_in
+		    resultList[++resultCnt] = theCounts[key]["text"] countPrefix addPercentage(key, theCounts[key]["count"]) countSuffix
+		PROCINFO["sorted_in"] = reportOrder
+	    }
 	PROCINFO["sorted_in"] = save_sorted_in
     }
 
@@ -814,17 +832,16 @@ function renderCount(key, before, text, count, after,      tmp)
 	case "overlay":
 	case "concatenated":
 	case "command":
-	    tmp = text countPrefix count countSuffix
-	    delayedChange = delayedChange || (delayedCounts[key]["report"] != tmp)
+	    delayedChange = delayedChange || delayedCounts[key]["count"] != count || delayedCounts[key]["text"] != text
 	    delayedCounts[key]["i"] = lowestI
 	    delayedCounts[key]["count"] = count
-	    delayedCounts[key]["report"] = tmp
+	    delayedCounts[key]["text"] = text
 	    break
 	case "highlight":
-	    $0 = before highlightPrefix text countPrefix count countSuffix highlightSuffix after
+	    $0 = before highlightPrefix text countPrefix addPercentage(key, count) countSuffix highlightSuffix after
 	    break
 	case "flash":
-	    tmp = countPrefix count countSuffix
+	    tmp = countPrefix addPercentage(key, count) countSuffix
 	    # Appending the count during the highlighting adds more characters
 	    # to the line. At the end, one instance of those trailing characters
 	    # will remain, as the original line is shorter. To avoid that, add
@@ -844,9 +861,9 @@ function renderCount(key, before, text, count, after,      tmp)
 	    if (fileUpdateCountDelay != 0) {
 		delayedCounts[key]["i"] = lowestI
 		delayedCounts[key]["count"] = count
-		delayedCounts[key]["report"] = text countPrefix count countSuffix
+		delayedCounts[key]["text"] = text
 	    } else {
-		writeToFile(text countPrefix count countSuffix)
+	    writeToFile(text countPrefix addPercentage(key, count) countSuffix)
 	    }
 	    break
 	default:
@@ -861,7 +878,7 @@ function renderReset(key, previousCounts, type,      tmp) {
 	case "overlay":
 	case "concatenated":
 	case "command":
-	    delayedChange = delayedChange || (delayedMatch != "") || (delayedCounts[key]["report"] != "")
+	    delayedChange = delayedChange || (delayedMatch != "") || delayedCounts[key]["count"] != "" || delayedCounts[key]["text"] != ""
 	    delayedMatch = ""
 	    delete delayedCounts[key]
 	    break
@@ -875,7 +892,7 @@ function renderReset(key, previousCounts, type,      tmp) {
 		if (fileUpdateCountDelay != 0) {
 		    delayedCounts[key]["i"] = lowestI
 		    delayedCounts[key]["count"] = 0
-		    delayedCounts[key]["report"] = tmp countPrefix "0" countSuffix
+		    delayedCounts[key]["text"] = tmp
 		} else {
 		    writeToFile(tmp countPrefix "0" countSuffix)
 		}
@@ -893,7 +910,7 @@ function renderReset(key, previousCounts, type,      tmp) {
 	    exit 3
     }
 }
-function resetByName(name,      tmp)
+function resetByName(name,      namePattern, tmp)
 {
     if (name ~ /^\/.*\/$/) {
 	namePattern = substr(name, 2, length(name) - 2)
@@ -919,7 +936,49 @@ function resetByName(name,      tmp)
 	resetMatchCounts(name)
     }
 }
-function process(type, start, len, pattern, replacement, other, name, priority,      key, tmp, namePattern) {
+function addPercentage(key, count,      n, np, npPattern, tmp, sum, percentage, renderedPercentage)
+{
+    for (n = 1; n <= namePercentagesNum; ++n) {
+	np = namePercentages[n]
+	if (np ~ /^\/.*\/$/) {
+	    npPattern = substr(np, 2, length(np) - 2)
+	    if (key !~ npPattern) continue
+
+	    for (tmp in counts) {
+		if (tmp ~ npPattern) {
+		    sum += counts[tmp]
+		}
+	    }
+	    for (tmp in matchCounts) {
+		if (tmp ~ npPattern) {
+		    sum += matchCounts[tmp]
+		}
+	    }
+	} else {
+	    if (substr(key, 1, length(np)) != np) continue
+
+	    for (tmp in counts) {
+		if (substr(tmp, 1, length(np)) == np) {
+		    sum += counts[tmp]
+		}
+	    }
+	    for (tmp in matchCounts) {
+		if (substr(tmp, 1, length(np)) == np) {
+		    sum += matchCounts[tmp]
+		}
+	    }
+	}
+
+	if (sum > 0) {
+	    percentage = 100 * count / sum
+	    renderedPercentage = sprintf("%d %." (percentage < 10 ? namePercentageSingleDigitPrecision : namePercentageMultiDigitPrecision) "f", count, percentage)
+	    return gensub(/^(.*) (.*)$/, namePercentageTemplate, 1, renderedPercentage)
+	}
+    }
+
+    return count
+}
+function process(type, start, len, pattern, replacement, other, name, priority,      key, tmp) {
     switch (type) {
 	case "regexp":
 	case "count":
@@ -947,12 +1006,12 @@ function process(type, start, len, pattern, replacement, other, name, priority, 
 	    tmp = replace(substr($0, start, len), pattern, replacement)
 	    key = name pad(name, "-") pattern
 	    lastCountText[key] = tmp
-	    renderCount(key, substr($0, 1, start - 1), tmp, (++counts[key]), substr($0, start + len))
+	    renderCount(key, substr($0, 1, start - 1), tmp, ++counts[key], substr($0, start + len))
 	    break
 	case "match-count":
 	    tmp = replace(substr($0, start, len), pattern, replacement)
 	    key = name pad(name, "-") tmp
-	    renderCount(key, substr($0, 1, start - 1), replace(substr($0, start, len), pattern, replacement), (++matchCounts[key]), substr($0, start + len))
+	    renderCount(key, substr($0, 1, start - 1), replace(substr($0, start, len), pattern, replacement), ++matchCounts[key], substr($0, start + len))
 	    break
 	case "reset":
 	    resetMatch(name)
