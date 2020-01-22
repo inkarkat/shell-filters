@@ -1,0 +1,64 @@
+#!/bin/bash
+
+printUsage()
+{
+    cat <<HELPTEXT
+Insert snip formatting around each passed FILE / standard input.
+HELPTEXT
+    printf 'Usage: %q %s\n' "$(basename "$1")" '[-n|--name NAME|--base-name|--absolute-name] FILE [...] [-?|-h|--help]'
+    printf 'Usage: cat FILE | %q %s\n' "$(basename "$1")" '[-n|--name NAME]'
+}
+unset name
+typeset -a converter=()
+while [ $# -ne 0 ]
+do
+    case "$1" in
+	--help|-h|-\?)	shift; printUsage "$0"; exit 0;;
+	--base-name)	shift; converter=(basename --);;
+	--absolute-name)
+			shift; converter=(realpath --no-symlinks --);;
+	--name|-n)	shift; name="$1"; shift;;
+	--)		shift; break;;
+	-*)		{ echo "ERROR: Unknown option \"$1\"!"; echo; printUsage "$0"; } >&2; exit 2;;
+	*)		break;;
+    esac
+done
+
+before()
+{
+    printf ',----[ %s ]----\n' "$name"
+}
+after()
+{
+    printf '`------%s------\n' "${name//?/-}"
+}
+
+status=0
+if [ $# -eq 0 ]; then
+    if [ ${#converter[@]} -gt 0 ]; then
+	echo >&2 'ERROR: Can only use -n|--name with standard input.'
+	echo >&2
+	printUsage "$0" >&2
+	exit 2
+    fi
+    : ${name=input}
+    before
+    cat || status=$?
+    after
+else
+    for filespec
+    do
+	if [ -z "$name" ]; then
+	    if [ ${#converter[@]} -gt 0 ]; then
+		name="$("${converter[@]}" "$filespec")"
+	    else
+		name="$filespec"
+	    fi
+	fi
+
+	before
+	cat "$filespec" || status=$?
+	after
+    done
+fi
+exit $status
