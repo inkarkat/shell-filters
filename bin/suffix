@@ -5,7 +5,8 @@ printUsage()
     cat <<HELPTEXT
 Append SUFFIX to each individual line.
 HELPTEXT
-    printf 'Usage: %q %s\n' "$(basename "$1")" '[-k|--keep-whitespace] [-s|--skip-empty] SUFFIX [FILE, ...] [-?|-h|--help]'
+    printf 'Usage: %q %s\n' "$(basename "$1")" '[-k|--keep-whitespace] [-s|--skip-empty] [--] SUFFIX FILE [...] [-?|-h|--help]'
+    printf 'Usage: cat FILE | %q %s\n' "$(basename "$1")" '[-k|--keep-whitespace] [-s|--skip-empty] [--] SUFFIX'
 }
 isKeepWhitespace=
 additionalSedProcessing=()
