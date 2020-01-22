@@ -1,5 +1,7 @@
 #!/bin/bash
 
+: ${SNIP_PRINTER:=cat}
+
 printUsage()
 {
     cat <<HELPTEXT
@@ -43,7 +45,7 @@ if [ $# -eq 0 ]; then
     fi
     : ${name=input}
     before
-    cat || status=$?
+    eval "$SNIP_PRINTER" || status=$?
     after
 else
     for filespec
@@ -57,7 +59,7 @@ else
 	fi
 
 	before
-	cat "$filespec" || status=$?
+	eval "$SNIP_PRINTER" "$filespec" || status=$?
 	after
     done
 fi

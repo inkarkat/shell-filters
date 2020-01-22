@@ -1,0 +1,30 @@
+#!/bin/bash
+
+printUsage()
+{
+    cat <<HELPTEXT
+Insert fragment formatting around each passed FILE / standard input.
+HELPTEXT
+    printf 'Usage: %q %s\n' "$(basename "$1")" '[-n|--name NAME|--base-name|--absolute-name] [-k|--keep-indent] FILE [...] [-?|-h|--help]'
+    printf 'Usage: cat FILE | %q %s\n' "$(basename "$1")" '[-n|--name NAME] [-k|--keep-indent]'
+}
+
+typeset -a snipArgs=()
+typeset -a prefixArgs=()
+while [ $# -ne 0 ]
+do
+    case "$1" in
+	--help|-h|-\?)	shift; printUsage "$0"; exit 0;;
+	--base-name|--absolute-name)
+			snipArgs+=("$1"); shift;;
+	--name|-n)	snipArgs+=("$1" "$2"); shift; shift;;
+	--keep-indent|-k|--skip-empty|-s)
+			prefixArgs=("$1"); shift;;
+	--)		shift; break;;
+	-*)		{ echo "ERROR: Unknown option \"$1\"!"; echo; printUsage "$0"; } >&2; exit 2;;
+	*)		break;;
+    esac
+done
+
+printf -v prefixArgs ' %q' "${prefixArgs[@]}" '| '
+SNIP_PRINTER="prefix $prefixArgs" exec snip "${snipArgs[@]}" "$@"
