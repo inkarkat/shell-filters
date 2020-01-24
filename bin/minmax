@@ -6,9 +6,10 @@ function tally(value)
     max = (value > max ? value : max)
 }
 BEGIN {
-    min = max = 0
+    min = 2^PREC
+    max = -1 * min
     if (ARGC > 1) {
-	for (i = 1; i <= ARGC; ++i) {
+	for (i = 1; i < ARGC; ++i) {
 	    tally(ARGV[i])
 	}
 	exit 0
