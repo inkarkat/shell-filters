@@ -40,8 +40,8 @@ function convert(seconds,      hours, minutes)
 	(weeks > 0 ? weeks "w " : "") \
 	(days > 0 ? days "d " : "") \
 	(weeks > 0 || days > 0 || hours > 0 ? sprintf("%02d", hours) ":" : "") \
-	(minutes > 0 ? sprintf("%02d", minutes) ":" : "") \
-	(hours > 0 || minutes > 0 ? sprintf("%02d", seconds) : seconds)
+	(weeks > 0 || days > 0 || hours > 0 || minutes > 0 ? sprintf("%02d", minutes) ":" : "") \
+	(weeks > 0 || days > 0 || hours > 0 || minutes > 0 ? sprintf("%02d", seconds) : seconds)
 }
 function shallowclone(target, source,      e)
 {
