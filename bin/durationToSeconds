@@ -3,7 +3,7 @@
 printUsage()
 {
     cat <<HELPTEXT
-Convert matches of [HH:]MM:SS into seconds.
+Convert matches of [Ww ][Dd ][HH:]MM:SS into seconds.
 (Unless the text around the duration (with the duration itself represented by &)
 matches SKIP&PATTERN.)
 HELPTEXT
@@ -24,15 +24,27 @@ done
 awk -F $'\n' \
     -v "skipPattern=${skipPattern//\\/\\\\}" \
 '
-function convert(duration,      n, tuples)
+function convert(duration,      calendar, n, clock, days, weeks, result)
 {
-    n = split(duration, tuples, /:/)
+    n = split(gensub(/^.* /, "", 1, duration), clock, /:/)
+    split(duration, calendar, / /)
+
+    if (calendar[1] ~ /^[[:digit:]]+w$/) {
+	weeks = substr(calendar[1], 1, length(calendar[1]) - 1)
+	if (calendar[2] ~ /^[[:digit:]]+d$/) {
+	    days = substr(calendar[2], 1, length(calendar[2]) - 1)
+	}
+    } else if (calendar[1] ~ /^[[:digit:]]+d$/) {
+	days = substr(calendar[1], 1, length(calendar[1]) - 1)
+    }
+    result += weeks * 604800 + days * 86400
+
     if (n == 2)
-	return tuples[1] * 60 + tuples[2]
+	result += clock[n - 1] * 60 + clock[n]
     else if (n == 3)
-	return tuples[1] * 3600 + tuples[2] * 60 + tuples[3]
-    else
-	return duration
+	result += clock[n - 2] * 3600 + clock[n - 1] * 60 + clock[n]
+
+    return (result > 0 ? result : duration)
 }
 function shallowclone(target, source,      e)
 {
@@ -46,7 +58,7 @@ function join(n, list, seps,      i, result) {
     return result
 }
 {
-    n = split($0, rest, /\<[[:digit:]]+(:[[:digit:]]{2}){1,2}\>/, durations)
+    n = split($0, rest, /\<([[:digit:]]+w )?([[:digit:]]+d )?[[:digit:]]+(:[[:digit:]]{2}){1,2}\>/, durations)
 
     for (i = 1; i < n; ++i) {
 	if (skipPattern != "") {
