@@ -7,7 +7,8 @@ Convert matches of [Ww ][Dd ][HH:]MM:SS into seconds.
 (Unless the text around the duration (with the duration itself represented by &)
 matches SKIP&PATTERN.)
 HELPTEXT
-    printf 'Usage: cat FILE [...] | %q %s\n' "$(basename "$1")" '[-s|--skip SKIP&PATTERN [...]] [-?|-h|--help]'
+    printf 'Usage: %q %s\n' "$(basename "$1")" '"[Ww ][Dd ][HH:]MM:SS" [...] [-?|-h|--help]'
+    printf 'Usage: cat FILE [...] | %q %s\n' "$(basename "$1")" '[-s|--skip SKIP&PATTERN [...]]'
 }
 skipPattern=
 while [ $# -ne 0 ]
@@ -57,6 +58,14 @@ function join(n, list, seps,      i, result) {
     result = result list[++i]
     return result
 }
+BEGIN {
+    if (ARGC > 1) {
+	for (i = 1; i < ARGC; ++i) {
+	    print convert(ARGV[i])
+	}
+	exit 0
+    }
+}
 {
     n = split($0, rest, /\<([[:digit:]]+w )?([[:digit:]]+d )?[[:digit:]]+(:[[:digit:]]{2}){1,2}\>/, durations)
 
@@ -73,4 +82,4 @@ function join(n, list, seps,      i, result) {
     $0 = join(n, rest, durations)
     print
 }
-'
+' "$@"

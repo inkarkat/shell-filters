@@ -7,7 +7,8 @@ Treat any integer in the input as seconds and convert them into
 [[[Ww ][Dd ] HH:]MM:]SS. (Unless the text around the integer (with the integer
 itself represented by &) matches SKIP&PATTERN.)
 HELPTEXT
-    printf 'Usage: cat FILE [...] | %q %s\n' "$(basename "$1")" '[-s|--skip SKIP&PATTERN [...]] [-?|-h|--help]'
+    printf 'Usage: %q %s\n' "$(basename "$1")" 'SECONDS [...] [-?|-h|--help]'
+    printf 'Usage: cat FILE [...] | %q %s\n' "$(basename "$1")" '[-s|--skip SKIP&PATTERN [...]]'
 }
 skipPattern=
 while [ $# -ne 0 ]
@@ -53,6 +54,14 @@ function join(n, list, seps,      i, result) {
     result = result list[++i]
     return result
 }
+BEGIN {
+    if (ARGC > 1) {
+	for (i = 1; i < ARGC; ++i) {
+	    print convert(ARGV[i])
+	}
+	exit 0
+    }
+}
 {
     n = split($0, rest, /\<[[:digit:]]+\>/, numbers)
     for (i = 1; i < n; ++i) {
@@ -68,4 +77,4 @@ function join(n, list, seps,      i, result) {
     $0 = join(n, rest, numbers)
     print
 }
-'
+' "$@"
