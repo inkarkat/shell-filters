@@ -1,4 +1,6 @@
 #!/bin/sed -f
+# This is an automatically generated file.
+# Created Thu 19. Mar 12:09:37 CET 2020 from bin/deleteStackTraceLocations.
 
 :begin
 # Java exception message
@@ -36,12 +38,15 @@ N;/\n\tat [^\n]*$/{
 	b deleteStackTraceLocations
     }
     # When a following location is from us ...
-    /\n\tat / {
-	# ... and we do not have another one from us yet ...
-	/\(^\|\n\)\tat .*\n/! {
-	    # Keep it.
+    /\n\tat [^\n]*$/ {
+	# ... and we have two more from us already ...
+	/\(^\|\n\)\tat [^\n]*\n\tat [^\n]*\n/ {
+	    # Drop the middle one, so that only the first and last will be kept.
+	    s/\(^\|\n\)\(\tat [^\n]*\n\)\tat [^\n]*\n\([^\n]*$\)/\1\2\3/
 	    b deleteStackTraceLocations
 	}
+	# Else we only have one already, so keep the second one.
+	b deleteStackTraceLocations
     }
     # Else delete it (and all following locations).
     s/\n[^\n]*$//
@@ -75,14 +80,17 @@ N;/ in \+[^ \n]*$/{
 	b deleteGroovyStackTraceLocations
     }
     # When a following location is from us ...
-    /\n.* in / {
-	# ... and we do not have another one from us yet ...
-	/\(^\|\n\).* in .*\n/! {
-	    # Keep it.
+    /\n[^\n]* in [^\n]*$/ {
+	# ... and we have two more from us already ...
+	/\(^\|\n\)[^\n]* in [^\n]*\n[^\n]* in [^\n]*\n/ {
+	    # Drop the middle one, so that only the first and last will be kept.
+	    s/\(^\|\n\)\([^\n]* in [^\n]*\n\)[^\n]* in [^\n]*\n\([^\n]*$\)/\1\2\3/
 	    b deleteGroovyStackTraceLocations
 	}
+	# Else we only have one already, so keep the second one.
+	b deleteGroovyStackTraceLocations
     }
-    # Else delete it and all following locations.
+    # Else delete it (and all following locations).
     s/\n[^\n]*$//
     b deleteGroovyStackTraceLocations
 }
