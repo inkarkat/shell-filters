@@ -83,9 +83,9 @@ N;/\n\tat [^\n]*$/{
     # When a following location is from us ...
     /\n\tat '"${DELETESTACKTRACELOCATIONS_OUR_PATTERN//\//\\/}"'[^\n]*$/ {
 	# ... and we have two more from us already ...
-	/\(^\|\n\)\tat '"${DELETESTACKTRACELOCATIONS_OUR_PATTERN//\//\\/}"'.*\n\tat '"${DELETESTACKTRACELOCATIONS_OUR_PATTERN//\//\\/}"'.*\n/ {
+	/\(^\|\n\)\tat '"${DELETESTACKTRACELOCATIONS_OUR_PATTERN//\//\\/}"'[^\n]*\n\tat '"${DELETESTACKTRACELOCATIONS_OUR_PATTERN//\//\\/}"'[^\n]*\n/ {
 	    # Drop the middle one, so that only the first and last will be kept.
-	    s/\(^\|\n\)\(\tat '"${DELETESTACKTRACELOCATIONS_OUR_PATTERN//\//\\/}"'.*\n\)\tat '"${DELETESTACKTRACELOCATIONS_OUR_PATTERN//\//\\/}"'.*\n\([^\n]*$\)/\1\2\3/
+	    s/\(^\|\n\)\(\tat '"${DELETESTACKTRACELOCATIONS_OUR_PATTERN//\//\\/}"'[^\n]*\n\)\tat '"${DELETESTACKTRACELOCATIONS_OUR_PATTERN//\//\\/}"'[^\n]*\n\([^\n]*$\)/\1\2\3/
 	    b deleteStackTraceLocations
 	}
 	# Else we only have one already, so keep the second one.
@@ -125,9 +125,9 @@ N;/ in \+[^ \n]*$/{
     # When a following location is from us ...
     /\n[^\n]* in '"${DELETESTACKTRACELOCATIONS_OUR_PATTERN//\//\\/}"'[^\n]*$/ {
 	# ... and we have two more from us already ...
-	/\(^\|\n\)[^\n]* in '"${DELETESTACKTRACELOCATIONS_OUR_PATTERN//\//\\/}"'.*\n[^\n]* in '"${DELETESTACKTRACELOCATIONS_OUR_PATTERN//\//\\/}"'.*\n/ {
+	/\(^\|\n\)[^\n]* in '"${DELETESTACKTRACELOCATIONS_OUR_PATTERN//\//\\/}"'[^\n]*\n[^\n]* in '"${DELETESTACKTRACELOCATIONS_OUR_PATTERN//\//\\/}"'[^\n]*\n/ {
 	    # Drop the middle one, so that only the first and last will be kept.
-	    s/\(^\|\n\)\([^\n]* in '"${DELETESTACKTRACELOCATIONS_OUR_PATTERN//\//\\/}"'.*\n\)[^\n]* in '"${DELETESTACKTRACELOCATIONS_OUR_PATTERN//\//\\/}"'.*\n\([^\n]*$\)/\1\2\3/
+	    s/\(^\|\n\)\([^\n]* in '"${DELETESTACKTRACELOCATIONS_OUR_PATTERN//\//\\/}"'[^\n]*\n\)[^\n]* in '"${DELETESTACKTRACELOCATIONS_OUR_PATTERN//\//\\/}"'[^\n]*\n\([^\n]*$\)/\1\2\3/
 	    b deleteGroovyStackTraceLocations
 	}
 	# Else we only have one already, so keep the second one.
