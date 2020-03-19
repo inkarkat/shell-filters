@@ -123,14 +123,17 @@ N;/ in \+[^ \n]*$/{
 	b deleteGroovyStackTraceLocations
     }
     # When a following location is from us ...
-    /\n.* in '"${DELETESTACKTRACELOCATIONS_OUR_PATTERN//\//\\/}"'/ {
-	# ... and we do not have another one from us yet ...
-	/\(^\|\n\).* in '"${DELETESTACKTRACELOCATIONS_OUR_PATTERN//\//\\/}"'.*\n/! {
-	    # Keep it.
+    /\n[^\n]* in '"${DELETESTACKTRACELOCATIONS_OUR_PATTERN//\//\\/}"'[^\n]*$/ {
+	# ... and we have two more from us already ...
+	/\(^\|\n\)[^\n]* in '"${DELETESTACKTRACELOCATIONS_OUR_PATTERN//\//\\/}"'.*\n[^\n]* in '"${DELETESTACKTRACELOCATIONS_OUR_PATTERN//\//\\/}"'.*\n/ {
+	    # Drop the middle one, so that only the first and last will be kept.
+	    s/\(^\|\n\)\([^\n]* in '"${DELETESTACKTRACELOCATIONS_OUR_PATTERN//\//\\/}"'.*\n\)[^\n]* in '"${DELETESTACKTRACELOCATIONS_OUR_PATTERN//\//\\/}"'.*\n\([^\n]*$\)/\1\2\3/
 	    b deleteGroovyStackTraceLocations
 	}
+	# Else we only have one already, so keep the second one.
+	b deleteGroovyStackTraceLocations
     }
-    # Else delete it and all following locations.
+    # Else delete it (and all following locations).
     s/\n[^\n]*$//
     b deleteGroovyStackTraceLocations
 }
