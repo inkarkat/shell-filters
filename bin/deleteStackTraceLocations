@@ -81,12 +81,15 @@ N;/\n\tat [^\n]*$/{
 	b deleteStackTraceLocations
     }
     # When a following location is from us ...
-    /\n\tat '"${DELETESTACKTRACELOCATIONS_OUR_PATTERN//\//\\/}"'/ {
-	# ... and we do not have another one from us yet ...
-	/\(^\|\n\)\tat '"${DELETESTACKTRACELOCATIONS_OUR_PATTERN//\//\\/}"'.*\n/! {
-	    # Keep it.
+    /\n\tat '"${DELETESTACKTRACELOCATIONS_OUR_PATTERN//\//\\/}"'[^\n]*$/ {
+	# ... and we have two more from us already ...
+	/\(^\|\n\)\tat '"${DELETESTACKTRACELOCATIONS_OUR_PATTERN//\//\\/}"'.*\n\tat '"${DELETESTACKTRACELOCATIONS_OUR_PATTERN//\//\\/}"'.*\n/ {
+	    # Drop the middle one, so that only the first and last will be kept.
+	    s/\(^\|\n\)\(\tat '"${DELETESTACKTRACELOCATIONS_OUR_PATTERN//\//\\/}"'.*\n\)\tat '"${DELETESTACKTRACELOCATIONS_OUR_PATTERN//\//\\/}"'.*\n\([^\n]*$\)/\1\2\3/
 	    b deleteStackTraceLocations
 	}
+	# Else we only have one already, so keep the second one.
+	b deleteStackTraceLocations
     }
     # Else delete it (and all following locations).
     s/\n[^\n]*$//
