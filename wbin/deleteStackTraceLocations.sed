@@ -1,6 +1,6 @@
 #!/bin/sed -f
 # This is an automatically generated file.
-# Created Thu 19. Mar 12:09:37 CET 2020 from bin/deleteStackTraceLocations.
+# Created Fri 20. Mar 09:47:04 CET 2020 from bin/deleteStackTraceLocations.
 
 :begin
 # Java exception message
@@ -42,7 +42,7 @@ N;/\n\tat [^\n]*$/{
 	# ... and we have two more from us already ...
 	/\(^\|\n\)\tat [^\n]*\n\tat [^\n]*\n/ {
 	    # Drop the middle one, so that only the first and last will be kept.
-	    s/\(^\|\n\)\(\tat [^\n]*\n\)\tat [^\n]*\n\([^\n]*$\)/\1\2\3/
+	    s/\(^\|\n\)\(\tat [^\n]*\n\)\tat [^\n]*\n/\1\2/
 	    b deleteStackTraceLocations
 	}
 	# Else we only have one already, so keep the second one.
@@ -84,7 +84,7 @@ N;/ in \+[^ \n]*$/{
 	# ... and we have two more from us already ...
 	/\(^\|\n\)[^\n]* in [^\n]*\n[^\n]* in [^\n]*\n/ {
 	    # Drop the middle one, so that only the first and last will be kept.
-	    s/\(^\|\n\)\([^\n]* in [^\n]*\n\)[^\n]* in [^\n]*\n\([^\n]*$\)/\1\2\3/
+	    s/\(^\|\n\)\([^\n]* in [^\n]*\n\)[^\n]* in [^\n]*\n/\1\2/
 	    b deleteGroovyStackTraceLocations
 	}
 	# Else we only have one already, so keep the second one.
