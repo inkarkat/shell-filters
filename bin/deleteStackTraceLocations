@@ -85,7 +85,7 @@ N;/\n\tat [^\n]*$/{
 	# ... and we have two more from us already ...
 	/\(^\|\n\)\tat '"${DELETESTACKTRACELOCATIONS_OUR_PATTERN//\//\\/}"'[^\n]*\n\tat '"${DELETESTACKTRACELOCATIONS_OUR_PATTERN//\//\\/}"'[^\n]*\n/ {
 	    # Drop the middle one, so that only the first and last will be kept.
-	    s/\(^\|\n\)\(\tat '"${DELETESTACKTRACELOCATIONS_OUR_PATTERN//\//\\/}"'[^\n]*\n\)\tat '"${DELETESTACKTRACELOCATIONS_OUR_PATTERN//\//\\/}"'[^\n]*\n\([^\n]*$\)/\1\2\3/
+	    s/\(^\|\n\)\(\tat '"${DELETESTACKTRACELOCATIONS_OUR_PATTERN//\//\\/}"'[^\n]*\n\)\tat '"${DELETESTACKTRACELOCATIONS_OUR_PATTERN//\//\\/}"'[^\n]*\n\([^\n]*$\)/\1\2\5/
 	    b deleteStackTraceLocations
 	}
 	# Else we only have one already, so keep the second one.
@@ -127,7 +127,7 @@ N;/ in \+[^ \n]*$/{
 	# ... and we have two more from us already ...
 	/\(^\|\n\)[^\n]* in '"${DELETESTACKTRACELOCATIONS_OUR_PATTERN//\//\\/}"'[^\n]*\n[^\n]* in '"${DELETESTACKTRACELOCATIONS_OUR_PATTERN//\//\\/}"'[^\n]*\n/ {
 	    # Drop the middle one, so that only the first and last will be kept.
-	    s/\(^\|\n\)\([^\n]* in '"${DELETESTACKTRACELOCATIONS_OUR_PATTERN//\//\\/}"'[^\n]*\n\)[^\n]* in '"${DELETESTACKTRACELOCATIONS_OUR_PATTERN//\//\\/}"'[^\n]*\n\([^\n]*$\)/\1\2\3/
+	    s/\(^\|\n\)\([^\n]* in '"${DELETESTACKTRACELOCATIONS_OUR_PATTERN//\//\\/}"'[^\n]*\n\)[^\n]* in '"${DELETESTACKTRACELOCATIONS_OUR_PATTERN//\//\\/}"'[^\n]*\n\([^\n]*$\)/\1\2\5/
 	    b deleteGroovyStackTraceLocations
 	}
 	# Else we only have one already, so keep the second one.
