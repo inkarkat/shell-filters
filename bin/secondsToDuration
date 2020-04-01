@@ -7,7 +7,7 @@ Treat any integer in the input as seconds and convert them into
 [[[Ww ][Dd ] HH:]MM:]SS or 00:SS. (Unless the text around the integer (with the
 integer itself represented by &) matches SKIP&PATTERN.)
 HELPTEXT
-    printf 'Usage: %q %s\n' "$(basename "$1")" 'SECONDS [...] [-?|-h|--help]'
+    printf 'Usage: %q %s\n' "$(basename "$1")" '[--] SECONDS [...] [-?|-h|--help]'
     printf 'Usage: cat FILE [...] | %q %s\n' "$(basename "$1")" '[-s|--skip SKIP&PATTERN [...]]'
 }
 skipPattern=
@@ -16,7 +16,7 @@ do
     case "$1" in
 	--help|-h|-\?)	shift; printUsage "$0"; exit 0;;
 	--skip|-s)	shift; skipPattern="${skipPattern}${skipPattern:+|}${1:?}"; shift;;
-	--)		shift; break;;
+	--)		break;;
 	-*)		{ echo "ERROR: Unknown option \"$1\"!"; echo; printShortUsage "$0"; } >&2; exit 2;;
 	*)		break;;
     esac
@@ -56,7 +56,9 @@ function join(n, list, seps,      i, result) {
 }
 BEGIN {
     if (ARGC > 1) {
-	for (i = 1; i < ARGC; ++i) {
+	i = 1
+	if (ARGV[1] == "--" ) ++i
+	for (; i < ARGC; ++i) {
 	    print convert(ARGV[i])
 	}
 	exit 0
