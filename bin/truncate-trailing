@@ -1,0 +1,42 @@
+#!/bin/bash
+
+printShortUsage()
+{
+    # Note: short followed by long option; if the user knows the short one, she can
+    # skim the long one.
+    printf 'Usage: %q %s\n' "$(basename "$1")" '[-w|--whitespace|-b|--blank-lines] [--] [FILE ...] [-?|-h|--help]'
+}
+printUsage()
+{
+    # This is the short help when launched with no or incorrect arguments.
+    # It is printed to stderr to avoid accidental processing.
+    printShortUsage "$1" >&2
+    printf >&2 'Try %q --help for more information.\n' "$(basename "$1")"
+}
+printLongUsage()
+{
+    # This is the long "man page" when launched with the help argument.
+    # It is printed to stdout to allow paging with 'more'.
+    cat <<HELPDESCRIPTION
+Suppress any trailing whitespace and empty lines at the end of the input.
+HELPDESCRIPTION
+    echo
+    printShortUsage "$1"
+    cat <<HELPTEXT
+    --whitespace|-w	Only remove trailing whitespace; keep empty lines at the
+			end.
+    --blank-lines|-b	Only remove (fully) empty lines at the end; keep
+			trailing whitespace.
+HELPTEXT
+}
+
+typeset -a sedTrailingWhitespaceArgs=(-e 's/[ \t]*$//')
+typeset -a sedTrailingBlankLinesArgs=(-e :a -e '/^\n*$/{$d; N; ba' -e '}')
+case "$1" in
+    --help|-h|-\?)	shift; printLongUsage "$0"; exit 0;;
+    --whitespace|-w)	shift; sedTrailingBlankLinesArgs=();;
+    --blank-lines|-b)	shift; sedTrailingWhitespaceArgs=();;
+esac
+
+
+exec sed "${sedTrailingWhitespaceArgs[@]}" "${sedTrailingBlankLinesArgs[@]}" "$@"
