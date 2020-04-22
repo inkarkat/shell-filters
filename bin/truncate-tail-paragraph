@@ -1,3 +1,15 @@
 #!/bin/bash
 
+printUsage()
+{
+    cat <<HELPTEXT
+Print only the last paragraph (separated by empty line(s)); suppress all
+previous ones.
+HELPTEXT
+    printf 'Usage: %q %s\n' "$(basename "$1")" '[--] [FILE ...] [-?|-h|--help]'
+}
+case "$1" in
+    --help|-h|-\?)	shift; printUsage "$0"; exit 0;;
+esac
+
 exec sed -e '/./{ H; $!d; }' -e '$!{ s/.*//; h; d; }' -e 'x; s/^\n//' "$@"
