@@ -1,0 +1,15 @@
+#!/usr/bin/awk -f
+
+function appendNumber(line)
+{
+    return line " (" (++c[line] + 1) ")"
+}
+{
+    line = $0
+    while (line in a) {
+	line = appendNumber(line)
+    }
+    a[$0] = 1
+    a[line] = 1
+    print line
+}
