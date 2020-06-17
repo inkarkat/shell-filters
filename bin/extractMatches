@@ -35,7 +35,7 @@ HELPDESCRIPTION
 			    escape sequences.
     --to|-t stderr	    Report as a single concatenated line (like with
 			    overlay and title), but inline to standard error.
-			    Set EXTRACTMATCHES_STDERR_UPDATE__DELAY to the
+			    Set EXTRACTMATCHES_STDERR_UPDATE_DELAY to the
 			    number of seconds between reports, or to the
 			    negative number of input lines between reports.
     --to|-t concatenated    Report as a single concatenated line (like with
@@ -56,7 +56,7 @@ HELPDESCRIPTION
 			    count) to highlight it. Must be used with
 			    --unbuffered.
     --to|-t FILE	    Append the report to FILE. Set
-			    EXTRACTMATCHES_FILE_UPDATE_MATCH__DELAY /
+			    EXTRACTMATCHES_FILE_UPDATE_MATCH_DELAY /
 			    EXTRACTMATCHES_FILE_UPDATE_COUNT_DELAY to 0 for
 			    immediate updates. Additionally pass --unbuffered to
 			    observe the file contents immediately.
@@ -863,7 +863,7 @@ function renderCount(key, before, text, count, after,      tmp)
 		delayedCounts[key]["count"] = count
 		delayedCounts[key]["text"] = text
 	    } else {
-	    writeToFile(text countPrefix addPercentage(key, count) countSuffix)
+		writeToFile(text countPrefix addPercentage(key, count) countSuffix)
 	    }
 	    break
 	default:
