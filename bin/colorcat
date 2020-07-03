@@ -1,0 +1,22 @@
+#!/bin/bash
+
+printUsage()
+{
+    cat <<HELPTEXT
+Concatenate the FILEs and highlight contained (escaped) ANSI color sequences
+with the actual colors.
+HELPTEXT
+    printf 'Usage: %q %s\n' "$(basename "$1")" 'FILE [...] [-?|-h|--help]'
+    printf 'Usage: cat FILE [...] | %q %s\n' "$(basename "$1")" ''
+}
+case "$1" in
+    --help|-h|-\?)	shift; printUsage "$0"; exit 0;;
+esac
+
+interpretColorEscapeSequences()
+{
+    sed -e 's/\([^m]\+m\)/\1^[\1[0m/g' -e 's/\\\{0,1\}\\033\([^m]\+m\)/\1^[\1[0m/g' -- "$@"
+}
+
+typeset -a pager=("${PAGER:-less}" --quit-if-one-screen --RAW-CONTROL-CHARS); [ -t 1 ] || pager=()
+eval 'interpretColorEscapeSequences "$@"' "${pager:+|}" '"${pager[@]}"'
