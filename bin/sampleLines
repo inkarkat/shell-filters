@@ -22,7 +22,7 @@ printShortUsage()
 {
     # Note: short followed by long option; if the user knows the short one, she can
     # skim the long one.
-    printf 'Usage: %q %s\n' "$(basename "$1")" '[-r|--reset-on PATTERN] [-i|--inline-or-non|--inline-or-passthrough|-I|--inline-always [-c|--clear] [-a|--append-reset|-k|--keep-reset]] [-s|--summarize WHAT[,PLURAL-WHAT] --summary-only] [-t|--timespan TIMESPAN[SUFFIX]] [-?|-h|--help]'
+    printf 'Usage: %q %s\n' "$(basename "$1")" '[-r|--reset-on PATTERN] [-i|--inline-or-non|--inline-or-passthrough|-I|--inline-always [--inline-prefix IP] [-c|--clear] [-a|--append-reset|-k|--keep-reset]] [-s|--summarize WHAT[,PLURAL-WHAT] --summary-only] [-t|--timespan TIMESPAN[SUFFIX]] [-?|-h|--help]'
 }
 printUsage()
 {
@@ -53,6 +53,7 @@ HELPDESCRIPTION
 			forward all input unfiltered.
     --inline-always|-I	Like above, but also overwrite existing terminal lines
 			even when not outputting to a terminal.
+    --inline-prefix IP	Put IP before each inline output of a sampled line.
     --clear|-c		Also clear the single-line output after all input has
 			been processed (so nothing remains to be seen, all
 			samples were temporary only).
@@ -82,6 +83,7 @@ finalizer=
 resetPattern=
 resetAction=
 isInline=
+inlinePrefix=
 isClear=
 summarizeWhat=
 summarizeWhatPlural=
@@ -109,6 +111,8 @@ do
 			[ -t 1 ] || exec cat > /dev/null
 			isInline=t
 			;;
+	--inline-prefix)
+			shift; inlinePrefix="$1"; shift;;
 	--clear|-c)	shift; isClear=t;;
 	--summarize|-s)	shift
 			case "$1" in
@@ -137,7 +141,13 @@ do
 	*)		break;;
     esac
 done
-if [ "$isInline" ]; then prefix='[1G[2K'; suffix=; finalizer='\n'; fi
+if [ ! "$isInline" -a -n "$inlinePrefix" ]; then
+    echo >&2 'ERROR: --inline-prefix only works in conjunction with an --inline-... option.'
+    echo >&2
+    printShortUsage "$0" >&2
+    exit 2
+fi
+if [ "$isInline" ]; then prefix="[1G[2K$inlinePrefix"; suffix=; finalizer='\n'; fi
 [ "$isClear" ] && finalizer='[1G[2K'
 
 SECONDS=0
