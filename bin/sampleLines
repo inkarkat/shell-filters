@@ -203,7 +203,8 @@ do
 	SECONDS=0
 	let previousCount=$count
 	let count=0
-	[ -n "$isInline" -a -n "$isTakeThisLine" -a "$resetAction" = append ] && keepResetPrefix="${SAMPLELINES_APPEND_RESET_PREFIX}${line}${SAMPLELINES_APPEND_RESET_SUFFIX}"    # Prepend the header to subsequent samples now.
+	[ -n "$isInline" -a -n "$isTakeThisLine" -a "$resetAction" = append ] && \
+	    keepResetPrefix="${SAMPLELINES_APPEND_RESET_PREFIX}${line}${SAMPLELINES_APPEND_RESET_SUFFIX}"    # Prepend the header to subsequent samples now.
     fi
 done
 
