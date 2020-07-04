@@ -107,7 +107,7 @@ timeToSeconds()
 }
 typeset -a awkArgs=()
 isBuffered=t
-timestampField=''
+timestampFieldNr=
 maxDifference=0
 singleEntryDuration=0
 tally=
@@ -120,7 +120,7 @@ do
 	--unbuffered|-u)    shift; isBuffered=;;
 	--field-separator|-F)
 			    awkArgs+=("$1" "$2"); shift; shift;;
-	--timestamp-field)  shift; timestampField="$1"; shift;;
+	--timestamp-field)  shift; timestampFieldNr="$1"; shift;;
 	--max-difference)   shift; maxDifference="$(timeToSeconds "$1")" || exit $?; shift;;
 	--single-entry-duration)
 			    shift; singleEntryDuration="$(timeToSeconds "$1")" || exit $?; shift;;
@@ -136,7 +136,7 @@ done
 awk \
     -v "summarySeparator=${TIMESTAMPTALLY_SUMMARY_SEPARATOR//\\/\\\\}" \
     -v "isBuffered=$isBuffered" \
-    -v "timestampField=${timestampField//\\/\\\\}" \
+    -v "timestampFieldNr=${timestampFieldNr//\\/\\\\}" \
     -v "maxDifference=$maxDifference" \
     -v "singleEntryDuration=$singleEntryDuration" \
     -v "tally=${tally//\\/\\\\}" \
@@ -145,7 +145,8 @@ awk \
     "${awkArgs[@]}" \
 '
 {
-    if (match($0, /\<([[:digit:]]{9,10})\>|\<([[:digit:]]{4})-([01][[:digit:]])-([0123][[:digit:]])[ T]([012][[:digit:]]):([0-5][[:digit:]])-([0-5][[:digit:]])(,([[:digit:]]{1,3}))?\>/, submatch)) {
+    timestampSource = (timestampFieldNr == "" ? $0 : $timestampFieldNr)
+    if (match(timestampSource, /\<([[:digit:]]{9,10})\>|\<([[:digit:]]{4})-([01][[:digit:]])-([0123][[:digit:]])[ T]([012][[:digit:]]):([0-5][[:digit:]])-([0-5][[:digit:]])(,([[:digit:]]{1,3}))?\>/, submatch)) {
 	if (submatch[1] != previousSubmatch) {
 	    print
 	    previousSubmatch = submatch[1]
