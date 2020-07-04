@@ -1,0 +1,148 @@
+#!/bin/bash
+shopt -qs extglob
+
+: ${TIMESTAMPTALLY_SUMMARY_SEPARATOR=$'\nSummary:\n'}
+
+printShortUsage()
+{
+    # Note: short followed by long option; if the user knows the short one, she can
+    # skim the long one.
+    printf 'Usage: %q %s\n' "$(basename "$1")" '[--unbuffered] [-F|--field-separator FS] [--timestamp-field N] [--max-difference DURATION[SUFFIX]] [--single-entry-duration DURATION[SUFFIX]] [--tally LIST|PATTERN] [--summarize LIST|PATTERN] [--keep-timestamp start|end|both-concatenated|both-separate] [FILE ...] [-?|-h|--help]'
+    printf 'Usage: cat FILE [...] | %q %s\n' "$(basename "$1")" '[...]'
+}
+printUsage()
+{
+    # This is the short help when launched with no or incorrect arguments.
+    # It is printed to stderr to avoid accidental processing.
+    printShortUsage "$1" >&2
+    printf >&2 'Try %q --help for more information.\n' "$(basename "$1")"
+}
+printLongUsage()
+{
+    # This is the long "man page" when launched with the help argument.
+    # It is printed to stdout to allow paging with 'more'.
+    cat <<HELPDESCRIPTION
+Calculates the temporal difference between timestamps of lines that have
+identical field values / pattern matches. Can condense subsequent lines into a
+single tally line and/or any lines into a final summary.
+HELPDESCRIPTION
+    echo
+    printShortUsage "$1"
+    cat <<HELPTEXT
+    --unbuffered|-u	    Immediately output each record.
+    --field-separator|-F FS Use FS as the input field separator (as with AWK).
+    --timestamp-field N	    Use field number N instead of using the first match
+			    found in the line. Supported timestamp formats are
+			    Epoch:    159380654[,000]
+			    ISO 8601: 2020-07-03T22:02:24[,000]
+			    RFC 3339: 2020-07-03 22:02:24[,000]
+			    Lines that do not contain a valid timestamp are
+			    redirected to standard error.
+    --max-difference DURATION[SUFFIX]
+			    If the temporal difference between two subsequent
+			    lines is larger than DURATION, the records are
+			    treated as discontinuous and a separate tally is
+			    started. Without this, any temporal difference
+			    separates records.
+			    SUFFIX may be 's' for seconds (the default), 'm' for
+			    minutes, 'h' for hours or 'd' for days.
+    --single-entry-duration DURATION[SUFFIX]
+			    A single discontinuous record is counted as being
+			    DURATION long.
+    --tally LIST|PATTERN    All subsequent lines where the fields in LIST / the
+			    first match of PATTERN are identical are condensed
+			    into a single record, with the timestamp replaced by
+			    the duration. Other fields / text are ignored.
+			    Each LIST is made up of one range in the format N,
+			    N-, N-M, or -M, or many such ranges separated by
+			    commas.
+    --summarize LIST|PATTERN
+			    All subsequent lines where the fields in LIST / the
+			    first match of PATTERN are identical contribute to
+			    the record duration, which are summed up and
+			    reported at the end for each unique field value /
+			    pattern match.
+			    If both --tally and --summarize are given, the
+			    respective outputs are separated by
+			    TIMESTAMPTALLY_SUMMARY_SEPARATOR.
+    --keep-timestamp start  Instead of replacing the timestamp, put the duration
+			    after it (separated by FS).
+    --keep-timestamp end    Instead of replacing the timestamp of the line that
+			    introduces a new record, output the line that
+			    concludes a record, and put the duration after that
+			    timestamp (separated by FS).
+    --keep-timestamp both-concatenated
+			    Instead of replacing the timestamp, put the end
+			    timestamp and then the duration after it (separated
+			    by FS).
+    --keep-timestamp both-separate
+			    Instead of replacing the timestamp in the line that
+			    introduces a record, put the duration after that,
+			    and also output the line that concludes the record
+			    (also with the same duration), so each tally will
+			    consist of two lines instead of one.
+
+EXIT STATUS:
+    0	Complete success.
+    1	Failed to ...
+    2	Bad invocation, wrong or missing command-line arguments.
+    3	Internal error or failed assertion.
+    4	Partial success ...
+
+Example:
+HELPTEXT
+    printf '%q %s\n' "$(basename "$1")" '--foo bar /tmp/foobar'
+}
+
+timeToSeconds()
+{
+    case "$1" in
+	+([0-9])?(s))   time="${1%s}";;
+	+([0-9])m)	time=$((${1%m} * 60));;
+	+([0-9])h)	time=$((${1%h} * 3600));;
+	+([0-9])d)	time=$((${1%d} * 86400));;
+	*)		printf >&2 "ERROR: Illegal ${2:-duration}: %s\\n" "$1"; exit 2;;
+    esac
+    printf %s "$time"
+}
+typeset -a awkArgs=()
+isBuffered=t
+timestampField=''
+maxDifference=0
+singleEntryDuration=0
+tally=
+summarize=
+keepTimestamp=
+while [ $# -ne 0 ]
+do
+    case "$1" in
+	--help|-h|-\?)	    shift; printLongUsage "$0"; exit 0;;
+	--unbuffered|-u)    shift; isBuffered=;;
+	--field-separator|-F)
+			    awkArgs+=("$1" "$2"); shift; shift;;
+	--timestamp-field)  shift; timestampField="$1"; shift;;
+	--max-difference)   shift; maxDifference="$(timeToSeconds "$1")" || exit $?; shift;;
+	--single-entry-duration)
+			    shift; singleEntryDuration="$(timeToSeconds "$1")" || exit $?; shift;;
+	--tally)	    shift; tally="$1"; shift;;
+	--summarize)	    shift; summarize="$1"; shift;;
+	--keep-timestamp)   shift; keepTimestamp="$1"; shift;;
+	--)		    shift; break;;
+	-*)		    { echo "ERROR: Unknown option \"$1\"!"; echo; printShortUsage "$0"; } >&2; exit 2;;
+	*)		    break;;
+    esac
+done
+
+awk \
+    -v "summarySeparator=${TIMESTAMPTALLY_SUMMARY_SEPARATOR//\\/\\\\}" \
+    -v "isBuffered=$isBuffered" \
+    -v "timestampField=${timestampField//\\/\\\\}" \
+    -v "maxDifference=$maxDifference" \
+    -v "singleEntryDuration=$singleEntryDuration" \
+    -v "tally=${tally//\\/\\\\}" \
+    -v "summarize=${summarize//\\/\\\\}" \
+    -v "keepTimestamp=$keepTimestamp" \
+    "${awkArgs[@]}" \
+'
+{ print }
+' "$@"
