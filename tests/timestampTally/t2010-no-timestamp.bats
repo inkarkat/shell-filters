@@ -18,6 +18,10 @@ as is this
 1593871648 baz
 and the last one as well"
 
+    run timestampTally <<<"$input"
+    [ $status -eq 0 ]
+    [ "$output" = "$input" ]
+
     run timestampTallyStdout <<<"$input"
 
     [ $status -eq 0 ]
