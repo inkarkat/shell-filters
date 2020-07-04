@@ -1,23 +1,27 @@
 #!/usr/bin/env bats
 
-@test "discontinuous epochs as first field are printed as-is" {
-    input="1593871643 foo
+@test "discontinuous epochs as first field are printed with timestamp set to zero duration" {
+    run timestampTally <<'EOF'
+1593871643 foo
 1593871644 bar
-1593871648 baz"
-
-    run timestampTally <<<"$input"
+1593871648 baz
+EOF
 
     [ $status -eq 0 ]
-    [ "$output" = "$input" ]
+    [ "$output" = "0 foo
+0 bar
+0 baz" ]
 }
 
-@test "discontinuous epochs as last (third) field are printed as-is" {
-    input="foo is 1593871643
+@test "discontinuous epochs as last (third) field are printed with timestamp set to zero duration" {
+    run timestampTally <<'EOF'
+foo is 1593871643
 bar has 1593871644
-baz was 1593871648"
-
-    run timestampTally <<<"$input"
+baz was 1593871648
+EOF
 
     [ $status -eq 0 ]
-    [ "$output" = "$input" ]
+    [ "$output" = "foo is 0
+bar has 0
+baz was 0" ]
 }

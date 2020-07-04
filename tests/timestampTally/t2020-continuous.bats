@@ -11,9 +11,9 @@
 EOF
 
     [ $status -eq 0 ]
-    [ "$output" = "1593871643 foo
-1593871644 bar
-1593871648 baz" ]
+    [ "$output" = "0 foo
+0 bar
+0 baz" ]
 }
 
 @test "identical epochs as first field explicitly specified are condensed to the first occurrence" {
@@ -27,7 +27,7 @@ EOF
 EOF
 
     [ $status -eq 0 ]
-    [ "$output" = "1593871643 foo
-1593871644 bar
-1593871648 baz" ]
+    [ "$output" = "0 foo
+0 bar
+0 baz" ]
 }

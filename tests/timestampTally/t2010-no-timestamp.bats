@@ -20,14 +20,20 @@ and the last one as well"
 
     run timestampTally <<<"$input"
     [ $status -eq 0 ]
-    [ "$output" = "$input" ]
+    [ "$output" = "this has no time
+0 foo
+0 bar
+this also is odd
+as is this
+0 baz
+and the last one as well" ]
 
     run timestampTallyStdout <<<"$input"
 
     [ $status -eq 0 ]
-    [ "$output" = "1593871643 foo
-1593871644 bar
-1593871648 baz" ]
+    [ "$output" = "0 foo
+0 bar
+0 baz" ]
 
     run timestampTallyStderr <<<"$input"
 
