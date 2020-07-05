@@ -68,21 +68,22 @@ HELPDESCRIPTION
 			    respective outputs are separated by
 			    TIMESTAMPTALLY_SUMMARY_SEPARATOR.
     --keep-timestamp start  Instead of replacing the timestamp, put the duration
-			    after it (separated by FS).
+			    after it (separated by OFS).
     --keep-timestamp end    Instead of replacing the timestamp of the line that
 			    introduces a new record, output the line that
 			    concludes a record, and put the duration after that
-			    timestamp (separated by FS).
+			    timestamp (separated by OFS).
     --keep-timestamp both-concatenated
 			    Instead of replacing the timestamp, put the end
 			    timestamp and then the duration after it (separated
-			    by FS).
+			    by OFS).
     --keep-timestamp both-separate
 			    Instead of replacing the timestamp in the line that
 			    introduces a record, put the duration after that,
-			    and also output the line that concludes the record
-			    (also with the same duration), so each tally will
-			    consist of two lines instead of one.
+			    and also output (also with the same duration) the
+			    line that concludes the record, so each tally will
+			    consist of two lines instead of one (except those
+			    from a single discontinuous line).
 
 EXIT STATUS:
     0	Complete success.
@@ -207,14 +208,21 @@ NR == 1 {
 	timestamp = (submatch[2] == "" ? submatch[3] submatch[4] submatch[5] submatch[6] submatch[7] submatch[8] : submatch[2])
 	timestampMillis = submatch[10]
 	if (timestamp != previousTimestamp || timestampMillis != previousTimestampMillis) {
+	    isKeepField = 0
+	    switch (keepTimestamp) {
+		case "start": {
+		    isKeepField = 1
+		    break
+		}
+	    }
 	    if (timestampField == "") {
-		$0 = substr($0, 1, RSTART - 1) singleEntryDuration substr($0, RSTART + RLENGTH)
+		$0 = substr($0, 1, RSTART - 1) (isKeepField ? substr($0, RSTART, RLENGTH) OFS : "") singleEntryDuration substr($0, RSTART + RLENGTH)
 	    } else {
 		timestampSource = ""
 		timestampFieldCnt = 0
 		for (i = 1; i <= NF; ++i) {
 		    if (isFieldSelected(timestampField, i)) {
-			$i = (timestampFieldCnt++ == 0 ? singleEntryDuration : "")
+			$i = (timestampFieldCnt++ == 0 ? (isKeepField ? $i OFS : "") singleEntryDuration : "")
 		    }
 		}
 	    }
