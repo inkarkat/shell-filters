@@ -214,26 +214,19 @@ NR == 1 {
 	timestamp = (submatch[2] == "" ? submatch[3] submatch[4] submatch[5] submatch[6] submatch[7] submatch[8] : submatch[2])
 	timestampMillis = submatch[10]
 	if (timestamp != previousTimestamp || timestampMillis != previousTimestampMillis) {
-	    isKeepField = 0
-	    switch (keepTimestamp) {
-		case "start": {
-		    isKeepField = 1
-		    break
-		}
-	    }
 	    if (timestampField == "") {
-		$0 = substr($0, 1, RSTART - 1) (isKeepField ? substr($0, RSTART, RLENGTH) OFS : "") singleEntryDuration substr($0, RSTART + RLENGTH)
+		$0 = substr($0, 1, RSTART - 1) (keepTimestamp == "" ? "" : substr($0, RSTART, RLENGTH) OFS) singleEntryDuration substr($0, RSTART + RLENGTH)
 	    } else {
 		timestampSource = ""
 		timestampFieldCnt = 0
 		for (i = 1; i <= NF; ++i) {
 		    if (isFieldSelected(timestampField, i)) {
-			if (isKeepField) {
+			if (keepTimestamp == "") {
+			    $i = (timestampFieldCnt++ == 0 ? singleEntryDuration : "")
+			} else {
 			    if (++timestampFieldCnt == timestampFieldNum) {
 				$i = $i OFS singleEntryDuration
 			    }
-			} else {
-			    $i = (timestampFieldCnt++ == 0 ? singleEntryDuration : "")
 			}
 		    }
 		}
