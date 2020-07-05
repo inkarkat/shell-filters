@@ -75,12 +75,3 @@ EOF
 0  quux" ]
 }
 
-@test "identical RFC 3339 timestamps with millis as fields 1 and 3 explicitly specified are condensed to the first occurrence with field 3 kept empty" {
-    run timestampTally --timestamp-field 1,3 <<<"${input//T/ what }"
-
-    [ $status -eq 0 ]
-    [ "$output" = "0 what  foo
-0 what  bar
-0 what  baz
-0 what  quux" ]
-}

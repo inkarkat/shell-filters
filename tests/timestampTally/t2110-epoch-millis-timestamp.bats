@@ -39,7 +39,6 @@ input="1593871643,001 foo
 EOF
 
     [ $status -eq 0 ]
-    echo >&3 \#"$output"
     [ "$output" = "0 foo
 0 bar
 0 baz

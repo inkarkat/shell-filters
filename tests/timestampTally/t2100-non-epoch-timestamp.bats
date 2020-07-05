@@ -52,11 +52,9 @@ input="2020-07-04T16:07:23 foo
 0  baz" ]
 }
 
-@test "identical RFC 3339 timestamps as fields 1 and 3 explicitly specified are condensed to the first occurrence with field 3 kept empty" {
+@test "identical RFC 3339 timestamps as fields 1 and 3 explicitly specified are forbidden because they are non-sequential" {
     run timestampTally --timestamp-field 1,3 <<<"${input//T/ what }"
 
-    [ $status -eq 0 ]
-    [ "$output" = "0 what  foo
-0 what  bar
-0 what  baz" ]
+    [ $status -eq 2 ]
+    [ "$output" = "ERROR: Timestamp field 3 does not follow 1." ]
 }

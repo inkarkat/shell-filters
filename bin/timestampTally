@@ -31,9 +31,9 @@ HELPDESCRIPTION
     cat <<HELPTEXT
     --unbuffered|-u	    Immediately output each record.
     --field-separator|-F FS Use FS as the input field separator (as with AWK).
-    --timestamp-field N[-M] Use field number N [up to M] instead of using the
-			    first match found in the line. Supported timestamp
-			    formats are
+    --timestamp-field N[-M] Use field number N [sequentially up to M] instead of
+			    using the first match found in the line. Supported
+			    timestamp formats are
 			    Epoch:    159380654[,000]
 			    ISO 8601: 2020-07-03T22:02:24[,000]
 			    RFC 3339: 2020-07-03 22:02:24[,000] (you need two
@@ -192,6 +192,7 @@ NR == 1 {
     }
 }
 {
+    previousSelectedTimestampField = ""
     if (timestampField == "") {
 	timestampSource = $0
     } else {
@@ -199,7 +200,12 @@ NR == 1 {
 	timestampFieldCnt = 0
 	for (i = 1; i <= NF; ++i) {
 	    if (isFieldSelected(timestampField, i)) {
+		if (previousSelectedTimestampField != "" && i != previousSelectedTimestampField + 1) {
+		    printf "ERROR: Timestamp field %d does not follow %d.\n", i, previousSelectedTimestampField > "/dev/stderr"
+		    exit 2
+		}
 		timestampSource = timestampSource (timestampFieldCnt++ == 0 ? "" : OFS) $i
+		previousSelectedTimestampField = i
 	    }
 	}
     }
