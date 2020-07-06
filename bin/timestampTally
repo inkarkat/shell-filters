@@ -353,7 +353,9 @@ NR == 1 {
 	rawTimestamp = (submatch[2] == "" ? submatch[3] : submatch[2])
 	timestamp = (submatch[2] == "" ? mktime(submatch[4] " " submatch[5] " " submatch[6] " " submatch[7] " " submatch[8] " " submatch[9]) : submatch[2])
 	timestampMillis = submatch[11]
-	if (! isContinuous(timestamp, timestampMillis)) {
+	if (isContinuous(timestamp, timestampMillis)) {
+	    parseLine()
+	} else {
 	    processPrevious(currentLineNum)
 
 	    parseLine()
@@ -364,8 +366,6 @@ NR == 1 {
 	    startRawTimestamp = rawTimestamp
 	    startTimestamp = timestamp
 	    startTimestampMillis = timestampMillis
-	} else {
-	    parseLine()
 	}
 	previousRawTimestamp = rawTimestamp
 	previousTimestamp = timestamp
