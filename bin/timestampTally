@@ -197,8 +197,10 @@ function printLine(line)
 function processPrevious(lineNum,      i, isSingleLine, reportedDuration)
 {
     isSingleLine = (startLineNum + 1 == lineNum)
-    reportedDuration = (isSingleLine ? singleEntryDuration : duration)
-    reportedDuration = singleEntryDuration  # TODO
+    reportedDuration = (isSingleLine ? \
+	singleEntryDuration : \
+	combineWithMillis(previousTimestamp, previousTimestampMillis) - combineWithMillis(startTimestamp, startTimestampMillis) \
+    )
 
     switch (keepTimestamp) {
 	case "": {

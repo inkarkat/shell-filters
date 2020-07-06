@@ -11,16 +11,16 @@ input="1593871643 foo
     run timestampTally --single-entry-duration 10 <<<"$input"
 
     [ $status -eq 0 ]
-    [ "$output" = "10 foo
+    [ "$output" = "0 foo
 10 bar
-10 baz" ]
+0 baz" ]
 }
 
 @test "identical epochs as first field are condensed to the first occurrence with a custom single entry duration of 2 minutes" {
     run timestampTally --single-entry-duration 2m <<<"$input"
 
     [ $status -eq 0 ]
-    [ "$output" = "120 foo
+    [ "$output" = "0 foo
 120 bar
-120 baz" ]
+0 baz" ]
 }

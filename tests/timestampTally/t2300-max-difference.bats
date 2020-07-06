@@ -11,18 +11,18 @@ input="1593871643 foo
     run timestampTally --max-difference 3 <<<"$input"
 
     [ $status -eq 0 ]
-    [ "$output" = "0 foo
+    [ "$output" = "4 foo
 0 bar
-0 baz" ]
+3 baz" ]
 }
 
 @test "close epochs within 3 seconds as first field explicitly specified are condensed to the first occurrence" {
     run timestampTally --timestamp-field 1 --max-difference 3 <<<"$input"
 
     [ $status -eq 0 ]
-    [ "$output" = "0 foo
+    [ "$output" = "4 foo
 0 bar
-0 baz" ]
+3 baz" ]
 }
 
 @test "close epochs with millis within 1 second as first field are condensed to the first occurrence" {
@@ -35,7 +35,7 @@ input="1593871643 foo
 EOF
 
     [ $status -eq 0 ]
-    [ "$output" = "0 foo
+    [ "$output" = "1.999 foo
 0 bar
 0 baz" ]
 }
@@ -53,8 +53,8 @@ EOF
 EOF
 
     [ $status -eq 0 ]
-    [ "$output" = "0 foo
-0 bar
-0 baz
+    [ "$output" = "1.999 foo
+0.899 bar
+0.9 baz
 0 quux" ]
 }
