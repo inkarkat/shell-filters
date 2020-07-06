@@ -288,6 +288,28 @@ function abs(n)
 {
     return (n < 0 ? -1 * n : n)
 }
+function parseLine(      timestampFieldCnt)
+{
+    if (timestampField == "") {
+	previousPrefix = substr($0, 1, RSTART - 1)
+	previousSuffix = substr($0, RSTART + RLENGTH)
+    } else {
+	timestampFieldCnt = 0
+	previousPrefix = ""
+	previousSuffix = ""
+	for (i = 1; i <= NF; ++i) {
+	    if (isFieldSelected(timestampField, i)) {
+		++timestampFieldCnt
+	    } else {
+		if (timestampFieldCnt == 0) {
+		    previousPrefix = previousPrefix $i OFS
+		} else {
+		    previousSuffix = previousSuffix repeat(OFS, timestampFieldNum) $i
+		}
+	    }
+	}
+    }
+}
 function isContinuous(timestamp, timestampMillis,      fullTimestamp, fullStartTimestamp, difference)
 {
     if (maxDifference == 0) {
@@ -334,27 +356,7 @@ NR == 1 {
 	if (! isContinuous(timestamp, timestampMillis)) {
 	    processPrevious(currentLineNum)
 
-	    if (timestampField == "") {
-		prefix = substr($0, 1, RSTART - 1)
-		suffix = substr($0, RSTART + RLENGTH)
-		previousPrefix = prefix
-		previousSuffix = (length($0) > RSTART + RLENGTH ? suffix : "")
-	    } else {
-		timestampFieldCnt = 0
-		previousPrefix = ""
-		previousSuffix = ""
-		for (i = 1; i <= NF; ++i) {
-		    if (isFieldSelected(timestampField, i)) {
-			++timestampFieldCnt
-		    } else {
-			if (timestampFieldCnt == 0) {
-			    previousPrefix = previousPrefix $i OFS
-			} else {
-			    previousSuffix = previousSuffix repeat(OFS, timestampFieldNum) $i
-			}
-		    }
-		}
-	    }
+	    parseLine()
 
 	    startLineNum = currentLineNum
 	    startPrefix = previousPrefix
@@ -363,27 +365,7 @@ NR == 1 {
 	    startTimestamp = timestamp
 	    startTimestampMillis = timestampMillis
 	} else {
-	    if (timestampField == "") {
-		prefix = substr($0, 1, RSTART - 1)
-		suffix = substr($0, RSTART + RLENGTH)
-		previousPrefix = (RSTART > 1 ? prefix OFS : "")
-		previousSuffix = (length($0) > RSTART + RLENGTH ? suffix : "")
-	    } else {
-		foundTimestamp = 0
-		previousPrefix = ""
-		previousSuffix = ""
-		for (i = 1; i <= NF; ++i) {
-		    if (isFieldSelected(timestampField, i)) {
-			foundTimestamp = 1
-		    } else {
-			if (foundTimestamp) {
-			    previousSuffix = previousSuffix OFS $i
-			} else {
-			    previousPrefix = previousPrefix $i OFS
-			}
-		    }
-		}
-	    }
+	    parseLine()
 	}
 	previousRawTimestamp = rawTimestamp
 	previousTimestamp = timestamp
