@@ -234,7 +234,7 @@ function combineWithMillis(integerTime, millisTime,      millisFraction)
     if (millisTime == "") {
 	return integerTime
     } else {
-	millisFraction = strpart(millisTime "000", 1, 3)
+	millisFraction = substr(millisTime "000", 1, 3)
 	return integerTime + (millisFraction / 1000)
     }
 }
