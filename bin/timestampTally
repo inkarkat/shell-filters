@@ -129,7 +129,14 @@ do
 			    shift; singleEntryDuration="$(timeToSeconds "$1")" || exit $?; shift;;
 	--tally)	    shift; tally="$1"; shift;;
 	--summarize)	    shift; summarize="$1"; shift;;
-	--keep-timestamp)   shift; keepTimestamp="$1"; shift;;
+	--keep-timestamp)   shift
+			    keepTimestamp="$1"
+			    case "$keepTimestamp" in
+				start|end|both-concatenated|both-separate)  ;;
+				*)  printf >&2 'ERROR: Invalid value for --keep-timestamp: %s\n' "$keepTimestamp"; printShortUsage >&2 "$0"; exit 2;;
+			    esac
+			    shift
+			    ;;
 	--)		    shift; break;;
 	-*)		    { echo "ERROR: Unknown option \"$1\"!"; echo; printShortUsage "$0"; } >&2; exit 2;;
 	*)		    break;;

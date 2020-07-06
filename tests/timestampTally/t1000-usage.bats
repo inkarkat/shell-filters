@@ -13,8 +13,15 @@
     [ "${lines[0]%% *}" != 'Usage:' ]
 }
 
-@test "invalid max difference value prints message and usage instructions" {
+@test "invalid max difference value prints message" {
     run timestampTally --max-difference notADuration
     [ $status -eq 2 ]
     [ "$output" = 'ERROR: Illegal duration: notADuration' ]
+}
+
+@test "invalid --keep-timestamp prints message and usage instructions" {
+    run timestampTally --keep-timestamp notRight
+    [ $status -eq 2 ]
+    [ "${lines[0]}" = 'ERROR: Invalid value for --keep-timestamp: notRight' ]
+    [ "${lines[1]%% *}" = 'Usage:' ]
 }
