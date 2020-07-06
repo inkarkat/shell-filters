@@ -281,11 +281,12 @@ NR == 1 {
     }
 
     if (match(timestampSource, /\<(([[:digit:]]{9,10})\>|(([[:digit:]]{4})-([01][[:digit:]])-([0123][[:digit:]])[ T]([012][[:digit:]]):([0-5][[:digit:]]):([0-5][[:digit:]])))(,([[:digit:]]{1,3}))?\>/, submatch)) {
+	++currentLineNum
 	rawTimestamp = (submatch[2] == "" ? submatch[3] : submatch[2])
 	timestamp = (submatch[2] == "" ? mktime(submatch[4] " " submatch[5] " " submatch[6] " " submatch[7] " " submatch[8] " " submatch[9]) : submatch[2])
 	timestampMillis = submatch[11]
 	if (! isContinuous(timestamp, timestampMillis)) {
-	    processPrevious(NR)
+	    processPrevious(currentLineNum)
 
 	    if (timestampField == "") {
 		prefix = substr($0, 1, RSTART - 1)
@@ -332,7 +333,7 @@ NR == 1 {
 		}
 	    }
 
-	    startLineNum = NR
+	    startLineNum = currentLineNum
 	    startPrefix = previousPrefix
 	    startSuffix = previousSuffix
 	    startRawTimestamp = rawTimestamp
@@ -371,6 +372,6 @@ NR == 1 {
     }
 }
 END {
-    processPrevious(NR + 1)
+    processPrevious(currentLineNum + 1)
 }
 ' "$@"
