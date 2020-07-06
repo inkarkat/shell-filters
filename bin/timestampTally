@@ -186,7 +186,22 @@ function processPrevious()
     switch (keepTimestamp) {
 	case "end": {
 	    if (startTimestamp != "") {
-		print previousPrefix previousRawTimestamp (previousTimestampMillis == "" ? "" : "," previousTimestampMillis) OFS singleEntryDuration previousSuffix
+		print previousPrefix \
+			previousRawTimestamp (previousTimestampMillis == "" ? "" : "," previousTimestampMillis) OFS \
+			singleEntryDuration \
+			previousSuffix
+		if (! isBuffered) fflush()
+		isLastLineRedirected=0
+	    }
+	    break
+	}
+	case "both-concatenated": {
+	    if (startTimestamp != "") {
+		print startPrefix \
+			startRawTimestamp (startTimestampMillis == "" ? "" : "," startTimestampMillis) OFS \
+			previousRawTimestamp (previousTimestampMillis == "" ? "" : "," previousTimestampMillis) OFS \
+			singleEntryDuration \
+			startSuffix
 		if (! isBuffered) fflush()
 		isLastLineRedirected=0
 	    }
@@ -277,6 +292,9 @@ NR == 1 {
 		}
 	    }
 
+	    startPrefix = previousPrefix
+	    startSuffix = previousSuffix
+	    startRawTimestamp = rawTimestamp
 	    startTimestamp = timestamp
 	    startTimestampMillis = timestampMillis
 	} else {
