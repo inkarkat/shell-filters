@@ -181,9 +181,16 @@ function isFieldOrFieldRange(fieldArg)
 {
     return fieldArg ~ /[[:digit:]]/ && fieldArg ~ /^[[:digit:]]*-?[[:digit:]]*$/
 }
-function processPrevious()
+function processPrevious(lineNum)
 {
     switch (keepTimestamp) {
+	case "both-separate": {
+	    # Only print the end line if the record actually spans multiple
+	    # lines; else, we would just duplicate the start line once more.
+	    if (startLineNum + 1 == lineNum) {
+		break
+	    }
+	}
 	case "end": {
 	    if (startTimestamp != "") {
 		print previousPrefix \
@@ -243,7 +250,7 @@ NR == 1 {
 	timestamp = (submatch[2] == "" ? submatch[4] submatch[5] submatch[6] submatch[7] submatch[8] submatch[9] : submatch[2])
 	timestampMillis = submatch[11]
 	if (timestamp != startTimestamp || timestampMillis != startTimestampMillis) {
-	    processPrevious()
+	    processPrevious(NR)
 
 	    if (timestampField == "") {
 		prefix = substr($0, 1, RSTART - 1)
@@ -292,6 +299,7 @@ NR == 1 {
 		}
 	    }
 
+	    startLineNum = NR
 	    startPrefix = previousPrefix
 	    startSuffix = previousSuffix
 	    startRawTimestamp = rawTimestamp
@@ -329,6 +337,6 @@ NR == 1 {
     }
 }
 END {
-    processPrevious()
+    processPrevious(NR + 1)
 }
 ' "$@"
