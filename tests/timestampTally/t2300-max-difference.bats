@@ -1,5 +1,7 @@
 #!/usr/bin/env bats
 
+load data
+
 input="1593871643 foo
 1593871644 foo2
 1593871647 foo3
@@ -57,4 +59,22 @@ EOF
 0.899 bar
 0.9 baz
 0 quux" ]
+}
+
+@test "close ISO 8601 timestamps within 1 minute as third field explicitly specified and single entry duration of 1 minute are condensed to the first occurrence" {
+    run timestampTally --timestamp-field 3 --max-difference 1m --single-entry-duration 1m <<<"$delayedMixedDates"
+
+    [ $status -eq 0 ]
+    [ "$output" = "1593871643 foo 2
+1593871800 bar 60
+1593871810 baz 51.977" ]
+}
+
+@test "close RFC 3339 timestamps within 1 minute as third field explicitly specified and single entry duration of 1 minute are condensed to the first occurrence" {
+    run timestampTally --timestamp-field 3-4 --max-difference 1m --single-entry-duration 1m <<<"${delayedMixedDates//T/ }"
+
+    [ $status -eq 0 ]
+    [ "$output" = "1593871643 foo 2
+1593871800 bar 60
+1593871810 baz 51.977" ]
 }
