@@ -7,7 +7,7 @@ printShortUsage()
 {
     # Note: short followed by long option; if the user knows the short one, she can
     # skim the long one.
-    printf 'Usage: %q %s\n' "$(basename "$1")" '[--unbuffered] [-F|--field-separator FS] [--timestamp-field N[-M] [--max-difference DURATION[SUFFIX] [--max-record-duration DURATION[SUFFIX]]] [--single-entry-duration DURATION[SUFFIX]] [--tally LIST|PATTERN] [--summarize LIST|PATTERN] [--keep-timestamp start|end|both-concatenated|both-separate] [FILE ...] [-?|-h|--help]'
+    printf 'Usage: %q %s\n' "$(basename "$1")" '[--unbuffered] [-F|--field-separator FS] [--timestamp-field N[-M] [--max-difference DURATION[SUFFIX] [--max-record-duration DURATION[SUFFIX]] [--max-record-length N]] [--single-entry-duration DURATION[SUFFIX]] [--tally LIST|PATTERN] [--summarize LIST|PATTERN] [--keep-timestamp start|end|both-concatenated|both-separate] [FILE ...] [-?|-h|--help]'
     printf 'Usage: cat FILE [...] | %q %s\n' "$(basename "$1")" '[...]'
 }
 printUsage()
@@ -53,8 +53,13 @@ HELPDESCRIPTION
 			    If the temporal difference between the record's
 			    first line and the current line is larger than
 			    DURATION, a new record is started. This can be used
-			    to cut off regular updates that all all within
-			    --max-difference after a while.
+			    to separate regularly appearing updates (that all
+			    fall within --max-difference) after a while.
+    --max-record-length N   If a record would span more than N lines, a new
+			    record is started instead. This can be used to
+			    separate regularly appearing updates (that all fall
+			    within --max-difference) after a certain amount of
+			    data.
     --single-entry-duration DURATION[SUFFIX]
 			    A single discontinuous record is counted as being
 			    DURATION long.
@@ -121,6 +126,7 @@ isBuffered=t
 timestampField=
 maxDifference=0
 maxRecordDuration=
+maxRecordLength=
 singleEntryDuration=0
 tally=
 summarize=
@@ -136,6 +142,8 @@ do
 	--max-difference)   shift; maxDifference="$(timeToSeconds "$1")" || exit $?; shift;;
 	--max-record-duration)
 			    shift; maxRecordDuration="$(timeToSeconds "$1")" || exit $?; shift;;
+	--max-record-length)
+			    shift; maxRecordLength="$1"; shift;;
 	--single-entry-duration)
 			    shift; singleEntryDuration="$(timeToSeconds "$1")" || exit $?; shift;;
 	--tally)	    shift; tally="$1"; shift;;
@@ -158,6 +166,11 @@ if [ -n "$maxRecordDuration" -a "$maxDifference" = 0 ]; then
     echo >&2
     printShortUsage "$0" >&2
     exit 2
+elif [ -n "$maxRecordLength" -a "$maxDifference" = 0 ]; then
+    echo >&2 'ERROR: --max-record-length can only be used together with --max-difference.'
+    echo >&2
+    printShortUsage "$0" >&2
+    exit 2
 fi
 
 awk \
@@ -166,6 +179,7 @@ awk \
     -v "timestampField=${timestampField//\\/\\\\}" \
     -v "maxDifference=$maxDifference" \
     -v "maxRecordDuration=$maxRecordDuration" \
+    -v "maxRecordLength=$maxRecordLength" \
     -v "singleEntryDuration=$singleEntryDuration" \
     -v "tally=${tally//\\/\\\\}" \
     -v "summarize=${summarize//\\/\\\\}" \
@@ -338,12 +352,23 @@ function isContinuous(timestamp, timestampMillis,      fullTimestamp, fullStartT
 	difference = combineWithMillis(timestamp, timestampMillis) - combineWithMillis(previousTimestamp, previousTimestampMillis)
 	if (abs(difference) > maxDifference + ROUNDING_DELTA) {
 	    return 0
-	} else if (maxRecordDuration == "") {
-	    return 1
 	}
 
-	difference = combineWithMillis(timestamp, timestampMillis) - combineWithMillis(startTimestamp, startTimestampMillis)
-	return abs(difference) <= maxRecordDuration + ROUNDING_DELTA
+	if (maxRecordDuration != "") {
+	    difference = combineWithMillis(timestamp, timestampMillis) - combineWithMillis(startTimestamp, startTimestampMillis)
+	    if (abs(difference) > maxRecordDuration + ROUNDING_DELTA) {
+		return 0
+	    }
+	}
+
+	if (maxRecordLength != "") {
+	    difference = currentLineNum - startLineNum + 1
+	    if (difference > maxRecordLength) {
+		return 0
+	    }
+	}
+
+	return 1
     }
 }
 

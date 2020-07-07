@@ -32,3 +32,10 @@
     [ "${lines[0]}" = 'ERROR: --max-record-duration can only be used together with --max-difference.' ]
     [ "${lines[1]%% *}" = 'Usage:' ]
 }
+
+@test "--max-record-length without --max-difference prints message and usage instructions" {
+    run timestampTally --max-record-length 1
+    [ $status -eq 2 ]
+    [ "${lines[0]}" = 'ERROR: --max-record-length can only be used together with --max-difference.' ]
+    [ "${lines[1]%% *}" = 'Usage:' ]
+}
