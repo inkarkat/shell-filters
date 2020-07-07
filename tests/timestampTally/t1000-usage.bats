@@ -25,3 +25,10 @@
     [ "${lines[0]}" = 'ERROR: Invalid value for --keep-timestamp: notRight' ]
     [ "${lines[1]%% *}" = 'Usage:' ]
 }
+
+@test "--max-record-duration without --max-difference prints message and usage instructions" {
+    run timestampTally --max-record-duration 1
+    [ $status -eq 2 ]
+    [ "${lines[0]}" = 'ERROR: --max-record-duration can only be used together with --max-difference.' ]
+    [ "${lines[1]%% *}" = 'Usage:' ]
+}
