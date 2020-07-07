@@ -350,6 +350,10 @@ function isContinuous(timestamp, timestampMillis,      fullTimestamp, fullStartT
 BEGIN {
     CONVFMT = "%.3f"
     ROUNDING_DELTA = 0.0001
+
+    if (maxRecordDuration != "" && maxRecordDuration < maxDifference) {
+	printf "Warning: The smaller maximum record duration of %s shadows the larger maximum difference %s between subsequent lines.\n", maxRecordDuration, maxDifference > "/dev/stderr"
+    }
 }
 NR == 1 {
     # Use FS as output separator if it is not a regular expression.

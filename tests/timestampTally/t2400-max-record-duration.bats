@@ -18,11 +18,12 @@ input="1593871643 foo
 3 baz" ]
 }
 
-@test "epochs with max record duration of 0 are all separate records" {
+@test "epochs with max record duration of 0 are all separate records and prints a warning" {
     run timestampTally --max-difference 3 --max-record-duration 0 <<<"$input"
 
     [ $status -eq 0 ]
-    [ "$output" = "0 foo
+    [ "$output" = "Warning: The smaller maximum record duration of 0 shadows the larger maximum difference 3 between subsequent lines.
+0 foo
 0 foo2
 0 foo3
 0 bar
@@ -30,11 +31,12 @@ input="1593871643 foo
 0 baz2" ]
 }
 
-@test "epochs with smaller max record duration than max difference take precedence" {
+@test "epochs with smaller max record duration than max difference take precedence and prints a warning" {
     run timestampTally --max-difference 3 --max-record-duration 2 <<<"$input"
 
     [ $status -eq 0 ]
-    [ "$output" = "1 foo
+    [ "$output" = "Warning: The smaller maximum record duration of 2 shadows the larger maximum difference 3 between subsequent lines.
+1 foo
 1 foo3
 0 baz
 0 baz2" ]
