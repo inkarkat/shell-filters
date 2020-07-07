@@ -7,7 +7,7 @@ printShortUsage()
 {
     # Note: short followed by long option; if the user knows the short one, she can
     # skim the long one.
-    printf 'Usage: %q %s\n' "$(basename "$1")" '[--unbuffered] [-F|--field-separator FS] [--timestamp-field N[-M] [--max-difference DURATION[SUFFIX]] [--single-entry-duration DURATION[SUFFIX]] [--tally LIST|PATTERN] [--summarize LIST|PATTERN] [--keep-timestamp start|end|both-concatenated|both-separate] [FILE ...] [-?|-h|--help]'
+    printf 'Usage: %q %s\n' "$(basename "$1")" '[--unbuffered] [-F|--field-separator FS] [--timestamp-field N[-M] [--max-difference DURATION[SUFFIX]] [--max-record-duration DURATION[SUFFIX]] [--single-entry-duration DURATION[SUFFIX]] [--tally LIST|PATTERN] [--summarize LIST|PATTERN] [--keep-timestamp start|end|both-concatenated|both-separate] [FILE ...] [-?|-h|--help]'
     printf 'Usage: cat FILE [...] | %q %s\n' "$(basename "$1")" '[...]'
 }
 printUsage()
@@ -49,6 +49,10 @@ HELPDESCRIPTION
 			    SUFFIX may be 'ms' for milliseconds, 's' for seconds
 			    (the default), 'm' for minutes, 'h' for hours or
 			    'd' for days.
+    --max-record-duration DURATION[SUFFIX]
+			    If the temporal difference between the a record's
+			    first line and the current line is larger than
+			    DURATION, a new record is started.
     --single-entry-duration DURATION[SUFFIX]
 			    A single discontinuous record is counted as being
 			    DURATION long.
@@ -114,6 +118,7 @@ typeset -a awkArgs=()
 isBuffered=t
 timestampField=
 maxDifference=0
+maxRecordDuration=
 singleEntryDuration=0
 tally=
 summarize=
@@ -127,6 +132,8 @@ do
 			    awkArgs+=("$1" "$2"); shift; shift;;
 	--timestamp-field)  shift; timestampField="$1"; shift;;
 	--max-difference)   shift; maxDifference="$(timeToSeconds "$1")" || exit $?; shift;;
+	--max-record-duration)
+			    shift; maxRecordDuration="$(timeToSeconds "$1")" || exit $?; shift;;
 	--single-entry-duration)
 			    shift; singleEntryDuration="$(timeToSeconds "$1")" || exit $?; shift;;
 	--tally)	    shift; tally="$1"; shift;;
@@ -150,6 +157,7 @@ awk \
     -v "isBuffered=$isBuffered" \
     -v "timestampField=${timestampField//\\/\\\\}" \
     -v "maxDifference=$maxDifference" \
+    -v "maxRecordDuration=$maxRecordDuration" \
     -v "singleEntryDuration=$singleEntryDuration" \
     -v "tally=${tally//\\/\\\\}" \
     -v "summarize=${summarize//\\/\\\\}" \
@@ -320,12 +328,20 @@ function isContinuous(timestamp, timestampMillis,      fullTimestamp, fullStartT
 	return timestamp == previousTimestamp && timestampMillis == previousTimestampMillis
     } else {
 	difference = combineWithMillis(timestamp, timestampMillis) - combineWithMillis(previousTimestamp, previousTimestampMillis)
-	return abs(difference) <= maxDifference
+	if (abs(difference) > maxDifference + ROUNDING_DELTA) {
+	    return 0
+	} else if (maxRecordDuration == "") {
+	    return 1
+	}
+
+	difference = combineWithMillis(timestamp, timestampMillis) - combineWithMillis(startTimestamp, startTimestampMillis)
+	return abs(difference) <= maxRecordDuration + ROUNDING_DELTA
     }
 }
 
 BEGIN {
     CONVFMT = "%.3f"
+    ROUNDING_DELTA = 0.0001
 }
 NR == 1 {
     # Use FS as output separator if it is not a regular expression.
