@@ -218,7 +218,26 @@ function isFieldSelected(fieldArg, field,      fieldArgs, fieldArgCnt, i, minMax
 }
 function isFieldOrFieldRange(fieldArg)
 {
-    return fieldArg ~ /[[:digit:]]/ && fieldArg ~ /^[[:digit:]]*-?[[:digit:]]*$/
+    return fieldArg ~ /^([[:digit:]]+|[[:digit:]]+-[[:digit:]]*|[[:digit:]]*-[[:digit:]]+)(,([[:digit:]]+|[[:digit:]]+-[[:digit:]]*|[[:digit:]]*-[[:digit:]]+))*$/
+}
+function getMatch(patternOrFieldRange,      i, result)
+{
+    # Always append OFS so that we can differentiate empty match from no match.
+    if (isFieldOrFieldRange(patternOrFieldRange)) {
+	result = ""
+	for (i = 1; i <= NF; ++i) {
+	    if (isFieldSelected(patternOrFieldRange, i)) {
+		result = result $i OFS
+	    }
+	}
+	return result
+    } else {
+	if (match($0, patternOrFieldRange)) {
+	    return substr($0, RSTART, RLENGTH) OFS
+	} else {
+	    return ""
+	}
+    }
 }
 function printLine(line)
 {
@@ -344,8 +363,18 @@ function parseLine(timestampStart, timestampLength,      timestampFieldCnt)
 	}
     }
 }
-function isContinuous(timestamp, timestampMillis,      fullTimestamp, fullStartTimestamp, difference)
+function isContinuous(timestamp, timestampMillis,      isMatch, currentMatch, fullTimestamp, fullStartTimestamp, difference)
 {
+    if (tally != "") {
+	currentMatch = getMatch(tally)
+	if (currentMatch != previousMatch) {
+	    previousMatch = currentMatch
+	    return 0
+	} else if (maxDifference == 0) {
+	    return 1
+	}
+    }
+
     if (maxDifference == 0) {
 	return timestamp == previousTimestamp && timestampMillis == previousTimestampMillis
     } else {
