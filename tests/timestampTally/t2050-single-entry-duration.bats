@@ -24,3 +24,12 @@ input="1593871643 foo
 120 bar
 0 baz" ]
 }
+
+@test "identical epochs as first field are condensed to the first occurrence with a custom single entry duration of 5 milliseconds" {
+    run timestampTally --single-entry-duration 50ms <<<"$input"
+
+    [ $status -eq 0 ]
+    [ "$output" = "0 foo
+0.050 bar
+0 baz" ]
+}

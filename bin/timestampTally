@@ -46,8 +46,9 @@ HELPDESCRIPTION
 			    treated as discontinuous and a separate tally is
 			    started. Without this, any temporal difference
 			    separates records.
-			    SUFFIX may be 's' for seconds (the default), 'm' for
-			    minutes, 'h' for hours or 'd' for days.
+			    SUFFIX may be 'ms' for milliseconds, 's' for seconds
+			    (the default), 'm' for minutes, 'h' for hours or
+			    'd' for days.
     --single-entry-duration DURATION[SUFFIX]
 			    A single discontinuous record is counted as being
 			    DURATION long.
@@ -100,6 +101,7 @@ HELPTEXT
 timeToSeconds()
 {
     case "$1" in
+	+([0-9])ms)	time="00${1%ms}"; time="0${time%???}.${time:$((${#time}-3))}"; time="${time/#+(0)/0}";;
 	+([0-9])?(s))   time="${1%s}";;
 	+([0-9])m)	time=$((${1%m} * 60));;
 	+([0-9])h)	time=$((${1%h} * 3600));;
@@ -322,6 +324,9 @@ function isContinuous(timestamp, timestampMillis,      fullTimestamp, fullStartT
     }
 }
 
+BEGIN {
+    CONVFMT = "%.3f"
+}
 NR == 1 {
     # Use FS as output separator if it is not a regular expression.
     firstTwoFields = $1 FS $2

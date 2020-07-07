@@ -42,6 +42,22 @@ EOF
 0 baz" ]
 }
 
+@test "close epochs with millis within 100 ms as first field are condensed to the first occurrence" {
+    run timestampTally --max-difference 100ms <<'EOF'
+1593871643,900 foo
+1593871643,999 foo
+1593871644,042 foo
+1593871644,201 bar
+1593871644,202 bar
+1593871644,303 baz
+EOF
+
+    [ $status -eq 0 ]
+    [ "$output" = "0.142 foo
+0.001 bar
+0 baz" ]
+}
+
 @test "close epochs with millis with different resolutions are handled" {
     run timestampTally --max-difference 1 <<'EOF'
 1593871643,101 foo
@@ -57,7 +73,7 @@ EOF
     [ $status -eq 0 ]
     [ "$output" = "1.999 foo
 0.899 bar
-0.9 baz
+0.900 baz
 0 quux" ]
 }
 
