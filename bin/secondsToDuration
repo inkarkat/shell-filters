@@ -33,6 +33,7 @@ HELPDESCRIPTION
 			    the integer itself represented by &) matches
 			    MATCH&PATTERN. Other occurrences (and those that
 			    also match --skip SKIP&PATTERN) are not converted.
+PATTERN is an AWK-style extended regular expression.
 HELPTEXT
 }
 skipPattern=
