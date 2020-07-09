@@ -1,0 +1,540 @@
+#!/bin/bash
+shopt -qs extglob
+
+printShortUsage()
+{
+    # Note: short followed by long option; if the user knows the short one, she can
+    # skim the long one.
+    printf 'Usage: %q %s\n' "$(basename "$1")" '[--unbuffered] [-F|--field-separator FS] [--timestamp-field N[-M] [--max-difference DURATION[SUFFIX] [--max-record-duration DURATION[SUFFIX]] [--max-record-length N]] [--entry-duration DURATION[SUFFIX]] [--single-entry-duration DURATION[SUFFIX]] [--tally LIST|PATTERN|--summarize LIST|PATTERN] [--keep-timestamp start|end|both-concatenated|both-separate] [FILE ...] [-?|-h|--help]'
+    printf 'Usage: cat FILE [...] | %q %s\n' "$(basename "$1")" '[...]'
+}
+printUsage()
+{
+    # This is the short help when launched with no or incorrect arguments.
+    # It is printed to stderr to avoid accidental processing.
+    printShortUsage "$1" >&2
+    printf >&2 'Try %q --help for more information.\n' "$(basename "$1")"
+}
+printLongUsage()
+{
+    # This is the long "man page" when launched with the help argument.
+    # It is printed to stdout to allow paging with 'more'.
+    cat <<HELPDESCRIPTION
+Calculates the temporal difference between timestamps of lines that have
+identical field values / pattern matches. Can condense subsequent lines into a
+single tally line and/or any lines into a final summary.
+HELPDESCRIPTION
+    echo
+    printShortUsage "$1"
+    cat <<HELPTEXT
+    --unbuffered|-u	    Immediately output each record.
+    --field-separator|-F FS Use FS as the input field separator (as with AWK).
+    --timestamp-field N[-M] Use field number N [sequentially up to M] instead of
+			    using the first match found in the line. Supported
+			    timestamp formats are
+			    Epoch:    159380654[,000]
+			    ISO 8601: 2020-07-03T22:02:24[,000]
+			    RFC 3339: 2020-07-03 22:02:24[,000] (you need two
+			    fields with the default field separator here)
+			    Lines that do not contain a valid timestamp are
+			    redirected to standard error.
+    --max-difference DURATION[SUFFIX]
+			    If the temporal difference between two subsequent
+			    lines is larger than DURATION, the records are
+			    treated as discontinuous and a separate tally is
+			    started. Without this, any temporal difference
+			    separates records.
+			    SUFFIX may be 'ms' for milliseconds, 's' for seconds
+			    (the default), 'm' for minutes, 'h' for hours or
+			    'd' for days.
+    --max-record-duration DURATION[SUFFIX]
+			    If the temporal difference between the record's
+			    first line and the current line is larger than
+			    DURATION, a new record is started. This can be used
+			    to separate regularly appearing updates (that all
+			    fall within --max-difference) after a while.
+    --max-record-length N   If a record would span more than N lines, a new
+			    record is started instead. This can be used to
+			    separate regularly appearing updates (that all fall
+			    within --max-difference) after a certain amount of
+			    data.
+    --entry-duration DURATION[SUFFIX]
+			    Each record is counted as being DURATION long,
+			    instead of being just an infinitesimal short point
+			    in time.
+    --single-entry-duration DURATION[SUFFIX]
+			    A single discontinuous record is counted as being
+			    DURATION long. With this, you can make single
+			    entries count differently than continuous lines.
+    --tally LIST|PATTERN    All subsequent lines where the fields in LIST / the
+			    first match of PATTERN are identical are condensed
+			    into a single record, with the timestamp replaced by
+			    the duration. Other fields / text are ignored.
+			    Each LIST is made up of one range in the format N,
+			    N-, N-M, or -M, or many such ranges separated by
+			    commas.
+    --summarize LIST|PATTERN
+			    All subsequent lines where the fields in LIST / the
+			    first match of PATTERN are identical contribute to
+			    the record duration, which is summed up and reported
+			    (in the form "duration OFS fields / match") at the
+			    end for each unique field value / pattern match,
+			    sorted by first occurrence.
+    --keep-timestamp start  Instead of replacing the timestamp, put the duration
+			    after it (separated by OFS).
+    --keep-timestamp end    Instead of replacing the timestamp of the line that
+			    introduces a new record, output the line that
+			    concludes a record, and put the duration after that
+			    timestamp (separated by OFS).
+    --keep-timestamp both-concatenated
+			    Instead of replacing the timestamp, put the end
+			    timestamp and then the duration after it (separated
+			    by OFS).
+    --keep-timestamp both-separate
+			    Instead of replacing the timestamp in the line that
+			    introduces a record, put the duration after that,
+			    and also output (also with the same duration) the
+			    line that concludes the record, so each tally will
+			    consist of two lines instead of one (except those
+			    from a single discontinuous line).
+			    (Does not work for --summarize.)
+All PATTERNs are AWK-style extended regular expressions.
+
+EXIT STATUS:
+    0	Complete success.
+    2	Bad invocation, wrong or missing command-line arguments.
+
+Example:
+HELPTEXT
+    printf '%q %s\n' "$(basename "$1")" '--max-difference 5 --keep-timestamp start /var/log/dpkg.log'
+    printf '%q %s\n' "$(basename "$1")" '--max-difference 3 --entry-duration 1 --summarize 3 /var/log/dpkg.log'
+}
+
+timeToSeconds()
+{
+    case "$1" in
+	+([0-9])ms)	time="00${1%ms}"; time="0${time%???}.${time:$((${#time}-3))}"; time="${time/#+(0)/0}";;
+	+([0-9])?(s))   time="${1%s}";;
+	+([0-9])m)	time=$((${1%m} * 60));;
+	+([0-9])h)	time=$((${1%h} * 3600));;
+	+([0-9])d)	time=$((${1%d} * 86400));;
+	*)		printf >&2 "ERROR: Illegal ${2:-duration}: %s\\n" "$1"; exit 2;;
+    esac
+    printf %s "$time"
+}
+typeset -a awkArgs=()
+isBuffered=t
+timestampField=
+maxDifference=0
+maxRecordDuration=
+maxRecordLength=
+entryDuration=0
+singleEntryDuration=
+tally=
+isSummarize=
+keepTimestamp=
+while [ $# -ne 0 ]
+do
+    case "$1" in
+	--help|-h|-\?)	    shift; printLongUsage "$0"; exit 0;;
+	--unbuffered|-u)    shift; isBuffered=;;
+	--field-separator|-F)
+			    awkArgs+=("$1" "$2"); shift; shift;;
+	--timestamp-field)  shift; timestampField="$1"; shift;;
+	--max-difference)   shift; maxDifference="$(timeToSeconds "$1")" || exit $?; shift;;
+	--max-record-duration)
+			    shift; maxRecordDuration="$(timeToSeconds "$1")" || exit $?; shift;;
+	--max-record-length)
+			    shift; maxRecordLength="$1"; shift;;
+	--entry-duration)   shift; entryDuration="$(timeToSeconds "$1")" || exit $?; shift;;
+	--single-entry-duration)
+			    shift; singleEntryDuration="$(timeToSeconds "$1")" || exit $?; shift;;
+	--tally)	    shift
+			    if [ "$isSummarize" ]; then
+				{ echo "ERROR: Cannot combine --tally with --summarize."; echo; printShortUsage "$0"; } >&2
+				exit 2
+			    fi
+			    tally="$1"
+			    shift
+			    ;;
+	--summarize)	    shift
+			    if [ ! "$isSummarize" ] && [ -n "$tally" ]; then
+				{ echo "ERROR: Cannot combine --tally with --summarize."; echo; printShortUsage "$0"; } >&2
+				exit 2
+			    fi
+			    tally="$1"
+			    isSummarize=t
+			    shift
+			    ;;
+	--keep-timestamp)   shift
+			    keepTimestamp="$1"
+			    case "$keepTimestamp" in
+				start|end|both-concatenated|both-separate)  ;;
+				*)  { printf 'ERROR: Invalid value for --keep-timestamp: %s\n' "$keepTimestamp"; echo; printShortUsage "$0"; } >&2; exit 2;;
+			    esac
+			    shift
+			    ;;
+	--)		    shift; break;;
+	-*)		    { echo "ERROR: Unknown option \"$1\"!"; echo; printShortUsage "$0"; } >&2; exit 2;;
+	*)		    break;;
+    esac
+done
+if [ -n "$maxRecordDuration" -a "$maxDifference" = 0 ]; then
+    echo >&2 'ERROR: --max-record-duration can only be used together with --max-difference.'
+    echo >&2
+    printShortUsage "$0" >&2
+    exit 2
+elif [ -n "$maxRecordLength" -a "$maxDifference" = 0 ]; then
+    echo >&2 'ERROR: --max-record-length can only be used together with --max-difference.'
+    echo >&2
+    printShortUsage "$0" >&2
+    exit 2
+elif [ "$isSummarize" ] && [ "$keepTimestamp" = 'both-separate' ]; then
+    echo >&2 'ERROR: Cannot combine --keep-timestamp both-separate with --summarize.'
+    echo >&2
+    printShortUsage "$0" >&2
+    exit 2
+fi
+[ -z "$singleEntryDuration" ] && singleEntryDuration=$entryDuration
+
+awk \
+    -v "isBuffered=$isBuffered" \
+    -v "timestampField=${timestampField//\\/\\\\}" \
+    -v "maxDifference=$maxDifference" \
+    -v "maxRecordDuration=$maxRecordDuration" \
+    -v "maxRecordLength=$maxRecordLength" \
+    -v "entryDuration=$entryDuration" \
+    -v "singleEntryDuration=$singleEntryDuration" \
+    -v "tally=${tally//\\/\\\\}" \
+    -v "isSummarize=$isSummarize" \
+    -v "keepTimestamp=$keepTimestamp" \
+    "${awkArgs[@]}" \
+'
+function isFieldSelected(fieldArg, field,      fieldArgs, fieldArgCnt, i, minMax)
+{
+    fieldArgCnt = split(fieldArg, fieldArgs, ",")
+    for (i = 1; i <= fieldArgCnt; ++i) {
+	switch (fieldArgs[i]) {
+	    case /^[[:digit:]]+$/ : {
+		if (field == fieldArgs[i]) return 1
+		break
+	    }
+	    case /^-[[:digit:]]+$/ : {
+		if (field <= substr(fieldArgs[i], 2)) return 1
+		break
+	    }
+	    case /^[[:digit:]]+-$/ : {
+		if (field >= substr(fieldArgs[i], 1, length(fieldArgs[i]) - 1)) return 1
+		break
+	    }
+	    case /^[[:digit:]]+-[[:digit:]]+$/ : {
+		split(fieldArgs[i], minMax, "-")
+		if (field >= minMax[1] && field <= minMax[2]) return 1
+		break
+	    }
+	    default: {
+		print "ERROR: Invalid field range specifier: " fieldArgs[i] > "/dev/stderr"
+		exit 2
+	    }
+	}
+    }
+    return 0
+}
+function isFieldOrFieldRange(fieldArg)
+{
+    return fieldArg ~ /^([[:digit:]]+|[[:digit:]]+-[[:digit:]]*|[[:digit:]]*-[[:digit:]]+)(,([[:digit:]]+|[[:digit:]]+-[[:digit:]]*|[[:digit:]]*-[[:digit:]]+))*$/
+}
+function getMatch(patternOrFieldRange,      i, result)
+{
+    # Always append OFS so that we can differentiate empty match from no match.
+    if (isFieldOrFieldRange(patternOrFieldRange)) {
+	result = ""
+	for (i = 1; i <= NF; ++i) {
+	    if (isFieldSelected(patternOrFieldRange, i)) {
+		result = result $i OFS
+	    }
+	}
+	return result
+    } else {
+	if (match($0, patternOrFieldRange)) {
+	    return substr($0, RSTART, RLENGTH) OFS
+	} else {
+	    return ""
+	}
+    }
+}
+function printLine(line)
+{
+    print line
+    if (! isBuffered) fflush()
+    isLastLineRedirected=0
+}
+function processPrevious(lineNum,      m, i, isSingleLine, reportedDuration)
+{
+    isSingleLine = (startLineNum + 1 == lineNum)
+    reportedDuration = (isSingleLine ? \
+	singleEntryDuration : \
+	combineWithMillis(previousTimestamp, previousTimestampMillis) - combineWithMillis(startTimestamp, startTimestampMillis) + entryDuration \
+    )
+
+    if (isSummarize) {
+	if (lastMatch == "") return	# We do not have a concluded tally yet at the very first invocation.
+
+	m = substr(lastMatch, 1, length(lastMatch) - length(OFS)) # lastMatch always has OFS appended; remove it now.
+	if (summary[m] == "") {
+
+	    summary[m] = reportedDuration
+	    summaryStartTime[m] = startRawTimestamp
+	    summaryEndTime[m] = previousRawTimestamp
+	    summaries[summaryCnt++] = m
+	} else {
+	    summary[m] += reportedDuration
+	    summaryEndTime[m] = previousRawTimestamp
+	}
+    } else {
+	switch (keepTimestamp) {
+	    case "": {
+		if (startTimestamp != "") {
+		    printLine(\
+			startPrefix \
+			reportedDuration \
+			startSuffix \
+		    )
+		}
+		break
+	    }
+	    case "start":
+	    case "both-separate": {
+		if (startTimestamp != "") {
+		    printLine(\
+			startPrefix \
+			startRawTimestamp (startTimestampMillis == "" ? "" : "," startTimestampMillis) OFS \
+			reportedDuration \
+			startSuffix \
+		    )
+		}
+		break
+	    }
+	}
+    }
+
+
+    if (redirectedLineCnt > 0) {
+	if (! isLastLineRedirected && isBuffered) fflush()
+	for (i = 0; i < redirectedLineCnt; ++i) {
+	    print redirectedLines[i] > "/dev/stderr"
+	}
+	delete redirectedLines
+	redirectedLineCnt = 0
+	isLastLineRedirected=1
+    }
+
+
+    if (! isSummarize) {
+	switch (keepTimestamp) {
+	    case "both-separate": {
+		# Only print the end line if the record actually spans multiple
+		# lines; else, we would just duplicate the start line once more.
+		if (isSingleLine) {
+		    break
+		}
+	    }
+	    case "end": {
+		if (startTimestamp != "") {
+		    printLine(\
+			previousPrefix \
+			previousRawTimestamp (previousTimestampMillis == "" ? "" : "," previousTimestampMillis) OFS \
+			reportedDuration \
+			previousSuffix \
+		    )
+		}
+		break
+	    }
+	    case "both-concatenated": {
+		if (startTimestamp != "") {
+		    printLine(\
+			startPrefix \
+			startRawTimestamp (startTimestampMillis == "" ? "" : "," startTimestampMillis) OFS \
+			previousRawTimestamp (previousTimestampMillis == "" ? "" : "," previousTimestampMillis) OFS \
+			reportedDuration \
+			startSuffix \
+		    )
+		}
+		break
+	    }
+	}
+    }
+}
+function printSummary(      i, m, additionalFields)
+{
+    for (i = 0; i < summaryCnt; ++i) {
+	m = summaries[i]
+
+	switch (keepTimestamp) {
+	    case "start": {
+		additionalFields = summaryStartTime[m] OFS
+		break
+	    }
+	    case "end": {
+		additionalFields = summaryEndTime[m] OFS
+		break
+	    }
+	    case "both-concatenated": {
+		additionalFields = summaryStartTime[m] OFS summaryEndTime[m] OFS
+		break
+	    }
+	}
+
+	print additionalFields summary[m] OFS m
+    }
+}
+function combineWithMillis(integerTime, millisTime,      millisFraction)
+{
+    if (millisTime == "") {
+	return integerTime
+    } else {
+	millisFraction = substr(millisTime "000", 1, 3)
+	return integerTime + (millisFraction / 1000)
+    }
+}
+function repeat(text, count,      tmp, i)
+{
+    for (i = 1; i <= count; ++i) tmp = tmp text
+    return tmp
+}
+function abs(n)
+{
+    return (n < 0 ? -1 * n : n)
+}
+function parseLine(timestampStart, timestampLength,      timestampFieldCnt)
+{
+    if (timestampField == "") {
+	previousPrefix = substr($0, 1, timestampStart - 1)
+	previousSuffix = substr($0, timestampStart + timestampLength)
+    } else {
+	timestampFieldCnt = 0
+	previousPrefix = ""
+	previousSuffix = ""
+	for (i = 1; i <= NF; ++i) {
+	    if (isFieldSelected(timestampField, i)) {
+		++timestampFieldCnt
+	    } else {
+		if (timestampFieldCnt == 0) {
+		    previousPrefix = previousPrefix $i OFS
+		} else {
+		    previousSuffix = previousSuffix repeat(OFS, timestampFieldNum) $i
+		}
+	    }
+	}
+    }
+}
+function isContinuous(timestamp, timestampMillis,      isMatch, currentMatch, fullTimestamp, fullStartTimestamp, difference)
+{
+    if (tally != "") {
+	currentMatch = getMatch(tally)
+	if (currentMatch != previousMatch) {
+	    lastMatch = previousMatch
+	    previousMatch = currentMatch
+	    return 0
+	} else if (maxDifference == 0) {
+	    return 1
+	}
+    }
+
+    if (maxDifference == 0) {
+	return timestamp == previousTimestamp && timestampMillis == previousTimestampMillis
+    } else {
+	difference = combineWithMillis(timestamp, timestampMillis) - combineWithMillis(previousTimestamp, previousTimestampMillis)
+	if (abs(difference) > maxDifference + ROUNDING_DELTA) {
+	    return 0
+	}
+
+	if (maxRecordDuration != "") {
+	    difference = combineWithMillis(timestamp, timestampMillis) - combineWithMillis(startTimestamp, startTimestampMillis)
+	    if (abs(difference) > maxRecordDuration + ROUNDING_DELTA) {
+		return 0
+	    }
+	}
+
+	if (maxRecordLength != "") {
+	    difference = currentLineNum - startLineNum + 1
+	    if (difference > maxRecordLength) {
+		return 0
+	    }
+	}
+
+	return 1
+    }
+}
+
+BEGIN {
+    CONVFMT = "%.3f"
+    ROUNDING_DELTA = 0.0001
+
+    if (maxRecordDuration != "" && maxRecordDuration < maxDifference) {
+	printf "Warning: The smaller maximum record duration of %s shadows the larger maximum difference %s between subsequent lines.\n", maxRecordDuration, maxDifference > "/dev/stderr"
+    }
+}
+NR == 1 {
+    # Use FS as output separator if it is not a regular expression.
+    firstTwoFields = $1 FS $2
+    if (substr($0, 1, length(firstTwoFields)) == firstTwoFields) {
+	OFS = FS
+    } else if (FS == " " && (substr($0, 1, length(firstTwoFields)) == $1 "\t" $2)) {
+	OFS = "\t"
+    }
+}
+{
+    previousSelectedTimestampField = ""
+    if (timestampField == "") {
+	timestampSource = $0
+    } else {
+	timestampSource = ""
+	timestampFieldNum = 0
+	for (i = 1; i <= NF; ++i) {
+	    if (isFieldSelected(timestampField, i)) {
+		if (previousSelectedTimestampField != "" && i != previousSelectedTimestampField + 1) {
+		    printf "ERROR: Timestamp field %d does not follow %d.\n", i, previousSelectedTimestampField > "/dev/stderr"
+		    exit 2
+		}
+		timestampSource = timestampSource (timestampFieldNum++ == 0 ? "" : OFS) $i
+		previousSelectedTimestampField = i
+	    }
+	}
+    }
+
+    if (match(timestampSource, /\<(([[:digit:]]{9,10})\>|(([[:digit:]]{4})-([01][[:digit:]])-([0123][[:digit:]])[ T]([012][[:digit:]]):([0-5][[:digit:]]):([0-5][[:digit:]])))(,([[:digit:]]{1,3}))?\>/, submatch)) {
+	timestampStart = RSTART
+	timestampLength = RLENGTH
+	++currentLineNum
+	rawTimestamp = (submatch[2] == "" ? submatch[3] : submatch[2])
+	timestamp = (submatch[2] == "" ? mktime(submatch[4] " " submatch[5] " " submatch[6] " " submatch[7] " " submatch[8] " " submatch[9]) : submatch[2])
+	timestampMillis = submatch[11]
+	if (isContinuous(timestamp, timestampMillis)) {
+	    parseLine(timestampStart, timestampLength)
+	} else {
+	    processPrevious(currentLineNum)
+
+	    parseLine(timestampStart, timestampLength)
+
+	    startLineNum = currentLineNum
+	    startPrefix = previousPrefix
+	    startSuffix = previousSuffix
+	    startRawTimestamp = rawTimestamp
+	    startTimestamp = timestamp
+	    startTimestampMillis = timestampMillis
+	}
+	previousRawTimestamp = rawTimestamp
+	previousTimestamp = timestamp
+	previousTimestampMillis = timestampMillis
+    } else {
+	redirectedLines[redirectedLineCnt++] = $0
+    }
+}
+END {
+    lastMatch = previousMatch
+    processPrevious(currentLineNum + 1)
+
+    if (isSummarize) printSummary()
+}
+' "$@"
