@@ -46,3 +46,10 @@
     [ "${lines[0]}" = 'ERROR: Cannot combine --tally with --summarize.' ]
     [ "${lines[1]%% *}" = 'Usage:' ]
 }
+
+@test "--summarize in combination with --keep-timestamp both-separate prints message and usage instructions" {
+    run timestampTally --summarize FOO --keep-timestamp both-separate
+    [ $status -eq 2 ]
+    [ "${lines[0]}" = 'ERROR: Cannot combine --keep-timestamp both-separate with --summarize.' ]
+    [ "${lines[1]%% *}" = 'Usage:' ]
+}

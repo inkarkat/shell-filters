@@ -190,6 +190,11 @@ elif [ -n "$maxRecordLength" -a "$maxDifference" = 0 ]; then
     echo >&2
     printShortUsage "$0" >&2
     exit 2
+elif [ "$isSummarize" ] && [ "$keepTimestamp" = 'both-separate' ]; then
+    echo >&2 'ERROR: Cannot combine --keep-timestamp both-separate with --summarize.'
+    echo >&2
+    printShortUsage "$0" >&2
+    exit 2
 fi
 [ -z "$singleEntryDuration" ] && singleEntryDuration=$entryDuration
 
