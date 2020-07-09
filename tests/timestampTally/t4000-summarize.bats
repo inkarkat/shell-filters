@@ -13,7 +13,7 @@ input="1594133230 irrelevant FOO 1 random X
 1594133320 an FOO 4 right Z
 1594133322 end BAZ 4 there Z"
 
-@test "epochs with identical uppercase match are condensed to the first occurrence and summarized" {
+@test "epochs with identical uppercase match are summarized" {
     run timestampTally --summarize '[[:upper:]]+' <<<"$input"
 
     [ $status -eq 0 ]
@@ -23,7 +23,7 @@ input="1594133230 irrelevant FOO 1 random X
 0 QUUX" ]
 }
 
-@test "epochs with identical uppercase match are condensed to the first occurrence and summarized, with a custom single entry duration of 1 second" {
+@test "epochs with identical uppercase match are summarized, with a custom single entry duration of 1 second" {
     run timestampTally --single-entry-duration 1 --summarize '[[:upper:]]+' <<<"$input"
 
     [ $status -eq 0 ]
@@ -33,7 +33,7 @@ input="1594133230 irrelevant FOO 1 random X
 1 QUUX" ]
 }
 
-@test "epochs with identical uppercase match are condensed to the first occurrence and summarized with kept start timestamp" {
+@test "epochs with identical uppercase match are summarized with kept start timestamp" {
     run timestampTally --summarize '[[:upper:]]+' --keep-timestamp start <<<"$input"
 
     [ $status -eq 0 ]
@@ -43,7 +43,7 @@ input="1594133230 irrelevant FOO 1 random X
 1594133260 0 QUUX" ]
 }
 
-@test "epochs with identical uppercase match are condensed to the first occurrence and summarized with kept end timestamp" {
+@test "epochs with identical uppercase match are summarized with kept end timestamp" {
     run timestampTally --summarize '[[:upper:]]+' --keep-timestamp end <<<"$input"
 
     [ $status -eq 0 ]
@@ -53,7 +53,7 @@ input="1594133230 irrelevant FOO 1 random X
 1594133260 0 QUUX" ]
 }
 
-@test "epochs with identical uppercase match are condensed to the first occurrence and summarized with kept both concatenated timestamps" {
+@test "epochs with identical uppercase match are summarized with kept both concatenated timestamps" {
     run timestampTally --summarize '[[:upper:]]+' --keep-timestamp both-concatenated <<<"$input"
 
     [ $status -eq 0 ]
