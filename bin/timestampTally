@@ -98,17 +98,16 @@ HELPDESCRIPTION
 			    consist of two lines instead of one (except those
 			    from a single discontinuous line).
 			    (Does not work for --summarize.)
+All PATTERNs are AWK-style extended regular expressions.
 
 EXIT STATUS:
     0	Complete success.
-    1	Failed to ...
     2	Bad invocation, wrong or missing command-line arguments.
-    3	Internal error or failed assertion.
-    4	Partial success ...
 
 Example:
 HELPTEXT
-    printf '%q %s\n' "$(basename "$1")" '--foo bar /tmp/foobar'
+    printf '%q %s\n' "$(basename "$1")" '--max-difference 5 --keep-timestamp start /var/log/dpkg.log'
+    printf '%q %s\n' "$(basename "$1")" '--max-difference 3 --entry-duration 1 --summarize 3 /var/log/dpkg.log'
 }
 
 timeToSeconds()
