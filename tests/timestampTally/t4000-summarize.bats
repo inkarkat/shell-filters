@@ -23,6 +23,53 @@ input="1594133230 irrelevant FOO 1 random X
 0 QUUX" ]
 }
 
+@test "epochs with identical field 3 are summarized" {
+    run timestampTally --summarize 3 <<<"$input"
+
+    [ $status -eq 0 ]
+    [ "$output" = "32 FOO
+3 BAR
+0 BAZ
+0 QUUX" ]
+}
+
+@test "epochs with identical fields 3 and 4 are summarized" {
+    run timestampTally --summarize 3-4 <<<"$input"
+
+    [ $status -eq 0 ]
+    [ "$output" = "1 FOO 1
+0 FOO 2
+3 BAR 2
+0 BAZ 2
+10 FOO 3
+0 QUUX 3
+20 FOO 4
+0 BAZ 4" ]
+}
+
+@test "epochs with identical field 6 are summarized" {
+    run timestampTally --summarize 6 <<<"$input"
+
+    [ $status -eq 0 ]
+    [ "$output" = "8 X
+11 Y
+62 Z" ]
+}
+
+@test "epochs with identical fields 3-4 and 6 are summarized" {
+    run timestampTally --summarize 3-4,6 <<<"$input"
+
+    [ $status -eq 0 ]
+    [ "$output" = "1 FOO 1 X
+0 FOO 2 X
+3 BAR 2 X
+0 BAZ 2 Y
+10 FOO 3 Y
+0 QUUX 3 Z
+20 FOO 4 Z
+0 BAZ 4 Z" ]
+}
+
 @test "epochs with identical uppercase match are summarized, with a custom single entry duration of 1 second" {
     run timestampTally --single-entry-duration 1 --summarize '[[:upper:]]+' <<<"$input"
 
