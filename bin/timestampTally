@@ -265,7 +265,7 @@ function printLine(line)
     if (! isBuffered) fflush()
     isLastLineRedirected=0
 }
-function processPrevious(lineNum,      i, isSingleLine, reportedDuration)
+function processPrevious(lineNum,      m, i, isSingleLine, reportedDuration)
 {
     isSingleLine = (startLineNum + 1 == lineNum)
     reportedDuration = (isSingleLine ? \
@@ -273,28 +273,44 @@ function processPrevious(lineNum,      i, isSingleLine, reportedDuration)
 	combineWithMillis(previousTimestamp, previousTimestampMillis) - combineWithMillis(startTimestamp, startTimestampMillis) + entryDuration \
     )
 
-    switch (keepTimestamp) {
-	case "": {
-	    if (startTimestamp != "") {
-		printLine(\
-		    startPrefix \
-		    reportedDuration \
-		    startSuffix \
-		)
-	    }
-	    break
+    if (isSummarize) {
+	if (lastMatch == "") return	# We do not have a concluded tally yet at the very first invocation.
+
+	m = substr(lastMatch, 1, length(lastMatch) - length(OFS)) # lastMatch always has OFS appended; remove it now.
+	if (summary[m] == "") {
+
+	    summary[m] = reportedDuration
+	    summaryStartTime[m] = startRawTimestamp
+	    summaryEndTime[m] = previousRawTimestamp
+	    summaries[summaryCnt++] = m
+	} else {
+	    summary[m] += reportedDuration
+	    summaryEndTime[m] = previousRawTimestamp
 	}
-	case "start":
-	case "both-separate": {
-	    if (startTimestamp != "") {
-		printLine(\
-		    startPrefix \
-		    startRawTimestamp (startTimestampMillis == "" ? "" : "," startTimestampMillis) OFS \
-		    reportedDuration \
-		    startSuffix \
-		)
+    } else {
+	switch (keepTimestamp) {
+	    case "": {
+		if (startTimestamp != "") {
+		    printLine(\
+			startPrefix \
+			reportedDuration \
+			startSuffix \
+		    )
+		}
+		break
 	    }
-	    break
+	    case "start":
+	    case "both-separate": {
+		if (startTimestamp != "") {
+		    printLine(\
+			startPrefix \
+			startRawTimestamp (startTimestampMillis == "" ? "" : "," startTimestampMillis) OFS \
+			reportedDuration \
+			startSuffix \
+		    )
+		}
+		break
+	    }
 	}
     }
 
@@ -310,37 +326,46 @@ function processPrevious(lineNum,      i, isSingleLine, reportedDuration)
     }
 
 
-    switch (keepTimestamp) {
-	case "both-separate": {
-	    # Only print the end line if the record actually spans multiple
-	    # lines; else, we would just duplicate the start line once more.
-	    if (isSingleLine) {
+    if (! isSummarize) {
+	switch (keepTimestamp) {
+	    case "both-separate": {
+		# Only print the end line if the record actually spans multiple
+		# lines; else, we would just duplicate the start line once more.
+		if (isSingleLine) {
+		    break
+		}
+	    }
+	    case "end": {
+		if (startTimestamp != "") {
+		    printLine(\
+			previousPrefix \
+			previousRawTimestamp (previousTimestampMillis == "" ? "" : "," previousTimestampMillis) OFS \
+			reportedDuration \
+			previousSuffix \
+		    )
+		}
+		break
+	    }
+	    case "both-concatenated": {
+		if (startTimestamp != "") {
+		    printLine(\
+			startPrefix \
+			startRawTimestamp (startTimestampMillis == "" ? "" : "," startTimestampMillis) OFS \
+			previousRawTimestamp (previousTimestampMillis == "" ? "" : "," previousTimestampMillis) OFS \
+			reportedDuration \
+			startSuffix \
+		    )
+		}
 		break
 	    }
 	}
-	case "end": {
-	    if (startTimestamp != "") {
-		printLine(\
-		    previousPrefix \
-		    previousRawTimestamp (previousTimestampMillis == "" ? "" : "," previousTimestampMillis) OFS \
-		    reportedDuration \
-		    previousSuffix \
-		)
-	    }
-	    break
-	}
-	case "both-concatenated": {
-	    if (startTimestamp != "") {
-		printLine(\
-		    startPrefix \
-		    startRawTimestamp (startTimestampMillis == "" ? "" : "," startTimestampMillis) OFS \
-		    previousRawTimestamp (previousTimestampMillis == "" ? "" : "," previousTimestampMillis) OFS \
-		    reportedDuration \
-		    startSuffix \
-		)
-	    }
-	    break
-	}
+    }
+}
+function printSummary(      i, summaryMatch)
+{
+    for (i = 0; i < summaryCnt; ++i) {
+	summaryMatch = summaries[i]
+	print summary[summaryMatch] OFS summaryMatch
     }
 }
 function combineWithMillis(integerTime, millisTime,      millisFraction)
@@ -388,6 +413,7 @@ function isContinuous(timestamp, timestampMillis,      isMatch, currentMatch, fu
     if (tally != "") {
 	currentMatch = getMatch(tally)
 	if (currentMatch != previousMatch) {
+	    lastMatch = previousMatch
 	    previousMatch = currentMatch
 	    return 0
 	} else if (maxDifference == 0) {
@@ -486,6 +512,9 @@ NR == 1 {
     }
 }
 END {
+    lastMatch = previousMatch
     processPrevious(currentLineNum + 1)
+
+    if (isSummarize) printSummary()
 }
 ' "$@"
