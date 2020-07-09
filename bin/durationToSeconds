@@ -1,21 +1,48 @@
 #!/bin/bash
 
+printShortUsage()
+{
+    # Note: short followed by long option; if the user knows the short one, she can
+    # skim the long one.
+    printf 'Usage: %q %s\n' "$(basename "$1")" '"[Ww ][Dd ][HH:]MM:SS" [...] [-?|-h|--help]'
+    printf 'Usage: cat FILE [...] | %q %s\n' "$(basename "$1")" '[-s|--skip SKIP&PATTERN [...]] [-m|--match MATCH&PATTERN [...]]'
+}
 printUsage()
 {
-    cat <<HELPTEXT
+    # This is the short help when launched with no or incorrect arguments.
+    # It is printed to stderr to avoid accidental processing.
+    printShortUsage "$1" >&2
+    printf >&2 'Try %q --help for more information.\n' "$(basename "$1")"
+}
+printLongUsage()
+{
+    # This is the long "man page" when launched with the help argument.
+    # It is printed to stdout to allow paging with 'more'.
+    cat <<HELPDESCRIPTION
 Convert matches of [Ww ][Dd ][HH:]MM:SS into seconds.
-(Unless the text around the duration (with the duration itself represented by &)
-matches SKIP&PATTERN.)
+HELPDESCRIPTION
+    echo
+    printShortUsage "$1"
+    cat <<HELPTEXT
+    --skip|-s SKIP&PATTERN  Do not convert if the text around the duration (with
+			    the duration itself represented by &) matches
+			    SKIP&PATTERN.
+    --match|-m MATCH&PATTERN
+			    Only convert if the text around the duration (with
+			    the duration itself represented by &) matches
+			    MATCH&PATTERN. Other occurrences (and those that
+			    also match --skip SKIP&PATTERN) are not converted.
+PATTERN is an AWK-style extended regular expression.
 HELPTEXT
-    printf 'Usage: %q %s\n' "$(basename "$1")" '"[Ww ][Dd ][HH:]MM:SS" [...] [-?|-h|--help]'
-    printf 'Usage: cat FILE [...] | %q %s\n' "$(basename "$1")" '[-s|--skip SKIP&PATTERN [...]]'
 }
 skipPattern=
+matchPattern=
 while [ $# -ne 0 ]
 do
     case "$1" in
-	--help|-h|-\?)	shift; printUsage "$0"; exit 0;;
+	--help|-h|-\?)	shift; printLongUsage "$0"; exit 0;;
 	--skip|-s)	shift; skipPattern="${skipPattern}${skipPattern:+|}${1:?}"; shift;;
+	--match|-m)	shift; matchPattern="${matchPattern}${matchPattern:+|}${1:?}"; shift;;
 	--)		shift; break;;
 	-*)		{ echo "ERROR: Unknown option \"$1\"!"; echo; printShortUsage "$0"; } >&2; exit 2;;
 	*)		break;;
@@ -24,6 +51,7 @@ done
 
 awk -F $'\n' \
     -v "skipPattern=${skipPattern//\\/\\\\}" \
+    -v "matchPattern=${matchPattern//\\/\\\\}" \
 '
 function convert(duration,      calendar, n, clock, days, weeks, result)
 {
@@ -70,10 +98,12 @@ BEGIN {
     n = split($0, rest, /\<([[:digit:]]+w )?([[:digit:]]+d )?[[:digit:]]+(:[[:digit:]]{2}){1,2}\>/, durations)
 
     for (i = 1; i < n; ++i) {
-	if (skipPattern != "") {
+	if (skipPattern != "" || matchPattern != "") {
 	    shallowclone(testDurations, durations)
 	    testDurations[i] = "&"
-	    if (join(n, rest, testDurations) ~ skipPattern) continue
+	    testJoin = join(n, rest, testDurations)
+	    if (skipPattern != "" && testJoin ~ skipPattern) continue
+	    if (matchPattern != "" && testJoin !~ matchPattern) continue
 	}
 
 	durations[i] = convert(durations[i])
