@@ -39,3 +39,10 @@
     [ "${lines[0]}" = 'ERROR: --max-record-length can only be used together with --max-difference.' ]
     [ "${lines[1]%% *}" = 'Usage:' ]
 }
+
+@test "--tally and --summarize print message and usage instructions" {
+    run timestampTally --tally FOO --summarize BAR
+    [ $status -eq 2 ]
+    [ "${lines[0]}" = 'ERROR: Cannot combine --tally with --summarize.' ]
+    [ "${lines[1]%% *}" = 'Usage:' ]
+}
