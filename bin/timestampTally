@@ -7,7 +7,7 @@ printShortUsage()
 {
     # Note: short followed by long option; if the user knows the short one, she can
     # skim the long one.
-    printf 'Usage: %q %s\n' "$(basename "$1")" '[--unbuffered] [-F|--field-separator FS] [--timestamp-field N[-M] [--max-difference DURATION[SUFFIX] [--max-record-duration DURATION[SUFFIX]] [--max-record-length N]] [--single-entry-duration DURATION[SUFFIX]] [--tally LIST|PATTERN] [--summarize LIST|PATTERN] [--keep-timestamp start|end|both-concatenated|both-separate] [FILE ...] [-?|-h|--help]'
+    printf 'Usage: %q %s\n' "$(basename "$1")" '[--unbuffered] [-F|--field-separator FS] [--timestamp-field N[-M] [--max-difference DURATION[SUFFIX] [--max-record-duration DURATION[SUFFIX]] [--max-record-length N]] [--entry-duration DURATION[SUFFIX]] [--single-entry-duration DURATION[SUFFIX]] [--tally LIST|PATTERN] [--summarize LIST|PATTERN] [--keep-timestamp start|end|both-concatenated|both-separate] [FILE ...] [-?|-h|--help]'
     printf 'Usage: cat FILE [...] | %q %s\n' "$(basename "$1")" '[...]'
 }
 printUsage()
@@ -60,9 +60,14 @@ HELPDESCRIPTION
 			    separate regularly appearing updates (that all fall
 			    within --max-difference) after a certain amount of
 			    data.
+    --entry-duration DURATION[SUFFIX]
+			    Each record is counted as being DURATION long,
+			    instead of being just an infinitesimal short point
+			    in time.
     --single-entry-duration DURATION[SUFFIX]
 			    A single discontinuous record is counted as being
-			    DURATION long.
+			    DURATION long. With this, you can make single
+			    entries count differently than continuous lines.
     --tally LIST|PATTERN    All subsequent lines where the fields in LIST / the
 			    first match of PATTERN are identical are condensed
 			    into a single record, with the timestamp replaced by
@@ -127,7 +132,8 @@ timestampField=
 maxDifference=0
 maxRecordDuration=
 maxRecordLength=
-singleEntryDuration=0
+entryDuration=0
+singleEntryDuration=
 tally=
 summarize=
 keepTimestamp=
@@ -144,6 +150,7 @@ do
 			    shift; maxRecordDuration="$(timeToSeconds "$1")" || exit $?; shift;;
 	--max-record-length)
 			    shift; maxRecordLength="$1"; shift;;
+	--entry-duration)   shift; entryDuration="$(timeToSeconds "$1")" || exit $?; shift;;
 	--single-entry-duration)
 			    shift; singleEntryDuration="$(timeToSeconds "$1")" || exit $?; shift;;
 	--tally)	    shift; tally="$1"; shift;;
@@ -172,6 +179,7 @@ elif [ -n "$maxRecordLength" -a "$maxDifference" = 0 ]; then
     printShortUsage "$0" >&2
     exit 2
 fi
+[ -z "$singleEntryDuration" ] && singleEntryDuration=$entryDuration
 
 awk \
     -v "summarySeparator=${TIMESTAMPTALLY_SUMMARY_SEPARATOR//\\/\\\\}" \
@@ -180,6 +188,7 @@ awk \
     -v "maxDifference=$maxDifference" \
     -v "maxRecordDuration=$maxRecordDuration" \
     -v "maxRecordLength=$maxRecordLength" \
+    -v "entryDuration=$entryDuration" \
     -v "singleEntryDuration=$singleEntryDuration" \
     -v "tally=${tally//\\/\\\\}" \
     -v "summarize=${summarize//\\/\\\\}" \
@@ -250,7 +259,7 @@ function processPrevious(lineNum,      i, isSingleLine, reportedDuration)
     isSingleLine = (startLineNum + 1 == lineNum)
     reportedDuration = (isSingleLine ? \
 	singleEntryDuration : \
-	combineWithMillis(previousTimestamp, previousTimestampMillis) - combineWithMillis(startTimestamp, startTimestampMillis) \
+	combineWithMillis(previousTimestamp, previousTimestampMillis) - combineWithMillis(startTimestamp, startTimestampMillis) + entryDuration \
     )
 
     switch (keepTimestamp) {
