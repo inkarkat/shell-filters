@@ -32,3 +32,33 @@ input="1594133230 irrelevant FOO 1 random X
 2 BAZ
 1 QUUX" ]
 }
+
+@test "epochs with identical uppercase match are condensed to the first occurrence and summarized with kept start timestamp" {
+    run timestampTally --summarize '[[:upper:]]+' --keep-timestamp start <<<"$input"
+
+    [ $status -eq 0 ]
+    [ "$output" = "1594133230 32 FOO
+1594133235 3 BAR
+1594133239 0 BAZ
+1594133260 0 QUUX" ]
+}
+
+@test "epochs with identical uppercase match are condensed to the first occurrence and summarized with kept end timestamp" {
+    run timestampTally --summarize '[[:upper:]]+' --keep-timestamp end <<<"$input"
+
+    [ $status -eq 0 ]
+    [ "$output" = "1594133320 32 FOO
+1594133238 3 BAR
+1594133322 0 BAZ
+1594133260 0 QUUX" ]
+}
+
+@test "epochs with identical uppercase match are condensed to the first occurrence and summarized with kept both concatenated timestamps" {
+    run timestampTally --summarize '[[:upper:]]+' --keep-timestamp both-concatenated <<<"$input"
+
+    [ $status -eq 0 ]
+    [ "$output" = "1594133230 1594133320 32 FOO
+1594133235 1594133238 3 BAR
+1594133239 1594133322 0 BAZ
+1594133260 1594133260 0 QUUX" ]
+}

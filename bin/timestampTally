@@ -361,11 +361,27 @@ function processPrevious(lineNum,      m, i, isSingleLine, reportedDuration)
 	}
     }
 }
-function printSummary(      i, summaryMatch)
+function printSummary(      i, m, additionalFields)
 {
     for (i = 0; i < summaryCnt; ++i) {
-	summaryMatch = summaries[i]
-	print summary[summaryMatch] OFS summaryMatch
+	m = summaries[i]
+
+	switch (keepTimestamp) {
+	    case "start": {
+		additionalFields = summaryStartTime[m] OFS
+		break
+	    }
+	    case "end": {
+		additionalFields = summaryEndTime[m] OFS
+		break
+	    }
+	    case "both-concatenated": {
+		additionalFields = summaryStartTime[m] OFS summaryEndTime[m] OFS
+		break
+	    }
+	}
+
+	print additionalFields summary[m] OFS m
     }
 }
 function combineWithMillis(integerTime, millisTime,      millisFraction)
