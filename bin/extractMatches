@@ -422,6 +422,7 @@ esac
 
 IFS=$'\n'
 $EXEC awk \
+    -v "originalRender=$originalRender" \
     -v "render=$render" \
     -v "file=${file//\\/\\\\}" \
     -v "isBuffered=$isBuffered" \
@@ -498,6 +499,16 @@ BEGIN {
     PROCINFO["sorted_in"] = "@ind_str_asc"
     delete delayedCounts    # Reify as array; else, the length(delayedCounts) will create it as a scalar instead.
     delayTime = delayMatchTime = delayCountTime = systime()
+
+    switch (originalRender) {
+	case "overlay":
+	case "title": {
+	    # Suppress fatal error "cannot redirect to /dev/tty (No such device or address)" if the terminal is not available.
+	    # Requires gawk 4.2.
+	    PROCINFO[file, "NONFATAL"] = 1
+	    break
+	}
+    }
 }
 function getKeyMatch(key)
 {
