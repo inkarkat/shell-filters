@@ -1,5 +1,7 @@
 #!/bin/bash
 
+export EXTRACTMATCHES_SINK=/dev/stdout
+
 readonly R='[s[1;1H[37;44m['
 readonly N='][0m[u'
 

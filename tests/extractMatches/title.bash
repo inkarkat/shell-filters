@@ -1,5 +1,7 @@
 #!/bin/bash
 
+export EXTRACTMATCHES_SINK=/dev/stdout
+
 case "$TERM" in
     screen*)
 	readonly R=']2;['

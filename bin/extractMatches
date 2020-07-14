@@ -410,7 +410,9 @@ replacements+=(''); others+=(''); names+=('')	# Add one empty element so that sp
 : ${EXTRACTMATCHES_MATCH_BEFORE_COUNT="$(getMatchBeforeCount)"}
 file='/dev/stdout'
 case "$originalRender" in
-    overlay|title|command|notify|highlight|flash) ;;
+    command|notify|highlight|flash) ;;
+    overlay|title)
+	file="${EXTRACTMATCHES_SINK:-/dev/tty}";;
     stderr)
 	file="/dev/stderr";;
     concatenated)
