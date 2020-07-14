@@ -12,8 +12,8 @@ End of interlude.
 Another repeat from what we've seen.
 Another repeat yet again.
 EOF
-    [ "$output" = "This will repeat.${LF}This is the repeat. [...]${LF}That is the last repeat in the first location. [ ..]
+    [ "$output" = "This will repeat.${LF}This is the repeat. [    ]${LF}That is the last repeat in the first location. [*   ]
 A unique statement.
 End of interlude.
-Another repeat from what we've seen. [. .]${LF}Another repeat yet again. [.. ]" ]
+Another repeat from what we've seen. [-*  ]${LF}Another repeat yet again. [ -* ]" ]
 }

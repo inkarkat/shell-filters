@@ -10,13 +10,17 @@ This repeats once.
 This repeats once.
 This repeats once.
 This repeats once.
+This repeats once.
+This repeats once.
+This repeats once.
+This repeats once.
 A unique statement.
 End of interlude.
 This repeats once.
 This repeats once.
 EOF
-    [ "$output" = "This repeats once. [...] ..]. .].. ]. .] ..]. .]
+    [ "$output" = "This repeats once. [    ]*   ]-*  ] -* ]  -*]   *]  *-] *- ]*-  ]*   ]-*  ]
 A unique statement.
 End of interlude.
-This repeats once. [...]" ]
+This repeats once. [    ]" ]
 }

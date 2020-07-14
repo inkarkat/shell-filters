@@ -120,12 +120,16 @@ BEGIN {
     SPINNER="/-\\|"
 
     SWEEPCOMMON=1
-    SWEEPSTART="[...]"
-    SWEEPS[0]="[ ..]"
-    SWEEPS[1]="[. .]"
-    SWEEPS[2]="[.. ]"
-    SWEEPS[3]="[. .]"
-    SWEEPSLEN=4
+    SWEEPSTART="[    ]"
+    SWEEPS[0]="[*   ]"
+    SWEEPS[1]="[-*  ]"
+    SWEEPS[2]="[ -* ]"
+    SWEEPS[3]="[  -*]"
+    SWEEPS[4]="[   *]"
+    SWEEPS[5]="[  *-]"
+    SWEEPS[6]="[ *- ]"
+    SWEEPS[7]="[*-  ]"
+    SWEEPSLEN=8
 
     N = split(typeList, types)
     if (split(patternList, patterns) != N) {
