@@ -22,7 +22,7 @@ printShortUsage()
 {
     # Note: short followed by long option; if the user knows the short one, she can
     # skim the long one.
-    printf 'Usage: %q %s\n' "$(basename "$1")" '[-r|--reset-on PATTERN] [-i|--inline-or-non|--inline-or-passthrough|-I|--inline-always [--inline-prefix IP] [-c|--clear] [-a|--append-reset|-k|--keep-reset]] [-s|--summarize WHAT[,PLURAL-WHAT] --summary-only] [-t|--timespan TIMESPAN[SUFFIX]] [-?|-h|--help]'
+    printf 'Usage: %q %s\n' "$(basename "$1")" '[-r|--reset-on PATTERN] [-i|--inline-or-non|--inline-or-passthrough|-I|--inline-always [--inline-prefix IP] [-c|--clear] [-a|--append-reset|-k|--keep-reset]] [-s|--summarize WHAT[,PLURAL-WHAT] --summary-only] [-t|--timespan TIMESPAN[SUFFIX]] [-T|--initial-delay TIMESPAN[SUFFIX]] [-?|-h|--help]'
 }
 printUsage()
 {
@@ -108,6 +108,7 @@ summarizeWhat=
 summarizeWhatPlural=
 isSummaryOnly=
 timespan=1
+initialDelay=0
 while [ $# -ne 0 ]
 do
     case "$1" in
@@ -146,6 +147,8 @@ do
 			;;
 	--summary-only)	shift; isSummaryOnly=t;;
 	--timespan|-t)	shift; timespan="$(timeToSeconds "$1")" || exit $?; shift;;
+	--initial-delay|-T)
+			shift; initialDelay="$(timeToSeconds "$1")" || exit $?; shift;;
 	--)		shift; break;;
 	-*)		{ echo "ERROR: Unknown option \"$1\"!"; echo; printUsage "$0"; } >&2; exit 2;;
 	*)		break;;
@@ -160,7 +163,7 @@ fi
 if [ "$isInline" ]; then prefix="[1G[2K$inlinePrefix"; suffix=; finalizer='\n'; fi
 [ "$isClear" ] && finalizer='[1G[2K'
 
-SECONDS=0
+SECONDS=$((timespan - initialDelay))
 let previousCount=-1
 let total=0
 let count=0
