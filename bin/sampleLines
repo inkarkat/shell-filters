@@ -72,8 +72,13 @@ HELPDESCRIPTION
 			the current sample.
     --summary-only	Instead of printing summary and selected output, just
 			summarize the amount of lines.
+    --timespan|-t TIMESPAN[SUFFIX]
+			Print a line every TIMESPAN instead of every second.
+			SUFFIX may be 's' for seconds (the default), 'm' for
+			minutes, 'h' for hours or 'd' for days.
 Example:
 HELPTEXT
+
     printf 'tail -f file | %q %s\n' "$(basename "$1")" '--inline-or-none --clear >&2'
 }
 
