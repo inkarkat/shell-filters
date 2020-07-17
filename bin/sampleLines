@@ -76,10 +76,24 @@ HELPDESCRIPTION
 			Print a line every TIMESPAN instead of every second.
 			SUFFIX may be 's' for seconds (the default), 'm' for
 			minutes, 'h' for hours or 'd' for days.
+    --initial-delay|-T TIMESPAN[SUFFIX]
+			Wait for TIMESPAN before printing anything. By default,
+			the first line is printed immediately.
 Example:
 HELPTEXT
 
     printf 'tail -f file | %q %s\n' "$(basename "$1")" '--inline-or-none --clear >&2'
+}
+timeToSeconds()
+{
+    case "$1" in
+	+([0-9])?(s))   time="${1%s}";;
+	+([0-9])m)	time=$((${1%m} * 60));;
+	+([0-9])h)	time=$((${1%h} * 3600));;
+	+([0-9])d)	time=$((${1%d} * 86400));;
+	*)		printf >&2 'ERROR: Illegal timespan: %s\n' "$1"; exit 2;;
+    esac
+    printf %s "$time"
 }
 
 prefix=
@@ -131,16 +145,7 @@ do
 			shift
 			;;
 	--summary-only)	shift; isSummaryOnly=t;;
-	--timespan|-t)	shift
-			case "$1" in
-			    +([0-9])?(s))   timespan="${1%s}";;
-			    +([0-9])m)	    timespan=$((${1%m} * 60));;
-			    +([0-9])h)	    timespan=$((${1%h} * 3600));;
-			    +([0-9])d)	    timespan=$((${1%d} * 86400));;
-			    *)		    printf >&2 'ERROR: Illegal timespan: %s\n' "$1"; exit 2;;
-			esac
-			shift
-			;;
+	--timespan|-t)	shift; timespan="$(timeToSeconds "$1")" || exit $?; shift;;
 	--)		shift; break;;
 	-*)		{ echo "ERROR: Unknown option \"$1\"!"; echo; printUsage "$0"; } >&2; exit 2;;
 	*)		break;;
