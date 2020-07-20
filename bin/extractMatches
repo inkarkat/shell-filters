@@ -361,7 +361,7 @@ if [ ${#types[@]} -eq 0 ]; then
 fi
 originalRender="${render:=highlight}"
 if [ "$render" = 'notify' ]; then
-    if [ -z "$EXTRACTMATCHES_NOTIFY_COMMANDLINE" ] && ! which "$EXTRACTMATCHES_NOTIFY_SEND" > /dev/null 2>&1; then
+    if [ -z "$EXTRACTMATCHES_NOTIFY_COMMANDLINE" ] && ! which "$EXTRACTMATCHES_NOTIFY_SEND" >/dev/null 2>&1; then
 	printf >&2 'ERROR: notify-send command (%s) not found.\n' "$EXTRACTMATCHES_NOTIFY_SEND"
 	exit 2
     fi
