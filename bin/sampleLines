@@ -74,8 +74,9 @@ HELPDESCRIPTION
 			summarize the amount of lines.
     --timespan|-t TIMESPAN[SUFFIX]
 			Print a line every TIMESPAN instead of every second.
-			SUFFIX may be 's' for seconds (the default), 'm' for
-			minutes, 'h' for hours or 'd' for days.
+			SUFFIX may be 'ms' for milliseconds, 's' for seconds
+			(the default), 'm' for minutes, 'h' for hours or 'd' for
+			days.
     --initial-delay|-T TIMESPAN[SUFFIX]
 			Wait for TIMESPAN before printing anything. By default,
 			the first line is printed immediately.
@@ -87,11 +88,12 @@ HELPTEXT
 timeToSeconds()
 {
     case "$1" in
+	+([0-9])ms)	time="00${1%ms}"; time="0${time%???}.${time:$((${#time}-3))}"; time="${time/#+(0)/0}";;
 	+([0-9])?(s))   time="${1%s}";;
 	+([0-9])m)	time=$((${1%m} * 60));;
 	+([0-9])h)	time=$((${1%h} * 3600));;
 	+([0-9])d)	time=$((${1%d} * 86400));;
-	*)		printf >&2 'ERROR: Illegal timespan: %s\n' "$1"; exit 2;;
+	*)		printf >&2 "ERROR: Illegal timespan: %s\\n" "$1"; exit 2;;
     esac
     printf %s "$time"
 }
@@ -163,7 +165,52 @@ fi
 if [ "$isInline" ]; then prefix="[1G[2K$inlinePrefix"; suffix=; finalizer='\n'; fi
 [ "$isClear" ] && finalizer='[1G[2K'
 
-SECONDS=$((timespan - initialDelay))
+case "${timespan}${initialDelay}" in
+    *.*)
+	resetTime()
+	{
+	    if [ $# -eq 0 ]; then
+		IFS='.' read startEpoch startNanos <<<"$(date +%s.%N)"
+	    else
+		IFS='.' read startEpoch startNanos <<<"$(awk 'BEGIN{ printf "%.3f\n", ARGV[1] - ARGV[2] + ARGV[3]; }' "$(date +%s.%N)" "${1:-0}" "${2:-0}")"
+	    fi
+	}
+	case "$timespan" in
+	    *.*)
+		isExpired()
+		{
+		    IFS='.' read endEpoch endNanos <<<"$(date +%s.%N)"
+		    local startMillis=10#${startNanos:0:3}; local endMillis=10#${endNanos:0:3}; local diffMillis=$(((endEpoch - startEpoch) * 1000))
+		    [ $((endMillis + diffMillis - startMillis)) -ge ${timespan/./} ]
+		}
+		;;
+	    *)
+		isExpired()
+		{
+		    IFS='.' read endEpoch endNanos <<<"$(date +%s.%N)"
+		    local startMillis=10#${startNanos:0:3}; local endMillis=10#${endNanos:0:3}; local diffMillis=$(((endEpoch - startEpoch) * 1000))
+		    [ $((endMillis + diffMillis - startMillis)) -ge ${timespan:?}000 ]
+		}
+		;;
+	esac
+	;;
+    *)
+	resetTime()
+	{
+	    if [ $# -eq 0 ]; then
+		SECONDS=0
+	    else
+		SECONDS=$((${1:-0} - ${2:-0}))
+	    fi
+	}
+	isExpired()
+	{
+	    [ $SECONDS -ge $timespan ]
+	}
+	;;
+esac
+
+resetTime "$timespan" "$initialDelay"
 let previousCount=-1
 let total=0
 let count=0
@@ -185,7 +232,7 @@ do
 	esac
     fi
 
-    if [ -n "$isTakeThisLine" -o $SECONDS -ge $timespan ]; then
+    if [ -n "$isTakeThisLine" ] || isExpired; then
 	sample="$line"
 	if [ "$summarizeWhat" ]; then
 	    if [ "$isSummaryOnly" ]; then
@@ -223,7 +270,7 @@ do
 
 	printf "${prefix}%s%s${suffix}${keepResetSuffix}" "$keepResetPrefix" "$sample"
 
-	SECONDS=0
+	resetTime
 	let previousCount=$count
 	let count=0
 	[ -n "$isInline" -a -n "$isTakeThisLine" -a "$resetAction" = append ] && \
