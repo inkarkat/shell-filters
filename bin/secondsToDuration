@@ -5,7 +5,7 @@ printShortUsage()
     # Note: short followed by long option; if the user knows the short one, she can
     # skim the long one.
     printf 'Usage: %q %s\n' "$(basename "$1")" '[--] SECONDS [...] [-?|-h|--help]'
-    printf 'Usage: cat FILE [...] | %q %s\n' "$(basename "$1")" '[-s|--skip SKIP&PATTERN [...]] [-m|--match MATCH&PATTERN [...]]'
+    printf 'Usage: cat FILE [...] | %q %s\n' "$(basename "$1")" '[-s|--skip SKIP&PATTERN [...]] [-m|--match MATCH&PATTERN [...]] [-w|--width WIDTH]'
 }
 printUsage()
 {
@@ -33,17 +33,24 @@ HELPDESCRIPTION
 			    the integer itself represented by &) matches
 			    MATCH&PATTERN. Other occurrences (and those that
 			    also match --skip SKIP&PATTERN) are not converted.
+    --width|-w WIDTH	    When converting the passed SECONDS, ensure a fixed
+			    width of WIDTH (so that alignment is not disturbed) by adding
+			    space padding to the left.
+			    When replacing integers, ensure a fixed with of
+			    integer width + WIDTH.
 PATTERN is an AWK-style extended regular expression.
 HELPTEXT
 }
 skipPattern=
 matchPattern=
+width=
 while [ $# -ne 0 ]
 do
     case "$1" in
 	--help|-h|-\?)	shift; printLongUsage "$0"; exit 0;;
 	--skip|-s)	shift; skipPattern="${skipPattern}${skipPattern:+|}${1:?}"; shift;;
 	--match|-m)	shift; matchPattern="${matchPattern}${matchPattern:+|}${1:?}"; shift;;
+	--width|-w)	shift; width="$1"; shift;;
 	--)		break;;
 	-*)		{ echo "ERROR: Unknown option \"$1\"!"; echo; printShortUsage "$0"; } >&2; exit 2;;
 	*)		break;;
@@ -53,6 +60,7 @@ done
 awk -F $'\n' \
     -v "skipPattern=${skipPattern//\\/\\\\}" \
     -v "matchPattern=${matchPattern//\\/\\\\}" \
+    -v "width=$width" \
 '
 function convert(seconds,      hours, minutes)
 {
@@ -76,19 +84,53 @@ function shallowclone(target, source,      e)
 {
     for (e in source) target[e] = source[e]
 }
-function join(n, list, seps,      i, result) {
+function join(n, list, seps,      i, result)
+{
     for (i = 1; i <= n; ++i) {
 	result = result list[i] seps[i]
     }
     result = result list[++i]
     return result
 }
+function repeat(text, count,      tmp, i)
+{
+    for (i = 1; i <= count; ++i) tmp = tmp text
+    return tmp
+}
+function format(duration, width)
+{
+    if (width == "" || length(duration) == width) return duration
+
+    if (length(duration) > width) {
+	duration = reducePrecision(duration, width)
+    }
+
+    return sprintf("%" width "s", duration)
+}
+function reducePrecision(duration, width)
+{
+    # Convert 01:02:03 into 1h 2m 3s so that we have more pieces to play with.
+    duration = gensub(/:0*([[:digit:]]{1,2})$/, " \\1s", 1, duration)
+    duration = gensub(/(^| |:)0*([[:digit:]]{1,2}) /, " \\2m ", 1, duration)
+    duration = gensub(/(^| )0*([[:digit:]]{1,2}) /, " \\2h ", 1, duration)
+    duration = gensub(/^ +/, "", 1, duration)
+
+    # Try to remove the smallest unit(s) until it fits.
+    while (length(duration) > width) {
+	if (duration ~ / /) {
+	    duration = gensub(/ [^ ]+$/, "", 1, duration)
+	} else {
+	    return repeat("#", width)
+	}
+    }
+    return duration
+}
 BEGIN {
     if (ARGC > 1) {
 	i = 1
 	if (ARGV[1] == "--" ) ++i
 	for (; i < ARGC; ++i) {
-	    print convert(ARGV[i])
+	    print format(convert(ARGV[i]), width)
 	}
 	exit 0
     }
@@ -104,7 +146,8 @@ BEGIN {
 	    if (matchPattern != "" && testJoin !~ matchPattern) continue
 	}
 
-	numbers[i] = convert(numbers[i])
+	targetWidth = (width == "" ? "" : width + length(numbers[i]))
+	numbers[i] = format(convert(numbers[i]), targetWidth)
     }
 
     $0 = join(n, rest, numbers)
