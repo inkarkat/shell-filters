@@ -1,6 +1,13 @@
 #!/bin/bash
 shopt -qs extglob
 
+: ${EXTRACTMATCHES_REPORT_MARKER:='{}'}
+reportMarker="$EXTRACTMATCHES_REPORT_MARKER"; unset EXTRACTMATCHES_REPORT_MARKER
+: ${EXTRACTMATCHES_FILE_MARKER:='{FILENAME}'}
+fileMarker="$EXTRACTMATCHES_FILE_MARKER"; unset EXTRACTMATCHES_FILE_MARKER
+: ${EXTRACTMATCHES_LINE_NUMBER_MARKER:='{FNR}'}
+lineNumberMarker="$EXTRACTMATCHES_LINE_NUMBER_MARKER"; unset EXTRACTMATCHES_LINE_NUMBER_MARKER
+
 printShortUsage()
 {
     # Note: short followed by long option; if the user knows the short one, she can
@@ -46,9 +53,9 @@ HELPDESCRIPTION
 			    number of seconds between reports, or to the
 			    negative number of input lines between reports.
     --to|-t command	    Report by invoking EXTRACTMATCHES_COMMANDLINE while
-			    replacing {} with the overlay-like report,
-			    {FILENAME} with the name of the current input file,
-			    and {FNR} with the line number.
+			    replacing $reportMarker with the overlay-like report,
+			    $fileMarker with the name of the current input file,
+			    and $lineNumberMarker with the line number.
     --to|-t notify	    Report via notify-send to the system's notification
 			    system.
     --to|-t highlight	    Just highlight the match (and added count) in-line.
@@ -182,6 +189,10 @@ setInfiniteDelays()
     EXTRACTMATCHES_NOTIFY_UPDATE_DELAY=2147483647
     EXTRACTMATCHES_FILE_UPDATE_MATCH_DELAY=2147483647
     EXTRACTMATCHES_FILE_UPDATE_COUNT_DELAY=2147483647
+}
+literalAwkExtendedPattern()
+{
+    printf %s "${1?}" | sed -e 's/\\/\\\\\\\\/g' -e 's/[][$*+?{}.|()^]/\\\\&/g'
 }
 : ${EXTRACTMATCHES_OVERLAY_JUMP=[s[1;1H}
 : ${EXTRACTMATCHES_OVERLAY_PREFIX=[37;44m[}
@@ -365,7 +376,7 @@ if [ "$render" = 'notify' ]; then
 	printf >&2 'ERROR: notify-send command (%s) not found.\n' "$EXTRACTMATCHES_NOTIFY_SEND"
 	exit 2
     fi
-    : ${EXTRACTMATCHES_NOTIFY_COMMANDLINE:="\"$EXTRACTMATCHES_NOTIFY_SEND\"${EXTRACTMATCHES_NOTIFY_ARGUMENTS:+ $EXTRACTMATCHES_NOTIFY_ARGUMENTS} \"extractMatches {FILENAME}:{FNR}\" -- {}"}
+    : ${EXTRACTMATCHES_NOTIFY_COMMANDLINE:="\"$EXTRACTMATCHES_NOTIFY_SEND\"${EXTRACTMATCHES_NOTIFY_ARGUMENTS:+ $EXTRACTMATCHES_NOTIFY_ARGUMENTS} \"extractMatches {FILENAME}:{FNR}\" -- $reportMarker"}
 
     # Reuse the command renderer for notify-send; it has all the generic
     # functionality to do it.
@@ -422,6 +433,9 @@ esac
 
 IFS=$'\n'
 $EXEC awk \
+    -v "reportMarker=$(literalAwkExtendedPattern "$reportMarker")" \
+    -v "fileMarker=$(literalAwkExtendedPattern "$fileMarker")" \
+    -v "lineNumberMarker=$(literalAwkExtendedPattern "$lineNumberMarker")" \
     -v "originalRender=$originalRender" \
     -v "render=$render" \
     -v "file=${file//\\/\\\\}" \
@@ -778,9 +792,9 @@ function delayedCommandRender(      result, reportingCommandLine, commandResult)
     result = concatenateResults(commandSeparator)
     if (result == "") return
 
-    reportingCommandLine = gensub(/\{\}/, "\047" gensub("\047", "\047\\\\\\\\\047\047", "g", result) "\047", "g", commandLine)
-    if (commandLine ~ /\{FILENAME\}/) reportingCommandLine = gensub(/\{FILENAME\}/, FILENAME, "g", reportingCommandLine)
-    if (commandLine ~ /\{FNR\}/) reportingCommandLine = gensub(/\{FNR\}/, FNR, "g", reportingCommandLine)
+    reportingCommandLine = gensub(reportMarker, "\047" gensub("\047", "\047\\\\\\\\\047\047", "g", result) "\047", "g", commandLine)
+    if (commandLine ~ fileMarker) reportingCommandLine = gensub(fileMarker, FILENAME, "g", reportingCommandLine)
+    if (commandLine ~ lineNumberMarker) reportingCommandLine = gensub(lineNumberMarker, FNR, "g", reportingCommandLine)
 
     if (commandResult = system(reportingCommandLine) != 0) {
 	printf "ERROR: Failed to invoke \"%s\" (%d).\n", reportingCommandLine, commandResult  > "/dev/stderr"
