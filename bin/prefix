@@ -6,7 +6,7 @@ printUsage()
 Prefix each individual line with PREFIX.
 HELPTEXT
     printf 'Usage: %q %s\n' "$(basename "$1")" '[-k|--keep-indent] [-s|--skip-empty] [--] PREFIX FILE [...] [-?|-h|--help]'
-    printf 'Usage: cat FILE | %q %s\n' "$(basename "$1")" '[-k|--keep-indent] [-s|--skip-empty] [--] PREFIX'
+    printf 'Usage: cat FILE [...] | %q %s\n' "$(basename "$1")" '[-k|--keep-indent] [-s|--skip-empty] [--] PREFIX'
 }
 isKeepIndent=
 additionalSedProcessing=()
