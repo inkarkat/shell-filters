@@ -6,8 +6,11 @@ printUsage()
 Prefix each individual line with PREFIX.
 HELPTEXT
     printf 'Usage: %q %s\n' "$(basename "$1")" '[-k|--keep-indent] [-s|--skip-empty] [--] PREFIX FILE [...] [-?|-h|--help]'
+    printf 'Usage: %q %s\n' "$(basename "$1")" '[-k|--keep-indent] [-s|--skip-empty] -c|--command "COMMANDLINE" [...] | --exec SIMPLECOMMAND ... ; [...] [--] PREFIX'
     printf 'Usage: cat FILE [...] | %q %s\n' "$(basename "$1")" '[-k|--keep-indent] [-s|--skip-empty] [--] PREFIX'
 }
+
+typeset -a commands=()
 isKeepIndent=
 additionalSedProcessing=()
 while [ $# -ne 0 ]
@@ -16,12 +19,28 @@ do
 	--help|-h|-\?)	shift; printUsage "$0"; exit 0;;
 	--keep-indent|-k)	shift; isKeepIndent=t;;
 	--skip-empty|-s)	shift; additionalSedProcessing+=(-e '/^[[:space:]]*\r\?$/b');;
+	--command|-c)	shift; commands+=(${commands:+;} "$1"); shift;;
+	--exec)		shift
+			cmd=
+			while [ $# -gt 0 -a "$1" != ';' ]
+			do
+			    printf -v quotedArg '%q' "$1"
+			    cmd="${cmd}${cmd:+ }${quotedArg}"
+			    shift
+			done
+			if [ $# -eq 0 ]; then
+			    echo "ERROR: -exec command must be concluded with ;!"; echo; printUsage "$0"
+			    exit 2
+			fi >&2
+			shift
+			commands+=(${commands:+;} "$cmd")
+			;;
 	--)		shift; break;;
 	-*)		{ echo "ERROR: Unknown option \"$1\"!"; echo; printUsage "$0"; } >&2; exit 2;;
 	*)		break;;
     esac
 done
-if [ $# -eq 0 ]; then
+if [ $# -eq 0 ] || [ ${#commands[@]} -gt 0 -a $# -ne 1 ]; then
     printUsage "$0" >&2
     exit 2
 fi
@@ -30,4 +49,5 @@ prefix=$1; shift
 literalPrefix=$prefix
 literalPrefix=${literalPrefix//\\/\\\\}
 literalPrefix=${literalPrefix//&/\\&}
-exec sed "${additionalSedProcessing[@]}" -e "s#\\(^${isKeepIndent:+[[:space:]]*}\\)#\\1${literalPrefix//#/\\#}#" "$@"
+eval "${commands:+{ }" "${commands[@]:-exec}" "${commands:+" ; } |"}" \
+    'sed "${additionalSedProcessing[@]}" -e "s#\\(^${isKeepIndent:+[[:space:]]*}\\)#\\1${literalPrefix//#/\\#}#" "$@"'
