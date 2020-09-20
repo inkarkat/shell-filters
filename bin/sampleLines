@@ -113,7 +113,7 @@ timeWithAdjustmentToSeconds()
     local adjustment="${1##+([0-9])?([smhd]|ms)}"
     local time="${1:0:$((${#1} - ${#adjustment}))}"
     if [ -z "$time" ]; then
-	printf >&2 "ERROR: Empty ${2:-k}: %s\\n" "$time"; exit 2;
+	printf >&2 'ERROR: Empty timespan: %s\n' "$time"; exit 2;
     fi
     case "$adjustment" in
 	'')			;;
