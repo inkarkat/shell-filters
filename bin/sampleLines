@@ -22,7 +22,7 @@ printShortUsage()
 {
     # Note: short followed by long option; if the user knows the short one, she can
     # skim the long one.
-    printf 'Usage: %q %s\n' "$(basename "$1")" '[-r|--reset-on PATTERN] [-i|--inline-or-non|--inline-or-passthrough|-I|--inline-always [--inline-prefix IP] [-c|--clear] [-a|--append-reset|-k|--keep-reset]] [-s|--summarize WHAT[,PLURAL-WHAT] --summary-only] [-t|--timespan TIMESPAN[SUFFIX]] [-T|--initial-delay TIMESPAN[SUFFIX]] [-?|-h|--help]'
+    printf 'Usage: %q %s\n' "$(basename "$1")" '[-r|--reset-on PATTERN] [-i|--inline-or-non|--inline-or-passthrough|-I|--inline-always [--inline-prefix IP] [-c|--clear] [-a|--append-reset|-k|--keep-reset]] [-s|--summarize WHAT[,PLURAL-WHAT] --summary-only] [-t|--timespan TIMESPAN[SUFFIX][ADJUSTMENT]] [-T|--initial-delay TIMESPAN[SUFFIX]] [-?|-h|--help]'
 }
 printUsage()
 {
@@ -76,7 +76,13 @@ HELPDESCRIPTION
 			Print a line every TIMESPAN instead of every second.
 			SUFFIX may be 'ms' for milliseconds, 's' for seconds
 			(the default), 'm' for minutes, 'h' for hours or 'd' for
-			days.
+			days. ADJUSTMENT can change the original value after
+			every iteration. It starts with either + or -, followed
+			by TIMESPAN, optionally followed by either SUFFIX or %.
+			For example, 10m+30s starts with 10 minutes and then
+			increases that by 30 seconds on every iteration. 10-5%
+			starts with 10 seconds and then continually decreases
+			that by 5 percent.
     --initial-delay|-T TIMESPAN[SUFFIX]
 			Wait for TIMESPAN before printing anything. By default,
 			the first line is printed immediately.
@@ -88,14 +94,69 @@ HELPTEXT
 timeToSeconds()
 {
     case "$1" in
-	+([0-9])ms)	time="00${1%ms}"; time="0${time%???}.${time:$((${#time}-3))}"; time="${time/#+(0)/0}";;
+	+([0-9])ms)	if [ -n "$adjustment" ]; then
+			    echo >&2 'ERROR: Cannot combine millisecond interval with adjustment.'
+			    exit 2
+			fi
+			time="00${1%ms}"; time="0${time%???}.${time:$((${#time}-3))}"; time="${time/#+(0)/0}"
+			;;
 	+([0-9])?(s))   time="${1%s}";;
 	+([0-9])m)	time=$((${1%m} * 60));;
 	+([0-9])h)	time=$((${1%h} * 3600));;
 	+([0-9])d)	time=$((${1%d} * 86400));;
-	*)		printf >&2 "ERROR: Illegal timespan: %s\\n" "$1"; exit 2;;
+	*)		printf >&2 'ERROR: Illegal timespan: %s\n' "$1"; exit 2;;
     esac
     printf %s "$time"
+}
+timeWithAdjustmentToSeconds()
+{
+    local adjustment="${1##+([0-9])?([smhd]|ms)}"
+    local time="${1:0:$((${#1} - ${#adjustment}))}"
+    if [ -z "$time" ]; then
+	printf >&2 "ERROR: Empty ${2:-k}: %s\\n" "$time"; exit 2;
+    fi
+    case "$adjustment" in
+	'')			;;
+	[+-]+([0-9])?([smhd%]))	;;
+	*)  printf >&2 'ERROR: Illegal adjustment: %s\n' "$adjustment"; exit 2;;
+    esac
+    time="$(timeToSeconds "$time" "$2")" || exit $?
+    printf '%s\t%s\n' "$time" "$adjustment"
+}
+adjust()
+{
+    local var="${1?}"; shift
+    local adjustment="$1"; shift
+    eval "local value=\$$var"
+    local newValue
+    case "$adjustment" in
+	'')	    return;;
+	[+-]0?(%))  return;;
+	++([0-9]))  newValue="$((value + ${adjustment#+}))";;
+	-+([0-9]))  newValue="$((value - ${adjustment#-}))";;
+	[+-]+([0-9])%)
+		    # As Bash doesn't support floating point math yet, multiply
+		    # with 100, add the percentage change, and divide back and
+		    # round.
+		    # To avoid that the rounding truncates small changes and
+		    # therefore never lets the real value change, store the cent
+		    # value in a global variable, and re-use that instead.
+		    eval "local centValue=\$${var}CentValue"
+		    [ "$centValue" ] || centValue=$((value * 100))
+
+		    local change=$((${adjustment:1:-1} * value))
+		    [ "${adjustment:0:1}" = '+' ] && let centValue+=$change || let centValue-=$change
+		    newValue=$(((centValue + 50) / 100))
+
+		    eval "${var}CentValue=\$centValue"
+		    ;;
+	*)	    printf >&2 'ASSERT: Invalid adjustment: %s\n' "$adjustment"; exit 3;;
+    esac
+
+    [ $newValue -lt 0 ] && newValue=0
+    # Use this instead if no delay at all does not make sense.
+    #[ $newValue -le 0 ] && newValue=1
+    eval "$var=\$newValue"
 }
 
 prefix=
@@ -110,6 +171,7 @@ summarizeWhat=
 summarizeWhatPlural=
 isSummaryOnly=
 timespan=1
+timespanAdjustment=
 initialDelay=0
 while [ $# -ne 0 ]
 do
@@ -148,7 +210,7 @@ do
 			shift
 			;;
 	--summary-only)	shift; isSummaryOnly=t;;
-	--timespan|-t)	shift; timespan="$(timeToSeconds "$1")" || exit $?; shift;;
+	--timespan|-t)	shift; < <(timeWithAdjustmentToSeconds "$1") IFS=$'\t' read -r timespan timespanAdjustment || exit 2; shift;;
 	--initial-delay|-T)
 			shift; initialDelay="$(timeToSeconds "$1")" || exit $?; shift;;
 	--)		shift; break;;
@@ -215,6 +277,7 @@ let previousCount=-1
 let total=0
 let count=0
 isAgain=
+isFirstExpiry=t
 
 keepResetPrefix=
 while IFS=$'\n' read -r line || { [ "$summarizeWhat" ] || suffix=; [ -n "$line" ]; }
@@ -232,7 +295,8 @@ do
 	esac
     fi
 
-    if [ -n "$isTakeThisLine" ] || isExpired; then
+    hasExpired=; isExpired && hasExpired=t
+    if [ -n "$isTakeThisLine" ] || [ "$hasExpired" ]; then
 	sample="$line"
 	if [ "$summarizeWhat" ]; then
 	    if [ "$isSummaryOnly" ]; then
@@ -271,6 +335,8 @@ do
 	printf "${prefix}%s%s${suffix}${keepResetSuffix}" "$keepResetPrefix" "$sample"
 
 	resetTime
+	[ "$hasExpired" ] && [ ! "$isFirstExpiry" ] && adjust timespan "$timespanAdjustment"
+	isFirstExpiry=
 	let previousCount=$count
 	let count=0
 	[ -n "$isInline" -a -n "$isTakeThisLine" -a "$resetAction" = append ] && \
