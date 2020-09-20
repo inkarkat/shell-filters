@@ -272,6 +272,7 @@ case "${timespan}${initialDelay}" in
 	;;
 esac
 
+originalTimespan=$timespan
 resetTime "$timespan" "$initialDelay"
 let previousCount=-1
 let total=0
@@ -293,6 +294,8 @@ do
 	    append) keepResetPrefix=;;	# The current iteration already has the header in the line. Only prepend the header to subsequent samples.
 	    keep)   keepResetSuffix='\n';;
 	esac
+	timespan=$originalTimespan
+	isFirstExpiry=t
     fi
 
     hasExpired=; isExpired && hasExpired=t
