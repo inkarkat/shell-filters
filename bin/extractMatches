@@ -1,11 +1,11 @@
 #!/bin/bash
 shopt -qs extglob
 
-: ${EXTRACTMATCHES_REPORT_MARKER:='{}'}
+: ${EXTRACTMATCHES_REPORT_MARKER='{}'}
 reportMarker="$EXTRACTMATCHES_REPORT_MARKER"; unset EXTRACTMATCHES_REPORT_MARKER
-: ${EXTRACTMATCHES_FILE_MARKER:='{FILENAME}'}
+: ${EXTRACTMATCHES_FILE_MARKER='{FILENAME}'}
 fileMarker="$EXTRACTMATCHES_FILE_MARKER"; unset EXTRACTMATCHES_FILE_MARKER
-: ${EXTRACTMATCHES_LINE_NUMBER_MARKER:='{FNR}'}
+: ${EXTRACTMATCHES_LINE_NUMBER_MARKER='{FNR}'}
 lineNumberMarker="$EXTRACTMATCHES_LINE_NUMBER_MARKER"; unset EXTRACTMATCHES_LINE_NUMBER_MARKER
 
 printShortUsage()
@@ -53,9 +53,9 @@ HELPDESCRIPTION
 			    number of seconds between reports, or to the
 			    negative number of input lines between reports.
     --to|-t command	    Report by invoking EXTRACTMATCHES_COMMANDLINE while
-			    replacing $reportMarker with the overlay-like report,
-			    $fileMarker with the name of the current input file,
-			    and $lineNumberMarker with the line number.
+			    ${reportMarker:+replacing $reportMarker with the overlay-like report,}
+			    ${fileMarker:+$fileMarker with the name of the current input file,}
+			    ${lineNumberMarker:+and $lineNumberMarker with the line number.}
     --to|-t notify	    Report via notify-send to the system's notification
 			    system.
     --to|-t highlight	    Just highlight the match (and added count) in-line.
@@ -792,9 +792,13 @@ function delayedCommandRender(      result, reportingCommandLine, commandResult)
     result = concatenateResults(commandSeparator)
     if (result == "") return
 
-    reportingCommandLine = gensub(reportMarker, "\047" gensub("\047", "\047\\\\\\\\\047\047", "g", result) "\047", "g", commandLine)
-    if (commandLine ~ fileMarker) reportingCommandLine = gensub(fileMarker, FILENAME, "g", reportingCommandLine)
-    if (commandLine ~ lineNumberMarker) reportingCommandLine = gensub(lineNumberMarker, FNR, "g", reportingCommandLine)
+    reportingCommandLine = commandLine
+    if (reportMarker != "" && commandLine ~ reportMarker)
+	reportingCommandLine = gensub(reportMarker, "\047" gensub("\047", "\047\\\\\\\\\047\047", "g", result) "\047", "g", reportingCommandLine)
+    if (fileMarker != "" && commandLine ~ fileMarker)
+	reportingCommandLine = gensub(fileMarker, FILENAME, "g", reportingCommandLine)
+    if (lineNumberMarker != "" && commandLine ~ lineNumberMarker)
+	reportingCommandLine = gensub(lineNumberMarker, FNR, "g", reportingCommandLine)
 
     if (commandResult = system(reportingCommandLine) != 0) {
 	printf "ERROR: Failed to invoke \"%s\" (%d).\n", reportingCommandLine, commandResult  > "/dev/stderr"
