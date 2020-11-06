@@ -2,7 +2,7 @@
 ###############################################################################
 ##
 # FILE: 	updateTextBlock
-# PRODUCT:	tools
+# PRODUCT:	shell-filters
 # AUTHOR: 	/^--
 # DATE CREATED:	30-May-2011
 #
@@ -17,18 +17,7 @@
 #   - Allow to use stdin for either inputfile or file.
 #   - Check that inputfile doesn't contain the end marker.
 #
-# FILE_SCCS = "@(#)updateTextBlock	003	(22-Jun-2011)	tools";
-#
-# REVISION	DATE		REMARKS
-#	003	22-Jun-2011	FIX: Typo in TMPFILE resolution make it always
-#				use the fallback.
-#	002	31-May-2011	Correct help formatting.
-#				Add check for existing inputfile, as sed
-#				silently ignores this.
-#				Add sed escaping for pattern and inserted
-#				markers, to allow / and \ inside of them.
-#				Add warning for multiple text blocks.
-#	001	30-May-2011	file creation
+# @(#)updateTextBlock	$Id$	shell-filters
 ###############################################################################
 
 printShortUsage()
