@@ -19,7 +19,7 @@ printUsage()
     # This is the short help when launched with no or incorrect arguments.
     # It is printed to stderr to avoid accidental processing.
     printShortUsage "$1" >&2
-    printf >&2 'Try %q --help for more information.\n' "$(basename "$1")"
+    printf >&2 '\nTry %q --help for more information.\n' "$(basename "$1")"
 }
 printLongUsage()
 {
@@ -151,11 +151,11 @@ HELPTEXT
 singleRenderCheck()
 {
     if [ "$render" ]; then
-	echo >&2 "ERROR: There can be only one --to / --grep-..."
-	echo >&2
-	printShortUsage "$1" >&2
+	echo "ERROR: There can be only one --to / --grep-..."
+	echo
+	printUsage "$1"
 	exit 2
-    fi
+    fi >&2
 }
 
 getCountPrefix()
@@ -272,11 +272,11 @@ do
 	--reset-name)		shift; types+=(reset-name); patterns+=("${1:?}"); replacements+=('&'); globals+=(0); others+=(''); names+=('') priorities+=(0); shift;;
 	--reset|-x)		shift
 				if [ ${#types[@]} -eq 0 ] || [ "${types[-1]}" = reset-name ]; then
-				    echo >&2 "Need -e|--regexp|-c|--count|-M|--match-count PATTERN before passing RESET-PATTERN."
-				    echo >&2
-				    printShortUsage "$0" >&2
+				    echo "Need -e|--regexp|-c|--count|-M|--match-count PATTERN before passing RESET-PATTERN."
+				    echo
+				    printUsage "$0"
 				    exit 2
-				fi
+				fi >&2
 				types+=(reset); patterns+=("${1:?}"); replacements+=('&'); globals+=("${globals[-1]}"); others+=(''); priorities+=("${priorities[-1]}")	# Don't copy reset-other; as a following --reset-other can independently add a trigger for RESET-PATTERN.
 				countPatternAppendix=; [ "${types[-2]}" = count ] && countPatternAppendix="-${patterns[-2]}"
 				if [ "${names[-1]}" ]; then
@@ -289,55 +289,55 @@ do
 				;;
 	--reset-other|-k)	shift
 				if [ ${#types[@]} -eq 0 ] || [ "${types[-1]}" = reset-name ]; then
-				    echo >&2 "Need -e|--regexp|-c|--count|-M|--match-count PATTERN before passing --reset-other NAME."
-				    echo >&2
-				    printShortUsage "$0" >&2
+				    echo "Need -e|--regexp|-c|--count|-M|--match-count PATTERN before passing --reset-other NAME."
+				    echo
+				    printUsage "$0"
 				    exit 2
-				fi
+				fi >&2
 				others[-1]="$1"
 				shift
 				;;
 	--replacement|-r)	shift
 				if [ ${#types[@]} -eq 0 ] || [[ "${types[-1]}" = reset?(-name) ]]; then
-				    echo >&2 "Need -e|--regexp|-c|--count|-M|--match-count PATTERN before passing REPLACEMENT."
-				    echo >&2
-				    printShortUsage "$0" >&2
+				    echo "Need -e|--regexp|-c|--count|-M|--match-count PATTERN before passing REPLACEMENT."
+				    echo
+				    printUsage "$0"
 				    exit 2
-				fi
+				fi >&2
 				replacements[-1]="$1"
 				shift
 				;;
 	--global|-g)		shift
 				if [ ${#types[@]} -eq 0 ] || [ "${types[-1]}" = reset ]; then
-				    echo >&2 "Need -e|--regexp|-c|--count|-M|--match-count PATTERN before passing -g|--global."
-				    echo >&2
-				    printShortUsage "$0" >&2
+				    echo "Need -e|--regexp|-c|--count|-M|--match-count PATTERN before passing -g|--global."
+				    echo
+				    printUsage "$0"
 				    exit 2
-				fi
+				fi >&2
 				globals[-1]=1
 				;;
 	--name|-n)		shift
 				if [ ${#types[@]} -eq 0 ]; then
-				    echo >&2 "Need -e|--regexp|-c|--count|-M|--match-count|--reset-name PATTERN before passing NAME."
-				    echo >&2
-				    printShortUsage "$0" >&2
+				    echo "Need -e|--regexp|-c|--count|-M|--match-count|--reset-name PATTERN before passing NAME."
+				    echo
+				    printUsage "$0"
 				    exit 2
-				fi
+				fi >&2
 				names[-1]="$1"
 				shift
 				;;
 	--priority|-p)		shift
 				if [ ${#types[@]} -eq 0 ]; then
-				    echo >&2 "Need -e|--regexp|-c|-count|-M|--match-count|--reset-name PATTERN before passing PRIORITY."
-				    echo >&2
-				    printShortUsage "$0" >&2
+				    echo "Need -e|--regexp|-c|-count|-M|--match-count|--reset-name PATTERN before passing PRIORITY."
+				    echo
+				    printUsage "$0"
 				    exit 2
 				elif [[ "$1" != ?(-)+([0-9]) ]]; then
-				    echo >&2 "PRIORITY must be a number."
-				    echo >&2
-				    printShortUsage "$0" >&2
+				    echo "PRIORITY must be a number."
+				    echo
+				    printUsage "$0"
 				    exit 2
-				fi
+				fi >&2
 				priorities[-1]="$1"
 				shift
 				;;
@@ -352,7 +352,7 @@ do
 				    count-desc)	reportOrder='compareByCount';;
 				    *)		echo >&2 "ERROR: Invalid report order."
 						echo >&2
-						printShortUsage "$0" >&2
+						printUsage "$0" >&2
 						exit 2
 						;;
 				esac
@@ -360,16 +360,16 @@ do
 				;;
 	--name-percentages|-%)	shift; namePercentages+=("$1"); shift;;
 	--)		shift; break;;
-	-*)		{ echo "ERROR: Unknown option \"$1\"!"; echo; printShortUsage "$0"; } >&2; exit 2;;
+	-*)		{ echo "ERROR: Unknown option \"$1\"!"; echo; printUsage "$0"; } >&2; exit 2;;
 	*)		break;;
     esac
 done
 if [ ${#types[@]} -eq 0 ]; then
-    echo >&2 'ERROR: No -e|--regexp|-c|--count|-M|--match-count|-x|--reset passed.'
-    echo >&2
-    printShortUsage "$0" >&2
+    echo 'ERROR: No -e|--regexp|-c|--count|-M|--match-count|-x|--reset passed.'
+    echo
+    printUsage "$0"
     exit 2
-fi
+fi >&2
 originalRender="${render:=highlight}"
 if [ "$render" = 'notify' ]; then
     if [ -z "$EXTRACTMATCHES_NOTIFY_COMMANDLINE" ] && ! which "$EXTRACTMATCHES_NOTIFY_SEND" >/dev/null 2>&1; then
@@ -400,7 +400,7 @@ fi
 if [ "$render" = 'flash' ] && [ "$isBuffered" ]; then
     echo >&2 'ERROR: Flash reporting must be combined with --unbuffered.'
     echo >&2
-    printShortUsage "$0" >&2
+    printUsage "$0" >&2
     exit 2
 elif [ "$render" = 'command' ]; then
     if [ -z "$EXTRACTMATCHES_COMMANDLINE" ]; then

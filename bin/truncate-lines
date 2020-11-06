@@ -9,7 +9,7 @@ printUsage()
     # This is the short help when launched with no or incorrect arguments.
     # It is printed to stderr to avoid accidental processing.
     printShortUsage "$1" >&2
-    printf >&2 'Try %q --help for more information.\n' "$(basename "$1")"
+    printf >&2 '\nTry %q --help for more information.\n' "$(basename "$1")"
 }
 printLongUsage()
 {
@@ -23,7 +23,8 @@ check per expression. There can be a fallback expression with --else, and the
 file can even be removed if nothing changed its contents.
 HELPDESCRIPTION
     echo
-    printShortUsage "$1" cat <<HELPTEXT
+    printShortUsage "$1"
+    cat <<HELPTEXT
 --verbose|-v		Show detailed results for each file.
 --verbose-color		Same, but with different colors depending on action taken.
 --consider ADDRESS	If the FILE does not match ADDRESS (which often is a sed
@@ -75,7 +76,7 @@ do
 	-n|--regexp-extended|-r|--null-data|-z)	allSedArguments+=("$1");      let matchSedArgumentNum["$currentMatch"]+=1; shift;;
 	-e|-f)					allSedArguments+=("$1" "$2"); let matchSedArgumentNum["$currentMatch"]+=2; matchSedHasExpression["$currentMatch"]=t; shift; shift;;
 	--)		shift; break;;
-	-*)		{ echo "ERROR: Unknown option \"$1\"!"; echo; printShortUsage "$0"; } >&2; exit 2;;
+	-*)		{ echo "ERROR: Unknown option \"$1\"!"; echo; printUsage "$0"; } >&2; exit 2;;
 	*)		if [ "$currentMatch" ] && [ ! "${matchSedHasExpression["$currentMatch"]}" ]; then
 			    allSedArguments+=("$1")
 			    let matchSedArgumentNum["$currentMatch"]+=1

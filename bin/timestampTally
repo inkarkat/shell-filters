@@ -13,7 +13,7 @@ printUsage()
     # This is the short help when launched with no or incorrect arguments.
     # It is printed to stderr to avoid accidental processing.
     printShortUsage "$1" >&2
-    printf >&2 'Try %q --help for more information.\n' "$(basename "$1")"
+    printf >&2 '\nTry %q --help for more information.\n' "$(basename "$1")"
 }
 printLongUsage()
 {
@@ -151,7 +151,7 @@ do
 			    shift; singleEntryDuration="$(timeToSeconds "$1")" || exit $?; shift;;
 	--tally)	    shift
 			    if [ "$isSummarize" ]; then
-				{ echo "ERROR: Cannot combine --tally with --summarize."; echo; printShortUsage "$0"; } >&2
+				{ echo "ERROR: Cannot combine --tally with --summarize."; echo; printUsage "$0"; } >&2
 				exit 2
 			    fi
 			    tally="$1"
@@ -159,7 +159,7 @@ do
 			    ;;
 	--summarize)	    shift
 			    if [ ! "$isSummarize" ] && [ -n "$tally" ]; then
-				{ echo "ERROR: Cannot combine --tally with --summarize."; echo; printShortUsage "$0"; } >&2
+				{ echo "ERROR: Cannot combine --tally with --summarize."; echo; printUsage "$0"; } >&2
 				exit 2
 			    fi
 			    tally="$1"
@@ -170,31 +170,31 @@ do
 			    keepTimestamp="$1"
 			    case "$keepTimestamp" in
 				start|end|both-concatenated|both-separate)  ;;
-				*)  { printf 'ERROR: Invalid value for --keep-timestamp: %s\n' "$keepTimestamp"; echo; printShortUsage "$0"; } >&2; exit 2;;
+				*)  { printf 'ERROR: Invalid value for --keep-timestamp: %s\n' "$keepTimestamp"; echo; printUsage "$0"; } >&2; exit 2;;
 			    esac
 			    shift
 			    ;;
 	--)		    shift; break;;
-	-*)		    { echo "ERROR: Unknown option \"$1\"!"; echo; printShortUsage "$0"; } >&2; exit 2;;
+	-*)		    { echo "ERROR: Unknown option \"$1\"!"; echo; printUsage "$0"; } >&2; exit 2;;
 	*)		    break;;
     esac
 done
 if [ -n "$maxRecordDuration" -a "$maxDifference" = 0 ]; then
-    echo >&2 'ERROR: --max-record-duration can only be used together with --max-difference.'
-    echo >&2
-    printShortUsage "$0" >&2
+    echo 'ERROR: --max-record-duration can only be used together with --max-difference.'
+    echo
+    printUsage "$0"
     exit 2
 elif [ -n "$maxRecordLength" -a "$maxDifference" = 0 ]; then
-    echo >&2 'ERROR: --max-record-length can only be used together with --max-difference.'
-    echo >&2
-    printShortUsage "$0" >&2
+    echo 'ERROR: --max-record-length can only be used together with --max-difference.'
+    echo
+    printUsage "$0"
     exit 2
 elif [ "$isSummarize" ] && [ "$keepTimestamp" = 'both-separate' ]; then
-    echo >&2 'ERROR: Cannot combine --keep-timestamp both-separate with --summarize.'
-    echo >&2
-    printShortUsage "$0" >&2
+    echo 'ERROR: Cannot combine --keep-timestamp both-separate with --summarize.'
+    echo
+    printUsage "$0"
     exit 2
-fi
+fi >&2
 [ -z "$singleEntryDuration" ] && singleEntryDuration=$entryDuration
 
 awk \
