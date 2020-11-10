@@ -53,27 +53,32 @@ awk -F $'\n' \
     -v "skipPattern=${skipPattern//\\/\\\\}" \
     -v "matchPattern=${matchPattern//\\/\\\\}" \
 '
-function convert(duration,      calendar, n, clock, days, weeks, result)
+function convert(duration,      calendar, n, clock, days, weeks, result, hasMatch)
 {
     n = split(gensub(/^.* /, "", 1, duration), clock, /:/)
     split(duration, calendar, / /)
 
     if (calendar[1] ~ /^[[:digit:]]+w$/) {
 	weeks = substr(calendar[1], 1, length(calendar[1]) - 1)
+	hasMatch = 1
 	if (calendar[2] ~ /^[[:digit:]]+d$/) {
 	    days = substr(calendar[2], 1, length(calendar[2]) - 1)
 	}
     } else if (calendar[1] ~ /^[[:digit:]]+d$/) {
 	days = substr(calendar[1], 1, length(calendar[1]) - 1)
+	hasMatch = 1
     }
     result += weeks * 604800 + days * 86400
 
-    if (n == 2)
+    if (n == 2) {
 	result += clock[n - 1] * 60 + clock[n]
-    else if (n == 3)
+	hasMatch = 1
+    } else if (n == 3) {
 	result += clock[n - 2] * 3600 + clock[n - 1] * 60 + clock[n]
+	hasMatch = 1
+    }
 
-    return (result > 0 ? result : duration)
+    return (hasMatch ? result : duration)
 }
 function shallowclone(target, source,      e)
 {
