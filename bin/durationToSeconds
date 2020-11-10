@@ -92,6 +92,8 @@ function join(n, list, seps,      i, result) {
     return result
 }
 BEGIN {
+    DURATION_PATTERN = "\\<([[:digit:]]+w )?([[:digit:]]+d )?[[:digit:]]+(:[[:digit:]]{2}){1,2}\\>"
+
     if (ARGC > 1) {
 	for (i = 1; i < ARGC; ++i) {
 	    print convert(ARGV[i])
@@ -100,7 +102,7 @@ BEGIN {
     }
 }
 {
-    n = split($0, rest, /\<([[:digit:]]+w )?([[:digit:]]+d )?[[:digit:]]+(:[[:digit:]]{2}){1,2}\>/, durations)
+    n = split($0, rest, DURATION_PATTERN, durations)
 
     for (i = 1; i < n; ++i) {
 	if (skipPattern != "" || matchPattern != "") {
