@@ -737,7 +737,7 @@ function postLine()
 	    exit 3
     }
 }
-function renderIt(theMatchReset, theMatch, theCounts, resultList,      resultCnt, key, save_sorted_in)
+function renderIt(theMatchReset, theMatch, theCounts, resultList,      resultCnt, key, save_sorted_in, countAndPercentage)
 {
     if (isMatchBeforeCount && theMatchReset != "") {
 	resultList[++resultCnt] = theMatchReset
@@ -751,7 +751,8 @@ function renderIt(theMatchReset, theMatch, theCounts, resultList,      resultCnt
 	PROCINFO["sorted_in"] = reportOrder
 	    for (key in theCounts) {
 		PROCINFO["sorted_in"] = save_sorted_in
-		    resultList[++resultCnt] = theCounts[key]["text"] countPrefix addPercentage(key, theCounts[key]["count"]) countSuffix
+		    countAndPercentage = addPercentage(key, theCounts[key]["count"])
+		    resultList[++resultCnt] = theCounts[key]["text"] countPrefix countAndPercentage countSuffix
 		PROCINFO["sorted_in"] = reportOrder
 	    }
 	PROCINFO["sorted_in"] = save_sorted_in
@@ -871,7 +872,7 @@ function renderMatch(before, text, after)
 	    exit 3
     }
 }
-function renderCount(key, before, text, count, after,      tmp)
+function renderCount(key, before, text, count, after,      tmp, countAndPercentage)
 {
     switch (render) {
 	case "overlay":
@@ -883,10 +884,12 @@ function renderCount(key, before, text, count, after,      tmp)
 	    delayedCounts[key]["text"] = text
 	    break
 	case "highlight":
-	    $0 = before highlightPrefix text countPrefix addPercentage(key, count) countSuffix highlightSuffix after
+	    countAndPercentage = addPercentage(key, count)
+	    $0 = before highlightPrefix text countPrefix countAndPercentage countSuffix highlightSuffix after
 	    break
 	case "flash":
-	    tmp = countPrefix addPercentage(key, count) countSuffix
+	    countAndPercentage = addPercentage(key, count)
+	    tmp = countPrefix countAndPercentage countSuffix
 	    # Appending the count during the highlighting adds more characters
 	    # to the line. At the end, one instance of those trailing characters
 	    # will remain, as the original line is shorter. To avoid that, add
@@ -908,7 +911,8 @@ function renderCount(key, before, text, count, after,      tmp)
 		delayedCounts[key]["count"] = count
 		delayedCounts[key]["text"] = text
 	    } else {
-		writeToFile(text countPrefix addPercentage(key, count) countSuffix)
+		countAndPercentage = addPercentage(key, count)
+		writeToFile(text countPrefix countAndPercentage countSuffix)
 	    }
 	    break
 	default:
