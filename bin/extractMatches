@@ -752,7 +752,8 @@ function renderIt(theMatchReset, theMatch, theCounts, resultList,      resultCnt
 	    for (key in theCounts) {
 		PROCINFO["sorted_in"] = save_sorted_in
 		    countAndPercentage = addPercentage(key, theCounts[key]["count"])
-		    resultList[++resultCnt] = theCounts[key]["text"] countPrefix countAndPercentage countSuffix
+		    if (countAndPercentage != "")
+			resultList[++resultCnt] = theCounts[key]["text"] countPrefix countAndPercentage countSuffix
 		PROCINFO["sorted_in"] = reportOrder
 	    }
 	PROCINFO["sorted_in"] = save_sorted_in
@@ -885,11 +886,13 @@ function renderCount(key, before, text, count, after,      tmp, countAndPercenta
 	    break
 	case "highlight":
 	    countAndPercentage = addPercentage(key, count)
-	    $0 = before highlightPrefix text countPrefix countAndPercentage countSuffix highlightSuffix after
+	    if (countAndPercentage != "")
+		$0 = before highlightPrefix text countPrefix countAndPercentage countSuffix highlightSuffix after
 	    break
 	case "flash":
 	    countAndPercentage = addPercentage(key, count)
-	    tmp = countPrefix countAndPercentage countSuffix
+	    if (countAndPercentage != "")
+		tmp = countPrefix countAndPercentage countSuffix
 	    # Appending the count during the highlighting adds more characters
 	    # to the line. At the end, one instance of those trailing characters
 	    # will remain, as the original line is shorter. To avoid that, add
@@ -912,7 +915,8 @@ function renderCount(key, before, text, count, after,      tmp, countAndPercenta
 		delayedCounts[key]["text"] = text
 	    } else {
 		countAndPercentage = addPercentage(key, count)
-		writeToFile(text countPrefix countAndPercentage countSuffix)
+		if (countAndPercentage != "")
+		    writeToFile(text countPrefix countAndPercentage countSuffix)
 	    }
 	    break
 	default:
@@ -1020,6 +1024,10 @@ function addPercentage(key, count,      n, np, npPattern, tmp, sum, percentage, 
 
 	if (sum > 0) {
 	    percentage = 100 * count / sum
+
+	    if (percentage < namePercentageThresholds[n])
+		return ""
+
 	    renderedPercentage = sprintf("%d %." (percentage < 10 ? namePercentageSingleDigitPrecision : namePercentageMultiDigitPrecision) "f", count, percentage)
 	    return gensub(/^(.*) (.*)$/, namePercentageTemplate, 1, renderedPercentage)
 	}
