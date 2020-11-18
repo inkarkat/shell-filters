@@ -1151,6 +1151,7 @@ function process(type, start, len, pattern, replacement, other, name, priority, 
 	    process(types[lowestI], lowestOffset, lowestLength, patterns[lowestI], replacements[lowestI], others[lowestI], names[lowestI], priorities[lowestI])
 	    replacementOffset = length($0) - previousLength
 	    startOffset = lowestOffset + lowestLength - 1 + replacementOffset
+	    hasDoneExtraction = 1
 
 	} while (1)
     }
@@ -1166,7 +1167,7 @@ END {
 	case "flash":
 	    break
 	case "overlay":
-	    if (overlayClear != "") {
+	    if (hasDoneExtraction && overlayClear != "") {
 		printf "%s", overlayClear > file
 		if (isBuffered) fflush(file)
 	    }

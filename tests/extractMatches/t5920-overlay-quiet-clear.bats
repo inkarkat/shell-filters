@@ -14,3 +14,10 @@ Seriously."
     run extractMatches --to overlay --clear --quiet --regexp fo+ --count '\<\w{4}\>' --global --match-count '\<i\w\>' --global <<<"$input"
     [ "$output" = "${RQ}text:3${NQ}${RQ}This:4|in:1|it:1|foo${NQ}${RQ}This:4|in:1|it:1|foo${NQ}${RQ}here:6|in:1|it:1|foooo${NQ}${RQ}here:6|in:1|it:1|foooo${NQ}[1G[0K" ]
 }
+
+@test "no matches do not clear non-existing overlay" {
+    input="Just some text.
+Seriously."
+    run extractMatches --to overlay --clear --quiet --regexp fo+ <<<"$input"
+    [ "$output" = "" ]
+}

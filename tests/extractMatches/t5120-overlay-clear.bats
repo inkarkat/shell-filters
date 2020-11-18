@@ -16,3 +16,11 @@ ${R}foo${N}More foo here.
 ${R}foo${N}Seriously.
 ${R}foo${N}[s[1;1H[0K[u" ]
 }
+
+@test "no matches do not clear non-existing overlay" {
+    input="Just some text.
+Seriously."
+    run extractMatches --to overlay --clear --regexp fo+ <<<"$input"
+    [ "$output" = "Just some text.
+Seriously." ]
+}
