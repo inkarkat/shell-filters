@@ -206,13 +206,13 @@ literalAwkExtendedPattern()
 : ${EXTRACTMATCHES_OVERLAY_PREFIX=[37;44m[}
 : ${EXTRACTMATCHES_OVERLAY_SEPARATOR=|}
 : ${EXTRACTMATCHES_OVERLAY_SUFFIX=][0m}
-: ${EXTRACTMATCHES_OVERLAY_CLEAR=}
+: ${EXTRACTMATCHES_OVERLAY_ERASE=}
 : ${EXTRACTMATCHES_OVERLAY_RETURN=[u}
 : ${EXTRACTMATCHES_OVERLAY_QUIET_JUMP=[1G}
 : ${EXTRACTMATCHES_OVERLAY_QUIET_PREFIX=[}
 : ${EXTRACTMATCHES_OVERLAY_QUIET_SEPARATOR=|}
 : ${EXTRACTMATCHES_OVERLAY_QUIET_SUFFIX=]}
-: ${EXTRACTMATCHES_OVERLAY_QUIET_CLEAR=[0K}
+: ${EXTRACTMATCHES_OVERLAY_QUIET_ERASE=[0K}
 : ${EXTRACTMATCHES_OVERLAY_QUIET_RETURN=}
 case "$TERM" in
     screen*)
@@ -421,14 +421,14 @@ if [ "$isQuiet" ]; then
     extractmatchesOverlayPrefix="$EXTRACTMATCHES_OVERLAY_QUIET_PREFIX"
     extractmatchesOverlaySeparator="$EXTRACTMATCHES_OVERLAY_QUIET_SEPARATOR"
     extractmatchesOverlaySuffix="$EXTRACTMATCHES_OVERLAY_QUIET_SUFFIX"
-    extractmatchesOverlayClear="$EXTRACTMATCHES_OVERLAY_QUIET_CLEAR"
+    extractmatchesOverlayErase="$EXTRACTMATCHES_OVERLAY_QUIET_ERASE"
     extractmatchesOverlayReturn="$EXTRACTMATCHES_OVERLAY_QUIET_RETURN"
 else
     extractmatchesOverlayJump="$EXTRACTMATCHES_OVERLAY_JUMP"
     extractmatchesOverlayPrefix="$EXTRACTMATCHES_OVERLAY_PREFIX"
     extractmatchesOverlaySeparator="$EXTRACTMATCHES_OVERLAY_SEPARATOR"
     extractmatchesOverlaySuffix="$EXTRACTMATCHES_OVERLAY_SUFFIX"
-    extractmatchesOverlayClear="$EXTRACTMATCHES_OVERLAY_CLEAR"
+    extractmatchesOverlayErase="$EXTRACTMATCHES_OVERLAY_ERASE"
     extractmatchesOverlayReturn="$EXTRACTMATCHES_OVERLAY_RETURN"
 fi
 if [ "$render" = 'flash' ] && [ "$isBuffered" ]; then
@@ -491,7 +491,7 @@ $EXEC awk \
     -v "reportOrder=${reportOrder//\\/\\\\}" \
     -v "overlayPrefix=${extractmatchesOverlayJump//\\/\\\\}${extractmatchesOverlayPrefix//\\/\\\\}" \
     -v "overlaySeparator=${extractmatchesOverlaySeparator//\\/\\\\}" \
-    -v "overlaySuffix=${extractmatchesOverlaySuffix//\\/\\\\}${extractmatchesOverlayClear//\\/\\\\}${extractmatchesOverlayReturn//\\/\\\\}" \
+    -v "overlaySuffix=${extractmatchesOverlaySuffix//\\/\\\\}${extractmatchesOverlayErase//\\/\\\\}${extractmatchesOverlayReturn//\\/\\\\}" \
     -v "concatenatedUpdateDelay=${EXTRACTMATCHES_CONCATENATED_UPDATE_DELAY}" \
     -v "concatenatedPrefix=${EXTRACTMATCHES_CONCATENATED_PREFIX//\\/\\\\}" \
     -v "concatenatedSeparator=${EXTRACTMATCHES_CONCATENATED_SEPARATOR//\\/\\\\}" \

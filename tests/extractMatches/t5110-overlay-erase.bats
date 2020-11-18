@@ -2,8 +2,8 @@
 
 load overlay
 
-export EXTRACTMATCHES_OVERLAY_CLEAR='[0K'
-readonly C="][0m${EXTRACTMATCHES_OVERLAY_CLEAR}[u"
+export EXTRACTMATCHES_OVERLAY_ERASE='[0K'
+readonly C="][0m${EXTRACTMATCHES_OVERLAY_ERASE}[u"
 
 @test "single matches in a line are overlaid and cleared with custom configuration" {
     input="Just some text.
