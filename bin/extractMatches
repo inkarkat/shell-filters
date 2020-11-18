@@ -152,6 +152,12 @@ HELPDESCRIPTION
 			    arguments.
 All PATTERNs are AWK-style extended regular expressions.
 
+EXIT STATUS:
+    0	At least 1 match has been found
+    1	No matches in the input
+    2   Bad invocation, wrong or missing command-line arguments
+    3   Internal error or failed assertion.
+
 Example:
 HELPTEXT
     printf '%q %s\n' "$(basename "$1")" '--regexp "FATAL:.*" --name err --regexp "ERROR:.*" --name err --count Restarted --reset Restarted --name err'
@@ -1185,5 +1191,7 @@ END {
 	    print "Assert: Invalid render: " render > "/dev/stderr"
 	    exit 3
     }
+
+    exit (hasDoneExtraction ? 0 : 1)
 }
 ' "$@"

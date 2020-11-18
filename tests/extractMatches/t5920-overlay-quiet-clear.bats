@@ -12,6 +12,7 @@ All simple lines.
 More foooo here.
 Seriously."
     run extractMatches --to overlay --clear --quiet --regexp fo+ --count '\<\w{4}\>' --global --match-count '\<i\w\>' --global <<<"$input"
+    [ $status -eq 0 ]
     [ "$output" = "${RQ}text:3${NQ}${RQ}This:4|in:1|it:1|foo${NQ}${RQ}This:4|in:1|it:1|foo${NQ}${RQ}here:6|in:1|it:1|foooo${NQ}${RQ}here:6|in:1|it:1|foooo${NQ}[1G[0K" ]
 }
 
@@ -19,5 +20,6 @@ Seriously."
     input="Just some text.
 Seriously."
     run extractMatches --to overlay --clear --quiet --regexp fo+ <<<"$input"
+    [ $status -eq 1 ]
     [ "$output" = "" ]
 }

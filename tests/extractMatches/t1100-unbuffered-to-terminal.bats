@@ -6,5 +6,5 @@
 
     # Flash reporting will only work with unbuffered output; we can use that to
     # check for it.
-    extractMatches --to flash --regexp fo+  <<<""
+    extractMatches --to flash --regexp fo+  <<<"foo"
 }

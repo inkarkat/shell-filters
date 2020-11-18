@@ -9,6 +9,7 @@ All simple lines.
 More foo here.
 Seriously."
     run extractMatches --to overlay --clear --regexp fo+ <<<"$input"
+    [ $status -eq 0 ]
     [ "$output" = "Just some text.
 This has foo in it.
 ${R}foo${N}All simple lines.
@@ -21,6 +22,7 @@ ${R}foo${N}[s[1;1H[0K[u" ]
     input="Just some text.
 Seriously."
     run extractMatches --to overlay --clear --regexp fo+ <<<"$input"
+    [ $status -eq 1 ]
     [ "$output" = "Just some text.
 Seriously." ]
 }
