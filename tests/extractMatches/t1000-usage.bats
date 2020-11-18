@@ -112,3 +112,9 @@
     [ $status -eq 2 ]
     [ "${lines[0]}" = "ERROR: There can be only one --to / --grep-..." ]
 }
+
+@test "error when --clear is combined with --to concatenated" {
+    run extractMatches --to concatenated --clear --regexp foo
+    [ $status -eq 2 ]
+    [ "${lines[0]}" = "ERROR: --clear must be combined with --to overlay." ]
+}

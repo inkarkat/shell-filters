@@ -11,6 +11,7 @@ All simple lines.
 More foo here.
 Seriously.
 EOF
+    [ $status -eq 0 ]
     [ "$output" = "Just some text.
 This has [foo] in it.
 All simple lines.
@@ -23,6 +24,7 @@ Seriously." ]
 This has foo, foo and foofoo in it.
 More foooo and foo here.
 EOF
+    [ $status -eq 0 ]
     [ "$output" = "This has [foo], foo and foofoo in it.
 More [foooo] and foo here." ]
 }
@@ -32,6 +34,7 @@ More [foooo] and foo here." ]
 This has foo, foo and foofoo in it.
 More foooo and foo here.
 EOF
+    [ $status -eq 0 ]
     [ "$output" = "This has [foo], [foo] and [foo][foo] in it.
 More [foooo] and [foo] here." ]
 }
@@ -44,6 +47,7 @@ All simple lines.
 More foo here.
 Seriously, why?
 EOF
+    [ $status -eq 0 ]
     [ "$output" = "Just some s[ex][y] text.
 This has [foo], foo and foofoo in it.
 All simple lines.
@@ -59,6 +63,7 @@ All simple lines.
 More foo here.
 Seriously, why?
 EOF
+    [ $status -eq 0 ]
     [ "$output" = "Just some s[ex][y] text.
 This has [foo], [foo] and [foo][foo] in it.
 All simple lines.
@@ -71,6 +76,7 @@ Seriousl[y], wh[y]?" ]
 Just some sexy text.
 This has foo, boooo and mooo in it.
 EOF
+    [ $status -eq 0 ]
     [ "$output" = "Just s[o]me s[ex]y te[x]t.
 This has [foo], b[oo][oo] and m[oo][o] in it." ]
 }

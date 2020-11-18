@@ -10,5 +10,5 @@
 @test "no error when custom notify-send application cannot be found but a command-line is defined" {
     export EXTRACTMATCHES_NOTIFY_SEND=/nonExistingNotifySend
     export EXTRACTMATCHES_NOTIFY_COMMANDLINE='true {}'
-    extractMatches --to notify --regexp 'foo[0-9]+' <<<""
+    extractMatches --to notify --regexp 'foo[0-9]+' <<<"this foo1"
 }
