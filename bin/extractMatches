@@ -37,7 +37,9 @@ HELPDESCRIPTION
     cat <<HELPTEXT
     --to|-t overlay	    Report in the form of overlaid text, written via
 			    ANSI escape sequences in the first line of the
-			    terminal.
+			    terminal (current line with --quiet, and also no
+			    default highlighting then, so that combination looks
+			    more like live reporting than an actual overlay).
     --to|-t title	    Report in the terminal's window title via ANSI
 			    escape sequences.
     --to|-t stderr	    Report as a single concatenated line (like with
@@ -212,21 +214,6 @@ literalAwkExtendedPattern()
 : ${EXTRACTMATCHES_OVERLAY_QUIET_SUFFIX=]}
 : ${EXTRACTMATCHES_OVERLAY_QUIET_CLEAR=[0K}
 : ${EXTRACTMATCHES_OVERLAY_QUIET_RETURN=}
-if [ "$isQuiet" ]; then
-    extractmatchesOverlayJump="$EXTRACTMATCHES_OVERLAY_QUIET_JUMP"
-    extractmatchesOverlayPrefix="$EXTRACTMATCHES_OVERLAY_QUIET_PREFIX"
-    extractmatchesOverlaySeparator="$EXTRACTMATCHES_OVERLAY_QUIET_SEPARATOR"
-    extractmatchesOverlaySuffix="$EXTRACTMATCHES_OVERLAY_QUIET_SUFFIX"
-    extractmatchesOverlayClear="$EXTRACTMATCHES_OVERLAY_QUIET_CLEAR"
-    extractmatchesOverlayReturn="$EXTRACTMATCHES_OVERLAY_QUIET_RETURN"
-else
-    extractmatchesOverlayJump="$EXTRACTMATCHES_OVERLAY_JUMP"
-    extractmatchesOverlayPrefix="$EXTRACTMATCHES_OVERLAY_PREFIX"
-    extractmatchesOverlaySeparator="$EXTRACTMATCHES_OVERLAY_SEPARATOR"
-    extractmatchesOverlaySuffix="$EXTRACTMATCHES_OVERLAY_SUFFIX"
-    extractmatchesOverlayClear="$EXTRACTMATCHES_OVERLAY_CLEAR"
-    extractmatchesOverlayReturn="$EXTRACTMATCHES_OVERLAY_RETURN"
-fi
 case "$TERM" in
     screen*)
 	: ${EXTRACTMATCHES_TITLE_SET=']2;'}
@@ -428,6 +415,21 @@ elif [ "$render" = 'stderr' ]; then
     EXTRACTMATCHES_CONCATENATED_SEPARATOR="$EXTRACTMATCHES_STDERR_SEPARATOR"
     EXTRACTMATCHES_CONCATENATED_PREFIX="$EXTRACTMATCHES_STDERR_PREFIX"
     EXTRACTMATCHES_CONCATENATED_SUFFIX="$EXTRACTMATCHES_STDERR_SUFFIX"
+fi
+if [ "$isQuiet" ]; then
+    extractmatchesOverlayJump="$EXTRACTMATCHES_OVERLAY_QUIET_JUMP"
+    extractmatchesOverlayPrefix="$EXTRACTMATCHES_OVERLAY_QUIET_PREFIX"
+    extractmatchesOverlaySeparator="$EXTRACTMATCHES_OVERLAY_QUIET_SEPARATOR"
+    extractmatchesOverlaySuffix="$EXTRACTMATCHES_OVERLAY_QUIET_SUFFIX"
+    extractmatchesOverlayClear="$EXTRACTMATCHES_OVERLAY_QUIET_CLEAR"
+    extractmatchesOverlayReturn="$EXTRACTMATCHES_OVERLAY_QUIET_RETURN"
+else
+    extractmatchesOverlayJump="$EXTRACTMATCHES_OVERLAY_JUMP"
+    extractmatchesOverlayPrefix="$EXTRACTMATCHES_OVERLAY_PREFIX"
+    extractmatchesOverlaySeparator="$EXTRACTMATCHES_OVERLAY_SEPARATOR"
+    extractmatchesOverlaySuffix="$EXTRACTMATCHES_OVERLAY_SUFFIX"
+    extractmatchesOverlayClear="$EXTRACTMATCHES_OVERLAY_CLEAR"
+    extractmatchesOverlayReturn="$EXTRACTMATCHES_OVERLAY_RETURN"
 fi
 if [ "$render" = 'flash' ] && [ "$isBuffered" ]; then
     echo >&2 'ERROR: Flash reporting must be combined with --unbuffered.'

@@ -2,12 +2,15 @@
 
 load overlay
 
-@test "in quiet mode, only matches and counts are overlaid" {
+readonly RQ='[1G['
+readonly NQ='][0K'
+
+@test "in quiet mode the cursor just moves to start of line, clears after it, and no default highlighting" {
     input="Just some text.
 This has foo in it.
 All simple lines.
 More foooo here.
 Seriously."
     run extractMatches --quiet --to overlay --regexp fo+ --count '\<\w{4}\>' --global --match-count '\<i\w\>' --global <<<"$input"
-    [ "$output" = "${R}text:3${N}${R}This:4|in:1|it:1|foo${N}${R}This:4|in:1|it:1|foo${N}${R}here:6|in:1|it:1|foooo${N}${R}here:6|in:1|it:1|foooo${N}" ]
+    [ "$output" = "${RQ}text:3${NQ}${RQ}This:4|in:1|it:1|foo${NQ}${RQ}This:4|in:1|it:1|foo${NQ}${RQ}here:6|in:1|it:1|foooo${NQ}${RQ}here:6|in:1|it:1|foooo${NQ}" ]
 }
