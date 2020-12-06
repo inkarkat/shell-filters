@@ -6,7 +6,7 @@ printShortUsage()
     # skim the long one.
     printf 'Usage: %q %s\n' "$(basename "$1")" '[--] SECONDS [...] [-?|-h|--help]'
     echo
-    printf 'Usage: cat FILE [...] | %q %s\n' "$(basename "$1")" '[-s|--skip SKIP&PATTERN [...]] [-m|--match MATCH&PATTERN [...]] [-w|--width WIDTH]'
+    printf 'Usage: cat FILE [...] | %q %s\n' "$(basename "$1")" '[-s|--skip SKIP&PATTERN [...]] [-m|--match MATCH&PATTERN [...]] [--precision|-p WIDTH] [-w|--width [+]WIDTH]'
 }
 printUsage()
 {
@@ -27,24 +27,31 @@ HELPDESCRIPTION
     printShortUsage "$1"
     cat <<HELPTEXT
     --skip|-s SKIP&PATTERN  Do not convert if the text around the integer (with
-			    the integer itself represented by &) matches
-			    SKIP&PATTERN.
+			    the integer itself and any preceding spaces
+			    represented by &) matches SKIP&PATTERN.
     --match|-m MATCH&PATTERN
 			    Only convert if the text around the integer (with
-			    the integer itself represented by &) matches
-			    MATCH&PATTERN. Other occurrences (and those that
-			    also match --skip SKIP&PATTERN) are not converted.
-    --width|-w WIDTH	    When converting the passed SECONDS, ensure a fixed
-			    width of WIDTH (so that alignment is not disturbed)
-			    by adding space padding to the left.
-			    When replacing integers, ensure a fixed with of
-			    integer width + WIDTH.
+			    the integer itself and any preceding spaces
+			    represented by &) matches MATCH&PATTERN. Other
+			    occurrences (and those that also match --skip
+			    SKIP&PATTERN) are not converted.
+    --precision|-p WIDTH    Remove smaller units so that the result will fit
+			    WIDTH; for example "01:02:03" will be rendered as
+			    "1h 2m", with "3s" removed to fit a width of 7.
+    --width|-w WIDTH	    Ensure a fixed width of WIDTH or the width of the
+			    original integer and preceding spaces, whatever is
+			    larger (so that alignment is not disturbed) by
+			    adding space padding to the left.
+    --width|-w +WIDTH	    Ensure a fixed width of the original integer and
+			    any preceding spaces + WIDTH (so that alignment is
+			    not disturbed) by adding space padding to the left.
 PATTERN is an AWK-style extended regular expression.
 HELPTEXT
 }
 skipPattern=
 matchPattern=
 width=
+precision=
 while [ $# -ne 0 ]
 do
     case "$1" in
@@ -52,6 +59,7 @@ do
 	--skip|-s)	shift; skipPattern="${skipPattern}${skipPattern:+|}${1:?}"; shift;;
 	--match|-m)	shift; matchPattern="${matchPattern}${matchPattern:+|}${1:?}"; shift;;
 	--width|-w)	shift; width="$1"; shift;;
+	--precision|-p)	shift; precision="$1"; shift;;
 	--)		break;;
 	-*)		{ echo "ERROR: Unknown option \"$1\"!"; echo; printUsage "$0"; } >&2; exit 2;;
 	*)		break;;
@@ -61,8 +69,23 @@ done
 awk -F $'\n' \
     -v "skipPattern=${skipPattern//\\/\\\\}" \
     -v "matchPattern=${matchPattern//\\/\\\\}" \
-    -v "width=$width" \
+    -v "widthArg=$width" \
+    -v "precision=$precision" \
 '
+function max(n1, n2)
+{
+    return n1 > n2 ? n1 : n2
+}
+function getWidth(seconds)
+{
+    if (widthArg == "") {
+	return ""
+    } else if (widthArg ~ /^\+/) {
+	return length(seconds) + widthArg
+    } else {
+	return max(widthArg, length(seconds))
+    }
+}
 function convert(seconds,      hours, minutes)
 {
     weeks = int(seconds / 604800)
@@ -98,17 +121,19 @@ function repeat(text, count,      tmp, i)
     for (i = 1; i <= count; ++i) tmp = tmp text
     return tmp
 }
-function format(duration, width)
+function format(duration, width, precision, isSpacePadded)
 {
-    if (width == "" || length(duration) == width) return duration
-
-    if (length(duration) > width) {
-	duration = reducePrecision(duration, width)
+    if (precision != "" && length(duration) > precision) {
+	duration = reducePrecision(duration, precision)
     }
+
+    if (isSpacePadded) duration = " " duration	# Ensure that there will be at least one space in front to maintain separation of preceding text.
+
+    if (width == "" || length(duration) == width) return duration
 
     return sprintf("%" width "s", duration)
 }
-function reducePrecision(duration, width)
+function reducePrecision(duration, precision)
 {
     # Convert 01:02:03 into 1h 2m 3s so that we have more pieces to play with.
     duration = gensub(/:0*([[:digit:]]{1,2})$/, " \\1s", 1, duration)
@@ -117,11 +142,11 @@ function reducePrecision(duration, width)
     duration = gensub(/^ +/, "", 1, duration)
 
     # Try to remove the smallest unit(s) until it fits.
-    while (length(duration) > width) {
+    while (length(duration) > precision) {
 	if (duration ~ / /) {
 	    duration = gensub(/ [^ ]+$/, "", 1, duration)
 	} else {
-	    return repeat("#", width)
+	    return repeat("#", precision)
 	}
     }
     return duration
@@ -131,13 +156,13 @@ BEGIN {
 	i = 1
 	if (ARGV[1] == "--" ) ++i
 	for (; i < ARGC; ++i) {
-	    print format(convert(ARGV[i]), width)
+	    print format(convert(ARGV[i]), getWidth(ARGV[i]), precision, 0)
 	}
 	exit 0
     }
 }
 {
-    n = split($0, rest, /\<[[:digit:]]+\>/, numbers)
+    n = split($0, rest, / *\<[[:digit:]]+\>/, numbers)
     for (i = 1; i < n; ++i) {
 	if (skipPattern != "" || matchPattern != "") {
 	    shallowclone(testNumbers, numbers)
@@ -147,8 +172,7 @@ BEGIN {
 	    if (matchPattern != "" && testJoin !~ matchPattern) continue
 	}
 
-	targetWidth = (width == "" ? "" : width + length(numbers[i]))
-	numbers[i] = format(convert(numbers[i]), targetWidth)
+	numbers[i] = format(convert(numbers[i]), getWidth(numbers[i]), precision, (numbers[i] ~ /^ /))
     }
 
     $0 = join(n, rest, numbers)
