@@ -1,12 +1,15 @@
 #!/bin/bash
 
+: ${WORKDAY_SECONDS:=28800}; export WORKDAY_SECONDS
+: ${WORKWEEK_SECONDS:=$((WORKDAY_SECONDS * 5))}; export WORKWEEK_SECONDS
+
 printShortUsage()
 {
     # Note: short followed by long option; if the user knows the short one, she can
     # skim the long one.
     printf 'Usage: %q %s\n' "$(basename "$1")" '[--] SECONDS [...] [-?|-h|--help]'
     echo
-    printf 'Usage: cat FILE [...] | %q %s\n' "$(basename "$1")" '[-s|--skip SKIP&PATTERN [...]] [-m|--match MATCH&PATTERN [...]] [--precision|-p WIDTH] [-w|--width [+]WIDTH]'
+    printf 'Usage: cat FILE [...] | %q %s\n' "$(basename "$1")" '[-s|--skip SKIP&PATTERN [...]] [-m|--match MATCH&PATTERN [...]] [-W|--workday] [--precision|-p WIDTH] [-w|--width [+]WIDTH]'
 }
 printUsage()
 {
@@ -35,6 +38,11 @@ HELPDESCRIPTION
 			    represented by &) matches MATCH&PATTERN. Other
 			    occurrences (and those that also match --skip
 			    SKIP&PATTERN) are not converted.
+    --workday|-W	    Render days and larger units as working days
+			    (comprised of $((WORKDAY_SECONDS / 3600)) hours, not 24) instead of calendar
+			    days, and adapt the unit (1wd, not 1d), too.
+			    The exact counting can be configured via
+			    \$WORKDAY_SECONDS and \$WORKWEEK_SECONDS.
     --precision|-p WIDTH    Remove smaller units so that the result will fit
 			    WIDTH; for example "01:02:03" will be rendered as
 			    "1h 2m", with "3s" removed to fit a width of 7.
@@ -52,6 +60,7 @@ skipPattern=
 matchPattern=
 width=
 precision=
+isWorkDay=
 while [ $# -ne 0 ]
 do
     case "$1" in
@@ -60,6 +69,7 @@ do
 	--match|-m)	shift; matchPattern="${matchPattern}${matchPattern:+|}${1:?}"; shift;;
 	--width|-w)	shift; width="$1"; shift;;
 	--precision|-p)	shift; precision="$1"; shift;;
+	--workday|-W)	shift; isWorkDay=t;;
 	--)		break;;
 	-*)		{ echo "ERROR: Unknown option \"$1\"!"; echo; printUsage "$0"; } >&2; exit 2;;
 	*)		break;;
@@ -71,6 +81,7 @@ awk -F $'\n' \
     -v "matchPattern=${matchPattern//\\/\\\\}" \
     -v "widthArg=$width" \
     -v "precision=$precision" \
+    -v "isWorkDay=$isWorkDay" \
 '
 function max(n1, n2)
 {
@@ -86,7 +97,7 @@ function getWidth(seconds)
 	return max(widthArg, length(seconds))
     }
 }
-function convert(seconds,      hours, minutes)
+function convert(seconds,      hours, minutes, workDayPrefix)
 {
     weeks = int(seconds / WEEK_IN_SECONDS)
     seconds = seconds - (WEEK_IN_SECONDS * weeks)
@@ -97,9 +108,10 @@ function convert(seconds,      hours, minutes)
     minutes = int(seconds / 60)
     seconds = seconds - (60 * minutes)
 
+    workDayPrefix = (isWorkDay ? "w" : "")
     return \
-	(weeks > 0 ? weeks "w " : "") \
-	(days > 0 ? days "d " : "") \
+	(weeks > 0 ? weeks workDayPrefix "w " : "") \
+	(days > 0 ? days workDayPrefix "d " : "") \
 	(weeks > 0 || days > 0 || hours > 0 ? sprintf("%02d", hours) ":" : "") \
 	(weeks > 0 || days > 0 || hours > 0 || minutes > 0 ? sprintf("%02d", minutes) ":" : "") \
 	(weeks > 0 || days > 0 || hours > 0 || minutes > 0 ? sprintf("%02d", seconds) : sprintf("00:%02d", seconds))
@@ -152,8 +164,8 @@ function reducePrecision(duration, precision)
     return duration
 }
 BEGIN {
-    WEEK_IN_SECONDS = 604800
-    DAY_IN_SECONDS = 86400
+    WEEK_IN_SECONDS = (isWorkDay ? ENVIRON["WORKWEEK_SECONDS"] : 604800)
+    DAY_IN_SECONDS = (isWorkDay ? ENVIRON["WORKDAY_SECONDS"] : 86400)
 
     if (ARGC > 1) {
 	i = 1
