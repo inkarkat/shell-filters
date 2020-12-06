@@ -35,8 +35,8 @@ HELPDESCRIPTION
 			    MATCH&PATTERN. Other occurrences (and those that
 			    also match --skip SKIP&PATTERN) are not converted.
     --width|-w WIDTH	    When converting the passed SECONDS, ensure a fixed
-			    width of WIDTH (so that alignment is not disturbed) by adding
-			    space padding to the left.
+			    width of WIDTH (so that alignment is not disturbed)
+			    by adding space padding to the left.
 			    When replacing integers, ensure a fixed with of
 			    integer width + WIDTH.
 PATTERN is an AWK-style extended regular expression.
