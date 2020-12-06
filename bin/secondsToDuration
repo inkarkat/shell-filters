@@ -88,10 +88,10 @@ function getWidth(seconds)
 }
 function convert(seconds,      hours, minutes)
 {
-    weeks = int(seconds / 604800)
-    seconds = seconds - (604800 * weeks)
-    days = int(seconds / 86400)
-    seconds = seconds - (86400 * days)
+    weeks = int(seconds / WEEK_IN_SECONDS)
+    seconds = seconds - (WEEK_IN_SECONDS * weeks)
+    days = int(seconds / DAY_IN_SECONDS)
+    seconds = seconds - (DAY_IN_SECONDS * days)
     hours = int(seconds / 3600)
     seconds = seconds - (3600 * hours)
     minutes = int(seconds / 60)
@@ -152,6 +152,9 @@ function reducePrecision(duration, precision)
     return duration
 }
 BEGIN {
+    WEEK_IN_SECONDS = 604800
+    DAY_IN_SECONDS = 86400
+
     if (ARGC > 1) {
 	i = 1
 	if (ARGV[1] == "--" ) ++i
