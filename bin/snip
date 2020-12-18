@@ -6,9 +6,9 @@ printShortUsage()
 {
     # Note: short followed by long option; if the user knows the short one, she can
     # skim the long one.
-    printf 'Usage: %q %s\n' "$(basename "$1")" '[-n|--name NAME|--base-name|--absolute-name] FILE [...] [-?|-h|--help]'
+    printf 'Usage: %q %s\n' "$(basename "$1")" '[-n|--name NAME|--base-name|--absolute-name] [-N|--not-on-empty] FILE [...] [-?|-h|--help]'
     echo
-    printf 'Usage: cat FILE | %q %s\n' "$(basename "$1")" '[-n|--name NAME]'
+    printf 'Usage: cat FILE | %q %s\n' "$(basename "$1")" '[-n|--name NAME] [-N|--not-on-empty]'
 }
 printUsage()
 {
@@ -31,8 +31,13 @@ HELPDESCRIPTION
     --name|-n NAME	Use NAME in the snippet formatting.
     --base-name		Just use the filename of FILE.
     --absolute-name	Expand FILE to the absolute filespec.
+    --not-on-empty|-N	Suppress the snip formatting when there's no input / a
+			FILE is empty.
 HELPTEXT
 }
+readonly scriptFilespec="${BASH_SOURCE[0]}"
+typeset -a forkedArgs=("$@")
+isNotOnEmpty=
 unset name
 hasName=
 typeset -a converter=()
@@ -44,6 +49,16 @@ do
 	--absolute-name)
 			shift; converter=(realpath --no-symlinks --);;
 	--name|-n)	shift; name="$1"; hasName=t; shift;;
+	--not-on-empty|-N)
+			shift
+			if ! exists ifne; then
+			    printf 'ERROR: ifne not available; install via $'
+			    installInstruction moreutils
+			    exit 3
+			fi >&2
+			isNotOnEmpty=t
+			forkedArgs=("${forkedArgs[@]:0:$((${#forkedArgs[@]} - $# - 1))}" "$@")
+			;;
 	--)		shift; break;;
 	-*)		{ echo "ERROR: Unknown option \"$1\"!"; echo; printUsage "$0"; } >&2; exit 2;;
 	*)		break;;
@@ -67,6 +82,8 @@ if [ $# -eq 0 ]; then
 	printUsage "$0" >&2
 	exit 2
     fi
+    [ "$isNotOnEmpty" ] && exec ifne "$scriptFilespec" "${forkedArgs[@]}"
+
     : ${name=input}
     before
     eval "$SNIP_PRINTER" || status=$?
@@ -81,6 +98,8 @@ else
 		name="$filespec"
 	    fi
 	fi
+
+	[ "$isNotOnEmpty" ] && [ ! -s "$filespec" ] && continue
 
 	before
 	eval "$SNIP_PRINTER" "$filespec" || status=$?
