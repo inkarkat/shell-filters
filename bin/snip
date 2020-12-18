@@ -2,13 +2,36 @@
 
 : ${SNIP_PRINTER:=cat}
 
+printShortUsage()
+{
+    # Note: short followed by long option; if the user knows the short one, she can
+    # skim the long one.
+    printf 'Usage: %q %s\n' "$(basename "$1")" '[-n|--name NAME|--base-name|--absolute-name] FILE [...] [-?|-h|--help]'
+    echo
+    printf 'Usage: cat FILE | %q %s\n' "$(basename "$1")" '[-n|--name NAME]'
+}
 printUsage()
 {
-    cat <<HELPTEXT
+    # This is the short help when launched with no or incorrect arguments.
+    # It is printed to stderr to avoid accidental processing.
+    printShortUsage "$1" >&2
+    printf >&2 '\nTry %q --help for more information.\n' "$(basename "$1")"
+}
+printLongUsage()
+{
+    # This is the long "man page" when launched with the help argument.
+    # It is printed to stdout to allow paging with 'more'.
+    cat <<HELPDESCRIPTION
 Insert snip formatting around each passed FILE / standard input.
+HELPDESCRIPTION
+    echo
+    printShortUsage "$1"
+    echo
+    cat <<HELPTEXT
+    --name|-n NAME	Use NAME in the snippet formatting.
+    --base-name		Just use the filename of FILE.
+    --absolute-name	Expand FILE to the absolute filespec.
 HELPTEXT
-    printf 'Usage: %q %s\n' "$(basename "$1")" '[-n|--name NAME|--base-name|--absolute-name] FILE [...] [-?|-h|--help]'
-    printf 'Usage: cat FILE | %q %s\n' "$(basename "$1")" '[-n|--name NAME]'
 }
 unset name
 hasName=
@@ -16,7 +39,7 @@ typeset -a converter=()
 while [ $# -ne 0 ]
 do
     case "$1" in
-	--help|-h|-\?)	shift; printUsage "$0"; exit 0;;
+	--help|-h|-\?)	shift; printLongUsage "$0"; exit 0;;
 	--base-name)	shift; converter=(basename --);;
 	--absolute-name)
 			shift; converter=(realpath --no-symlinks --);;
