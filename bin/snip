@@ -11,6 +11,7 @@ HELPTEXT
     printf 'Usage: cat FILE | %q %s\n' "$(basename "$1")" '[-n|--name NAME]'
 }
 unset name
+hasName=
 typeset -a converter=()
 while [ $# -ne 0 ]
 do
@@ -19,7 +20,7 @@ do
 	--base-name)	shift; converter=(basename --);;
 	--absolute-name)
 			shift; converter=(realpath --no-symlinks --);;
-	--name|-n)	shift; name="$1"; shift;;
+	--name|-n)	shift; name="$1"; hasName=t; shift;;
 	--)		shift; break;;
 	-*)		{ echo "ERROR: Unknown option \"$1\"!"; echo; printUsage "$0"; } >&2; exit 2;;
 	*)		break;;
@@ -50,7 +51,7 @@ if [ $# -eq 0 ]; then
 else
     for filespec
     do
-	if [ -z "$name" ]; then
+	if [ ! "$hasName" ]; then
 	    if [ ${#converter[@]} -gt 0 ]; then
 		name="$("${converter[@]}" "$filespec")"
 	    else
