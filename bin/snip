@@ -52,7 +52,7 @@ do
 	--not-on-empty|-N)
 			shift
 			if ! exists ifne; then
-			    printf 'ERROR: ifne not available; install via $'
+			    printf 'ERROR: ifne not available; install via $ '
 			    installInstruction moreutils
 			    exit 3
 			fi >&2
