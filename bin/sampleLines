@@ -1,6 +1,7 @@
 #!/bin/bash
 shopt -qs extglob
 
+: ${POS1_AND_ERASE_LINE=[1G[2K}
 if [ -t 1 ]; then
     : ${SAMPLELINES_RESET_PREFIX=[01m}
     : ${SAMPLELINES_RESET_SUFFIX=[0m}
@@ -224,8 +225,8 @@ if [ ! "$isInline" -a -n "$inlinePrefix" ]; then
     printUsage "$0"
     exit 2
 fi >&2
-if [ "$isInline" ]; then prefix="[1G[2K$inlinePrefix"; suffix=; finalizer='\n'; fi
-[ "$isClear" ] && finalizer='[1G[2K'
+if [ "$isInline" ]; then prefix="${POS1_AND_ERASE_LINE}$inlinePrefix"; suffix=; finalizer='\n'; fi
+[ "$isClear" ] && finalizer="$POS1_AND_ERASE_LINE"
 
 case "${timespan}${initialDelay}" in
     *.*)
