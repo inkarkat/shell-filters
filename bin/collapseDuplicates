@@ -5,6 +5,7 @@ printShortUsage()
     # Note: short followed by long option; if the user knows the short one, she can
     # skim the long one.
     printf 'Usage: %q %s\n' "$(basename "$1")" '[--as count|dot|ellipsis] [-s|--skip PATTERN [...]] (-e|--regexp|-a|--accumulate|-m|--match|-M|--match-accumulated PATTERN [-r|--replacement REPLACEMENT]) [...] [--] FILE [...][-?|-h|--help]'
+    echo
     printf 'Usage: cat FILE [...] | %q %s\n' "$(basename "$1")" '[-u|--unbuffered [--as count|dot|ellipsis|flash|spinner|sweep] [...]'
 }
 printUsage()
@@ -27,6 +28,7 @@ the same message or log retry attempts.
 HELPDESCRIPTION
     echo
     printShortUsage "$1"
+    echo
     cat <<HELPTEXT
     --as count	    Append a count of occurrences to the line.
     --as dot	    Append a period for each occurrence to the line.
@@ -60,7 +62,7 @@ All PATTERNs are AWK-style extended regular expressions.
 
 Example:
 HELPTEXT
-    printf '%q %s\n' "$(basename "$1")" '--foo bar /tmp/foobar'
+    printf 'find / -name %q 2>&1 | %q %s\n' "$(basename "$1")" "$(basename "$1")" "-u -e 'Permission denied$'"
 }
 
 : ${COLLAPSEDUPLICATES_FLASH_ON_TIME:=0.1}
