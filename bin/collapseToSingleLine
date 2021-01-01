@@ -24,6 +24,7 @@ single long line (that is printed piecemeal).
 HELPDESCRIPTION
     echo
     printShortUsage "$1"
+    echo
     cat <<HELPTEXT
     --separator|-s SEP	Use SEP (instead of a single space) to join lines.
     --empty-line-separator|-e EMPTY-SEP
@@ -36,6 +37,8 @@ HELPDESCRIPTION
 			If no new line arrives within SECONDS, create new line.
     --wrap|-w COL	Wrap (entire input lines) before the accumulated number
 			of characters exceeds COL. No separator is printed then.
+
+See also: joinBy does simplistic joining of passed arguments or standard input.
 HELPTEXT
 }
 
