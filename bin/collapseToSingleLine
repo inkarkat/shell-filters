@@ -5,6 +5,7 @@ printShortUsage()
     # Note: short followed by long option; if the user knows the short one, she can
     # skim the long one.
     printf 'Usage: %q %s\n' "$(basename "$1")" '[-s|--separator SEP] [-e|--empty-line-separator EMPTY-SEP] [-a|--break-after|-b|--break-before PATTERN] [-t|--break-timeout SECONDS] [-w|--wrap COL] FILE [...] [-?|-h|--help]'
+    echo
     printf 'Usage: cat FILE [...] | %q %s\n' "$(basename "$1")" '[...]'
 }
 printUsage()
