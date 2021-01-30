@@ -17,7 +17,7 @@ esac
 
 
 # iconv can transliterate (approximated through one or several similar looking characters)
-[ -z "${substitution+t}" ] && type -t iconv >/dev/null && exec iconv -f utf-8 -t ascii//TRANSLIT
+[ -z "${substitution+t}" ] && type -t iconv >/dev/null && exec iconv -c -f utf-8 -t ascii//TRANSLIT
 
 # Fallback: Use ? as a replacement character with sed; consider the various
 # UTF-8 widths based on the value of the lead byte.
