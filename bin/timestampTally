@@ -432,8 +432,9 @@ function isContinuous(timestamp, timestampMillis,      isMatch, currentMatch, fu
 {
     if (tally != "") {
 	currentMatch = getMatch(tally)
+	lastMatch = currentMatch    # Use the current match if the max record duration / length gets triggered.
 	if (currentMatch != previousMatch) {
-	    lastMatch = previousMatch
+	    lastMatch = previousMatch	# Use the previous match if the trigger is the match change.
 	    previousMatch = currentMatch
 	    return 0
 	} else if (maxDifference == 0) {
