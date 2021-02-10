@@ -7,15 +7,15 @@ if [ -t 1 ]; then
     : ${SAMPLELINES_RESET_SUFFIX=[0m}
     : ${SAMPLELINES_APPEND_RESET_PREFIX=[01m}
     : ${SAMPLELINES_APPEND_RESET_SUFFIX='[0m '}
-    : ${SAMPLELINES_SUMMARY_PREFIX=[36m}
-    : ${SAMPLELINES_SUMMARY_SUFFIX='[0m '}
+    : ${SAMPLELINES_SUMMARY_PREFIX='[36m('}
+    : ${SAMPLELINES_SUMMARY_SUFFIX=')[0m '}
 else
     : ${SAMPLELINES_RESET_PREFIX=}
     : ${SAMPLELINES_RESET_SUFFIX=}
     : ${SAMPLELINES_APPEND_RESET_PREFIX=}
     : ${SAMPLELINES_APPEND_RESET_SUFFIX=' '}
-    : ${SAMPLELINES_SUMMARY_PREFIX=}
-    : ${SAMPLELINES_SUMMARY_SUFFIX=' '}
+    : ${SAMPLELINES_SUMMARY_PREFIX='('}
+    : ${SAMPLELINES_SUMMARY_SUFFIX=') '}
 fi
 
 
@@ -332,7 +332,7 @@ do
 	    if [ "$isSummaryOnly" ]; then
 		sample="$summary"
 	    elif [ ! "$isTakeThisLine" ]; then
-		sample="${summary:+"${SAMPLELINES_SUMMARY_PREFIX}(${summary})${SAMPLELINES_SUMMARY_SUFFIX}"}$line"
+		sample="${summary:+"${SAMPLELINES_SUMMARY_PREFIX}${summary}${SAMPLELINES_SUMMARY_SUFFIX}"}$line"
 	    fi
 	fi
 
