@@ -9,6 +9,8 @@ if [ -t 1 ]; then
     : ${SAMPLELINES_APPEND_RESET_SUFFIX='[0m '}
     : ${SAMPLELINES_SUMMARY_PREFIX='[36m('}
     : ${SAMPLELINES_SUMMARY_SUFFIX=')[0m '}
+    : ${SAMPLELINES_COUNT_PREFIX=' [36m('}
+    : ${SAMPLELINES_COUNT_SUFFIX=')[0m'}
 else
     : ${SAMPLELINES_RESET_PREFIX=}
     : ${SAMPLELINES_RESET_SUFFIX=}
@@ -16,6 +18,8 @@ else
     : ${SAMPLELINES_APPEND_RESET_SUFFIX=' '}
     : ${SAMPLELINES_SUMMARY_PREFIX='('}
     : ${SAMPLELINES_SUMMARY_SUFFIX=') '}
+    : ${SAMPLELINES_COUNT_PREFIX=' ('}
+    : ${SAMPLELINES_COUNT_SUFFIX=')'}
 fi
 
 
@@ -23,7 +27,7 @@ printShortUsage()
 {
     # Note: short followed by long option; if the user knows the short one, she can
     # skim the long one.
-    printf 'Usage: %q %s\n' "$(basename "$1")" '[-r|--reset-on PATTERN] [-i|--inline-or-non|--inline-or-passthrough|-I|--inline-always [--inline-prefix IP] [-c|--clear] [-a|--append-reset|-k|--keep-reset]] [-s|--summarize WHAT[,PLURAL-WHAT] --summary-only] [-t|--timespan TIMESPAN[SUFFIX][ADJUSTMENT]] [-T|--initial-delay TIMESPAN[SUFFIX]] [-?|-h|--help]'
+    printf 'Usage: %q %s\n' "$(basename "$1")" '[-r|--reset-on PATTERN] [-i|--inline-or-non|--inline-or-passthrough|-I|--inline-always [--inline-prefix IP] [-c|--clear] [-a|--append-reset|-k|--keep-reset]] [-s|--summarize WHAT[,PLURAL-WHAT] --summary-only] [-n|--count WHAT] [-t|--timespan TIMESPAN[SUFFIX][ADJUSTMENT]] [-T|--initial-delay TIMESPAN[SUFFIX]] [-?|-h|--help]'
 }
 printUsage()
 {
@@ -73,6 +77,8 @@ HELPDESCRIPTION
 			the current sample.
     --summary-only	Instead of printing summary and selected output, just
 			summarize the amount of lines.
+    --count|-n WHAT	Append the total count after the current line (prefixed
+			by WHAT).
     --timespan|-t TIMESPAN[SUFFIX]
 			Print a line every TIMESPAN instead of every second.
 			SUFFIX may be 'ms' for milliseconds, 's' for seconds
@@ -170,6 +176,7 @@ inlinePrefix=
 isClear=
 summarizeWhat=
 summarizeWhatPlural=
+unset totalCountWhat
 isSummaryOnly=
 timespan=1
 timespanAdjustment=
@@ -211,6 +218,7 @@ do
 			shift
 			;;
 	--summary-only)	shift; isSummaryOnly=t;;
+	--count|-n)	shift; totalCountWhat="$1"; shift;;
 	--timespan|-t)	shift; < <(timeWithAdjustmentToSeconds "$1") IFS=$'\t' read -r timespan timespanAdjustment || exit 2; shift;;
 	--initial-delay|-T)
 			shift; initialDelay="$(timeToSeconds "$1")" || exit $?; shift;;
@@ -334,6 +342,10 @@ do
 	    elif [ ! "$isTakeThisLine" ]; then
 		sample="${summary:+"${SAMPLELINES_SUMMARY_PREFIX}${summary}${SAMPLELINES_SUMMARY_SUFFIX}"}$line"
 	    fi
+	fi
+
+	if [ -n "${totalCountWhat+t}" ]; then
+	    sample="${sample}${SAMPLELINES_COUNT_PREFIX}${totalCountWhat}${totalCountWhat:+ }${total}${SAMPLELINES_COUNT_SUFFIX}"
 	fi
 
 	printf "${prefix}%s%s${suffix}${keepResetSuffix}" "$keepResetPrefix" "$sample"
