@@ -85,3 +85,20 @@ y: 1
 y: 4
 This: 3"
 }
+
+@test "counts are written every 10 lines with first-match sorting" {
+    run extractMatches --to "$LOG" --report-order first-match --count 'foo[0-9]+' --match-count '\<[[:upper:]]\w{3}\>' --count 'bar[0-9]+' --count 'y' --global <<<"$SORT_INPUT"
+    [ "$output" = "$SORT_INPUT" ]
+    assert_log "y: 1
+This: 1
+More: 1
+That: 1
+Gone: 1
+Your: 1
+Last: 1
+foo9: 8
+Just: 2
+bar11: 6
+This: 3
+y: 4"
+}

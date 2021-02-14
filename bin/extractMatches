@@ -12,7 +12,7 @@ printShortUsage()
 {
     # Note: short followed by long option; if the user knows the short one, she can
     # skim the long one.
-    printf 'Usage: %q %s\n' "$(basename "$1")" '[-u|--unbuffered] [-q|--quiet] [-y|--summary|-Y|--summary-only] [[--name-percentage-threshold N] -%|--name-percentages NAME|/NAME-PATTERN/ [...]] [-t|--to overlay [--clear]|title|stderr|concatenated|command|notify|highlight|flash|FILE|--grep-only-matching|--grep-count] [-s|--skip PATTERN [...]] [-o|--report-order by-arg|count-desc|recent-match] (-e|--regexp [-r|--replacement REPLACEMENT] [-g|--global] [-p|--priority N] [-n|--name NAME] [-k|--reset-other NAME|/NAME-PATTERN/] [-x|--reset RESET-PATTERN [-k|--reset-other NAME|/NAME-PATTERN/]])(-c|--count|-M|--match-count [-r|--replacement REPLACEMENT] [-g|--global] [-p|--priority N] [-n|--name NAME] [-k|--reset-other NAME|/NAME-PATTERN/] [-x|--reset RESET-PATTERN [-k|--reset-other NAME|/NAME-PATTERN/]])(--reset-name PATTERN [-g|--global] -n|--name NAME|/NAME-PATTERN/) [...] [--] FILE [...][-?|-h|--help]'
+    printf 'Usage: %q %s\n' "$(basename "$1")" '[-u|--unbuffered] [-q|--quiet] [-y|--summary|-Y|--summary-only] [[--name-percentage-threshold N] -%|--name-percentages NAME|/NAME-PATTERN/ [...]] [-t|--to overlay [--clear]|title|stderr|concatenated|command|notify|highlight|flash|FILE|--grep-only-matching|--grep-count] [-s|--skip PATTERN [...]] [-o|--report-order by-arg|count-desc|recent-match|first-match] (-e|--regexp [-r|--replacement REPLACEMENT] [-g|--global] [-p|--priority N] [-n|--name NAME] [-k|--reset-other NAME|/NAME-PATTERN/] [-x|--reset RESET-PATTERN [-k|--reset-other NAME|/NAME-PATTERN/]])(-c|--count|-M|--match-count [-r|--replacement REPLACEMENT] [-g|--global] [-p|--priority N] [-n|--name NAME] [-k|--reset-other NAME|/NAME-PATTERN/] [-x|--reset RESET-PATTERN [-k|--reset-other NAME|/NAME-PATTERN/]])(--reset-name PATTERN [-g|--global] -n|--name NAME|/NAME-PATTERN/) [...] [--] FILE [...][-?|-h|--help]'
 }
 printUsage()
 {
@@ -136,6 +136,10 @@ HELPDESCRIPTION
 			    In case the reporting happens only periodically,
 			    sort the number of matches from last matched to
 			    least recently matched.
+    --report-order|-o first-match
+			    In case the reporting happens only periodically,
+			    sort the number of matches from first matched to
+			    recently matched.
     --unbuffered|-u	    Immediately output each read line.
     --quiet|-q		    Do not output the input text, just the reporting.
     --summary|-y	    For stderr, concatenated, command, notify, or file
@@ -383,6 +387,7 @@ do
 				    by-arg)	    reportOrder='compareByKeyArgumentOrder';;
 				    count-desc)	    reportOrder='compareByCount';;
 				    recent-match)   reportOrder='compareByRecentMatchOrder';;
+				    first-match)    reportOrder='compareByFirstMatchOrder';;
 				    *)		echo >&2 "ERROR: Invalid report order."
 						echo >&2
 						printUsage "$0" >&2
@@ -634,6 +639,10 @@ function compareByRecentMatchOrder(i1, v1, i2, v2,      col1, col2, lnum1, lnum2
     } else {
 	return (lnum1 > lnum2 ? -1 : 1)
     }
+}
+function compareByFirstMatchOrder(i1, v1, i2, v2)
+{
+    return -1 * compareByRecentMatchOrder(i1, v1, i2, v2)
 }
 function multiply(char, count,      tmp, i)
 {
