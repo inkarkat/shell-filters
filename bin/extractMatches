@@ -812,7 +812,7 @@ function renderIt(theMatchReset, theMatch, theCounts, resultList,      resultCnt
 
     return resultCnt
 }
-function delayedRender(resultList,      resultCnt, key, save_sorted_in)
+function delayedRender(resultList)
 {
     return renderIt("", delayedMatch, delayedCounts, resultList)
 }
