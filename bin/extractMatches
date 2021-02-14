@@ -12,7 +12,7 @@ printShortUsage()
 {
     # Note: short followed by long option; if the user knows the short one, she can
     # skim the long one.
-    printf 'Usage: %q %s\n' "$(basename "$1")" '[-u|--unbuffered] [-q|--quiet] [-y|--summary|-Y|--summary-only] [[--name-percentage-threshold N] -%|--name-percentages NAME|/NAME-PATTERN/ [...]] [-t|--to overlay [--clear]|title|stderr|concatenated|command|notify|highlight|flash|FILE|--grep-only-matching|--grep-count] [-s|--skip PATTERN [...]] [-o|--report-order by-arg|count-desc] (-e|--regexp [-r|--replacement REPLACEMENT] [-g|--global] [-p|--priority N] [-n|--name NAME] [-k|--reset-other NAME|/NAME-PATTERN/] [-x|--reset RESET-PATTERN [-k|--reset-other NAME|/NAME-PATTERN/]])(-c|--count|-M|--match-count [-r|--replacement REPLACEMENT] [-g|--global] [-p|--priority N] [-n|--name NAME] [-k|--reset-other NAME|/NAME-PATTERN/] [-x|--reset RESET-PATTERN [-k|--reset-other NAME|/NAME-PATTERN/]])(--reset-name PATTERN [-g|--global] -n|--name NAME|/NAME-PATTERN/) [...] [--] FILE [...][-?|-h|--help]'
+    printf 'Usage: %q %s\n' "$(basename "$1")" '[-u|--unbuffered] [-q|--quiet] [-y|--summary|-Y|--summary-only] [[--name-percentage-threshold N] -%|--name-percentages NAME|/NAME-PATTERN/ [...]] [-t|--to overlay [--clear]|title|stderr|concatenated|command|notify|highlight|flash|FILE|--grep-only-matching|--grep-count] [-s|--skip PATTERN [...]] [-o|--report-order by-arg|count-desc|recent-match] (-e|--regexp [-r|--replacement REPLACEMENT] [-g|--global] [-p|--priority N] [-n|--name NAME] [-k|--reset-other NAME|/NAME-PATTERN/] [-x|--reset RESET-PATTERN [-k|--reset-other NAME|/NAME-PATTERN/]])(-c|--count|-M|--match-count [-r|--replacement REPLACEMENT] [-g|--global] [-p|--priority N] [-n|--name NAME] [-k|--reset-other NAME|/NAME-PATTERN/] [-x|--reset RESET-PATTERN [-k|--reset-other NAME|/NAME-PATTERN/]])(--reset-name PATTERN [-g|--global] -n|--name NAME|/NAME-PATTERN/) [...] [--] FILE [...][-?|-h|--help]'
 }
 printUsage()
 {
@@ -132,6 +132,10 @@ HELPDESCRIPTION
     --report-order|-o count-desc
 			    In case the reporting happens only periodically,
 			    sort the number of matches from highest to lowest.
+    --report-order|-o recent-match
+			    In case the reporting happens only periodically,
+			    sort the number of matches from last matched to
+			    least recently matched.
     --unbuffered|-u	    Immediately output each read line.
     --quiet|-q		    Do not output the input text, just the reporting.
     --summary|-y	    For stderr, concatenated, command, notify, or file
@@ -376,8 +380,9 @@ do
 	--summary|-y)		shift; setInfiniteDelays;;
 	--report-order|-o)	shift
 				case "$1" in
-				    by-arg)	reportOrder='compareByKeyArgumentOrder';;
-				    count-desc)	reportOrder='compareByCount';;
+				    by-arg)	    reportOrder='compareByKeyArgumentOrder';;
+				    count-desc)	    reportOrder='compareByCount';;
+				    recent-match)   reportOrder='compareByRecentMatchOrder';;
 				    *)		echo >&2 "ERROR: Invalid report order."
 						echo >&2
 						printUsage "$0" >&2
@@ -614,6 +619,20 @@ function compareByCount(i1, v1, i2, v2,      count1, count2)
 	return (text1 == text2 ? 0 : text1 > text2 ? 1 : -1)
     } else {
 	return (count1 > count2 ? -1 : 1)
+    }
+}
+function compareByRecentMatchOrder(i1, v1, i2, v2,      col1, col2, lnum1, lnum2)
+{
+    # Sort first by column of same line numbers, then by line number of last match descending.
+    col1 = v1["col"]
+    col2 = v2["col"]
+    lnum1 = v1["lnum"]
+    lnum2 = v2["lnum"]
+
+    if (lnum1 == lnum2) {
+	return (col1 == col2 ? 0 : col1 > col2 ? -1 : 1)
+    } else {
+	return (lnum1 > lnum2 ? -1 : 1)
     }
 }
 function multiply(char, count,      tmp, i)
@@ -926,6 +945,8 @@ function renderCount(key, before, text, count, after,      tmp, countAndPercenta
 	    delayedChange = delayedChange || delayedCounts[key]["count"] != count || delayedCounts[key]["text"] != text
 	    delayedCounts[key]["i"] = lowestI
 	    delayedCounts[key]["count"] = count
+	    delayedCounts[key]["lnum"] = NR
+	    delayedCounts[key]["col"] = startOffset
 	    delayedCounts[key]["text"] = text
 	    break
 	case "highlight":
@@ -956,6 +977,8 @@ function renderCount(key, before, text, count, after,      tmp, countAndPercenta
 	    if (fileUpdateCountDelay != 0) {
 		delayedCounts[key]["i"] = lowestI
 		delayedCounts[key]["count"] = count
+		delayedCounts[key]["lnum"] = NR
+		delayedCounts[key]["col"] = startOffset
 		delayedCounts[key]["text"] = text
 	    } else {
 		countAndPercentage = addPercentage(key, count)
