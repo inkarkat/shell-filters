@@ -9,7 +9,7 @@ printShortUsage()
     # skim the long one.
     printf 'Usage: %q %s\n' "$(basename "$1")" '[--] SECONDS [...] [-?|-h|--help]'
     echo
-    printf 'Usage: cat FILE [...] | %q %s\n' "$(basename "$1")" '[-s|--skip SKIP&PATTERN [...]] [-m|--match MATCH&PATTERN [...]] [-W|--workday] [--precision|-p WIDTH] [-w|--width [+]WIDTH]'
+    printf 'Usage: cat FILE [...] | %q %s\n' "$(basename "$1")" '[-s|--skip SKIP&PATTERN [...]] [-m|--match MATCH&PATTERN [...]] [-x|--factor N] [-W|--workday] [--precision|-p WIDTH] [-w|--width [+]WIDTH]'
 }
 printUsage()
 {
@@ -38,6 +38,8 @@ HELPDESCRIPTION
 			    represented by &) matches MATCH&PATTERN. Other
 			    occurrences (and those that also match --skip
 			    SKIP&PATTERN) are not converted.
+    --factor|-x N	    Multiply the found integers with N (e.g. 60 for
+			    minutes) to obtain seconds.
     --workday|-W	    Render days and larger units as working days
 			    (comprised of $((WORKDAY_SECONDS / 3600)) hours, not 24) instead of calendar
 			    days, and adapt the unit (1wd, not 1d), too.
@@ -60,6 +62,7 @@ skipPattern=
 matchPattern=
 width=
 precision=
+factor=1
 isWorkDay=
 while [ $# -ne 0 ]
 do
@@ -69,6 +72,7 @@ do
 	--match|-m)	shift; matchPattern="${matchPattern}${matchPattern:+|}${1:?}"; shift;;
 	--width|-w)	shift; width="$1"; shift;;
 	--precision|-p)	shift; precision="$1"; shift;;
+	--factor|-x)	shift; factor="${1:?}"; shift;;
 	--workday|-W)	shift; isWorkDay=t;;
 	--)		break;;
 	-*)		{ echo "ERROR: Unknown option \"$1\"!"; echo; printUsage "$0"; } >&2; exit 2;;
@@ -81,6 +85,7 @@ awk -F $'\n' \
     -v "matchPattern=${matchPattern//\\/\\\\}" \
     -v "widthArg=$width" \
     -v "precision=$precision" \
+    -v "factor=$factor" \
     -v "isWorkDay=$isWorkDay" \
 '
 function max(n1, n2)
@@ -97,8 +102,9 @@ function getWidth(seconds)
 	return max(widthArg, length(seconds))
     }
 }
-function convert(seconds,      hours, minutes, workDayPrefix)
+function convert(integer,      seconds, hours, minutes, workDayPrefix)
 {
+    seconds = factor * integer
     weeks = int(seconds / WEEK_IN_SECONDS)
     seconds = seconds - (WEEK_IN_SECONDS * weeks)
     days = int(seconds / DAY_IN_SECONDS)
