@@ -1,0 +1,27 @@
+#!/usr/bin/gawk -f
+
+BEGIN {
+    if (ARGV[1] ~ /^(--(help|man|usage)|-[Hh?])$/) {
+	print "Rotates text columns and rows by 180 degrees."
+	print ""
+	print "Usage: rot180 FILE [...] [-?|-H|--man|--usage]"
+	print "Usage: cat FILE [...] | rot180"
+	exit
+    }
+}
+{
+    line[NR][0] = ""
+    lineLen[NR] = split($0, line[NR], "")
+    maxN = (lineLen[NR] > maxN ? lineLen[NR] : maxN)
+}
+END {
+    for (i = NR; i > 0; --i) {
+	rotatedLine = ""
+	for (j = lineLen[i]; j > 0; --j) {
+	    rotatedLine = rotatedLine line[i][j]
+	}
+
+	paddingFormat = (lineLen[i] < maxN ? "%" (maxN - lineLen[i]) "s" : "%s")
+	printf paddingFormat "%s\n", "", gensub(/[[:space:]]+$/, "", 1, rotatedLine)
+    }
+}
