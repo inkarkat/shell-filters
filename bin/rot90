@@ -2,11 +2,15 @@
 
 BEGIN {
     if (ARGV[1] ~ /^(--(help|man|usage)|-[Hh?])$/) {
-	print "Rotates text columns and rows clockwise by 90 degrees."
+	print "Rotates text columns and rows clockwise (counter-clockwise with --reverse)"
+	print "by 90 degrees."
 	print ""
-	print "Usage: rot90 FILE [...] [-?|-H|--man|--usage]"
-	print "Usage: cat FILE [...] | rot90"
+	print "Usage: rot90 [--reverse] FILE [...] [-?|-H|--man|--usage]"
+	print "Usage: cat FILE [...] | rot90 [--reverse]"
 	exit
+    } else if (ARGV[1] == "--reverse") {
+	isReverse = 1
+	delete ARGV[1]
     }
 }
 {
@@ -17,11 +21,21 @@ BEGIN {
 END {
     # i turns original columns into lines
     # j turns original lines into characters
-    for (i = 1; i <= maxN; ++i) {
-	rotatedLine = ""
-	for (j = NR; j > 0; --j) {
-	    rotatedLine = rotatedLine (lineLen[j] >= i ? line[j][i] : " ")
+    if (isReverse) {
+	for (i = maxN; i > 0; --i) {
+	    rotatedLine = ""
+	    for (j = 1; j <= NR; ++j) {
+		rotatedLine = rotatedLine (lineLen[j] >= i ? line[j][i] : " ")
+	    }
+	    print gensub(/ +$/, "", 1, rotatedLine)
 	}
-	print gensub(/ +$/, "", 1, rotatedLine)
+    } else {
+	for (i = 1; i <= maxN; ++i) {
+	    rotatedLine = ""
+	    for (j = NR; j > 0; --j) {
+		rotatedLine = rotatedLine (lineLen[j] >= i ? line[j][i] : " ")
+	    }
+	    print gensub(/ +$/, "", 1, rotatedLine)
+	}
     }
 }
