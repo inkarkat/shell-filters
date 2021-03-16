@@ -1,0 +1,37 @@
+#!/usr/bin/gawk -f
+
+BEGIN {
+    if (ARGV[1] ~ /^(--(help|man|usage)|-[Hh?])$/) {
+	print "Rotates text columns and rows clockwise (counter-clockwise with --reverse)"
+	print "by 45 degrees."
+	print ""
+	print "Usage: rot45 [--reverse] FILE [...] [-?|-H|--man|--usage]"
+	print "Usage: cat FILE [...] | rot45 [--reverse]"
+	exit
+    } else if (ARGV[1] == "--reverse") {
+	isReverse = 1
+	delete ARGV[1]
+    }
+}
+{
+    line[NR][0] = ""
+    lineLen[NR] = split($0, line[NR], "")
+    comp = (lineLen[NR] > NR ? lineLen[NR] : NR)
+    maxN = (comp > maxN ? comp : maxN)
+}
+END {
+    for (n = 2; n <= int(sqrt(2) * maxN) + 2; ++n) {
+	rotatedLine = ""
+	if (isReverse) {
+	    for (i = n; i > 0; --i) {
+		rotatedLine = rotatedLine line[n - i][maxN - i + 1]
+	    }
+	} else {
+	    for (i = 1; i <= n; ++i) {
+		rotatedLine = rotatedLine line[n - i][i]
+	    }
+	}
+
+	print gensub(/ +$/, "", 1, rotatedLine)
+    }
+}
