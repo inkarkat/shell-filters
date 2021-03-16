@@ -1,0 +1,27 @@
+#!/usr/bin/gawk -f
+
+BEGIN {
+    if (ARGV[1] ~ /^(--(help|man|usage)|-[Hh?])$/) {
+	print "Rotates text columns and rows clockwise by 90 degrees."
+	print ""
+	print "Usage: rot90 FILE [...] [-?|-H|--man|--usage]"
+	print "Usage: cat FILE [...] | rot90"
+	exit
+    }
+}
+{
+    line[NR][0] = ""
+    lineLen[NR] = split($0, line[NR], "")
+    maxN = (lineLen[NR] > maxN ? lineLen[NR] : maxN)
+}
+END {
+    # i turns original columns into lines
+    # j turns original lines into characters
+    for (i = 1; i <= maxN; ++i) {
+	rotatedLine = ""
+	for (j = NR; j > 0; --j) {
+	    rotatedLine = rotatedLine (lineLen[j] >= i ? line[j][i] : " ")
+	}
+	print gensub(/ +$/, "", 1, rotatedLine)
+    }
+}
