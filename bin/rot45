@@ -20,7 +20,7 @@ BEGIN {
     maxN = (comp > maxN ? comp : maxN)
 }
 END {
-    for (n = 2; n <= int(sqrt(2) * maxN) + 2; ++n) {
+    for (n = 2; n <= 2 * maxN; ++n) {
 	rotatedLine = ""
 	if (isReverse) {
 	    for (i = n; i > 0; --i) {
