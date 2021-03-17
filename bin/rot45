@@ -32,6 +32,21 @@ END {
 	    }
 	}
 
-	print gensub(/ +$/, "", 1, rotatedLine)
+	output = gensub(/ +$/, "", 1, rotatedLine)
+
+	if (output == "") {
+	    if (didOutput) outputs[++outputCnt] = output
+	    continue
+	} else if (outputCnt > 0) {
+	    outputs[++outputCnt] = output
+	} else {
+	    print output
+	    didOutput = 1
+	}
+    }
+
+    for (maxNonEmptyOutputIndex = outputCnt; maxNonEmptyOutputIndex > 0 && outputs[maxNonEmptyOutputIndex] == ""; --maxNonEmptyOutputIndex) {}
+    for (c = 1; c <= maxNonEmptyOutputIndex; ++c) {
+	print outputs[c]
     }
 }
