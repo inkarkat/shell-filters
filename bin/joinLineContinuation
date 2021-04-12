@@ -1,0 +1,9 @@
+#!/bin/sed -f
+# Source: https://unix.stackexchange.com/a/13704/18876
+
+:loop
+/\\$/ {
+    N
+    s/\\\n//
+    t loop
+}
