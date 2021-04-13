@@ -1,0 +1,164 @@
+#!/bin/bash
+
+printShortUsage()
+{
+    # Note: short followed by long option; if the user knows the short one, she can
+    # skim the long one.
+    printf 'Usage: %q %s\n' "$(basename "$1")" "-p|--pair OC | -p|--pair 'O C' | -o|--open O -c|--close C [...] [-u|--unbuffered] [--] [FILE ...] [-?|-h|--help]"
+}
+printUsage()
+{
+    # This is the short help when launched with no or incorrect arguments.
+    # It is printed to stderr to avoid accidental processing.
+    printShortUsage "$1" >&2
+    printf >&2 '\nTry %q --help for more information.\n' "$(basename "$1")"
+}
+printLongUsage()
+{
+    # This is the long "man page" when launched with the help argument.
+    # It is printed to stdout to allow paging with 'more'.
+    cat <<HELPDESCRIPTION
+Join subsequent lines starting with an opening string until the corresponding
+closing string has been encountered. Nested pairs are considered.
+HELPDESCRIPTION
+    echo
+    printShortUsage "$1"
+    echo
+    cat <<HELPTEXT
+    --pair|-p OC|'O C'	Join from O until C. OC are two characters or separated
+			by a space.
+    --open|-o O --close|-c C
+			Join from O until C.
+    --unbuffered|-u	Immediately output each read line.
+Example:
+HELPTEXT
+    printf '%q %s\n' "$(basename "$1")" '--foo bar /tmp/foobar'
+}
+
+literalPattern()
+{
+    printf %s "${1?}" | sed -e 's/\\/\\\\\\\\/g' -e 's/[][$*+?{}.|()^]/\\\\&/g'
+}
+
+typeset -a opens=()
+typeset -a closes=()
+isBuffered=t
+while [ $# -ne 0 ]
+do
+    case "$1" in
+	--help|-h|-\?)	shift; printLongUsage "$0"; exit 0;;
+	--unbuffered|-u)
+			shift; isBuffered=;;
+	--pair|-p)	shift
+			if [ ${#1} -eq 2 ]; then
+			    opens+=("$(literalPattern "${1:0:1}")")
+			    closes+=("$(literalPattern "${1:1}")")
+			elif [[ "$1" =~ ^([^[:space:]])+\ ([^[:space:]])$ ]]; then
+			    opens+=("$(literalPattern "${BASH_REMATCH[1]}")")
+			    closes+=("$(literalPattern "${BASH_REMATCH[2]}")")
+			else
+			    printf "ERROR: Invalid OC or 'O C': %s\\n" "$1"
+			    echo
+			    printUsage "$0"
+			    exit 2
+			fi >&2
+			shift
+			;;
+	--open|-o)	shift
+			opens+=("$(literalPattern "${1:0:1}")")
+			shift
+			;;
+	--close|-c)	shift
+			closes+=("$(literalPattern "${1:0:1}")")
+			shift
+			;;
+	--)		shift; break;;
+	-*)		{ echo "ERROR: Unknown option \"$1\"!"; echo; printUsage "$0"; } >&2; exit 2;;
+	*)		break;;
+    esac
+done
+if [ ${#opens[@]} -eq 0 ]; then
+    echo 'ERROR: No OC passed.'
+    echo
+    printUsage "$0"
+    exit 2
+elif [ ${#opens[@]} -ne ${#closes[@]} ]; then
+    echo 'ERROR: Unbalanced number of Os and Cs.'
+    echo
+    printUsage "$0"
+    exit 2
+fi >&2
+
+IFS=$'\n'
+awk \
+    -v "isBuffered=$isBuffered" \
+    -v "openList=${opens[*]}" \
+    -v "closeList=${closes[*]}" \
+'
+function join(array, start, end, sep,    result, i)
+{
+    if (sep == "")
+	sep = " "
+    else if (sep == SUBSEP) # magic value
+	sep = ""
+    result = array[start]
+    for (i = start + 1; i <= end; i++)
+	result = result sep array[i]
+    return result
+}
+BEGIN {
+    N = split(openList, opens, "\n")
+    if (split(closeList, closes, "\n") != N) {
+	print "Assert: Mismatch in number of Os and Cs." > "/dev/stderr"
+	exit 3
+    }
+    any = "(" join(opens, 1, N, ")|(") ")|(" join(closes, 1, N, ")|(") ")"
+}
+{
+    isBalanced = 1
+    previousPos = 1
+    lines = $0
+    while (1) {
+	if (match(substr(lines, previousPos), any, submatch)) {
+	    previousPos += RSTART + RLENGTH - 1
+
+	    for (i = 1; i <= N; ++i) {
+		if (submatch[i] != "") {
+		    count[i] += 1
+		    isBalanced = 0
+		    break
+		}
+	    }
+	    for (i = 1; i <= N; ++i) {
+		if (submatch[N + i] != "") {
+		    count[i] -= 1
+		    isBalanced = 1
+		    for (i = 1; i <= N; ++i) {
+			if (count[i] > 0) {
+			    isBalanced = 0
+			    break
+			}
+		    }
+		    break
+		}
+	    }
+	} else if (isBalanced) {
+	    print lines
+	    if (! isBuffered) fflush()
+	    break
+	} else {
+	    if (! getline) break
+	    lines = lines $0
+	}
+    }
+}
+END {
+    for (i = 1; i <= N; ++i) {
+	if (count[i] > 0) {
+	    warnings[++w] = count[i] " missing closing " gensub(/^\\/, "", 1, closes[i])
+	}
+    }
+    if (w > 0) {
+	print "Warning: " join(warnings, 1, w, ", ") > "/dev/stderr"
+    }
+}' "$@"
