@@ -4,7 +4,7 @@ printShortUsage()
 {
     # Note: short followed by long option; if the user knows the short one, she can
     # skim the long one.
-    printf 'Usage: %q %s\n' "$(basename "$1")" "-p|--pair OC | -p|--pair 'O C' | -o|--open O -c|--close C [...] [-u|--unbuffered] [--] [FILE ...] [-?|-h|--help]"
+    printf 'Usage: %q %s\n' "$(basename "$1")" "-p|--pair OC | -p|--pair 'O C' | -o|--open O -c|--close C [...] [-i[SUFFIX]|--in-place[=SUFFIX]] [-u|--unbuffered] [--] [FILE ...] [-?|-h|--help]"
 }
 printUsage()
 {
@@ -42,11 +42,18 @@ literalPattern()
 
 typeset -a opens=()
 typeset -a closes=()
+typeset -a awkCall=(awk)
+isInPlace=
+inPlaceExtension=
 isBuffered=t
 while [ $# -ne 0 ]
 do
     case "$1" in
 	--help|-h|-\?)	shift; printLongUsage "$0"; exit 0;;
+	-i|--in-place)
+			isInPlace=t; shift;;
+	-i?*|--in-place=*)
+			isInPlace=t; inPlaceExtension="${1#-i}"; inPlaceExtension="${inPlaceExtension#--in-place=}"; shift;;
 	--unbuffered|-u)
 			shift; isBuffered=;;
 	--pair|-p)	shift
@@ -88,9 +95,12 @@ elif [ ${#opens[@]} -ne ${#closes[@]} ]; then
     printUsage "$0"
     exit 2
 fi >&2
+if [ "$isInPlace" ]; then
+    awkCall=(gawk -i inplace -v "INPLACE_SUFFIX=$inPlaceExtension")
+fi
 
 IFS=$'\n'
-awk \
+exec "${awkCall[@]}" \
     -v "isBuffered=$isBuffered" \
     -v "openList=${opens[*]}" \
     -v "closeList=${closes[*]}" \
