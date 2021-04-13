@@ -32,7 +32,7 @@ HELPDESCRIPTION
     --unbuffered|-u	Immediately output each read line.
 Example:
 HELPTEXT
-    printf '%q %s\n' "$(basename "$1")" '--foo bar /tmp/foobar'
+    printf '%q %s\n' "$(basename "$1")" "-p '{}' file.json"
 }
 
 literalPattern()
