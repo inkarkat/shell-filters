@@ -1,7 +1,11 @@
 #!/bin/sed -f
 
-# Condense subsequent #'s at the end of a line or if a $ sigil is following into a count.
-#
+## Condense subsequent #'s at the end of a line or if a $ sigil is following
+## (###$) into a count of those hashes.
+##
+## Usage: countHashes FILE [...]
+## Usage: cat FILE [...] | countHashes
+
 # To make the following replacements easier, replace the literal $ / eol match
 # with another unique marker.
 s/#\(\$\|$\)/#/g

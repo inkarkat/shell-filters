@@ -1,6 +1,11 @@
 #!/bin/sed -f
 # Source: http://lists.samba.org/archive/linux/2002-August/004283.html
 
+## Remove C-style /* ... */ comments from the output.
+##
+## Usage: stripCStyleComments FILE [...]
+## Usage: cat FILE [...] | stripCStyleComments
+
 # If no /* get next.
 /\/\*/!b
 
@@ -13,4 +18,3 @@ bx
 
 # Delete /*...*/, emulating a non-greedy match.
 s@/\*\([^*]*\|\*\+[^/]\)*\*/@@g
-

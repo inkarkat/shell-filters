@@ -1,5 +1,12 @@
 #!/bin/sed -f
 
+## From triples HEADER\nE1\nE2, remove subsequent pairs of lines that are
+## identical, and join other pairs in the form HEADER: E1 != E2
+## (or HEADER: E1 <- (missing element).
+##
+## Usage: filterIdenticalPairsWithHeader FILE [...]
+## Usage: cat FILE [...] | filterIdenticalPairsWithHeader
+
 ${ s/$/: (missing pair)/; b }
 N
 ${ s/\n\([^\n]*\)$/: \1 <- (missing element)/; b }

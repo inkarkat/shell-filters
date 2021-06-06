@@ -1,5 +1,10 @@
 #!/bin/sed -f
 
+## Remove ANSI escape sequences for coloring from the output.
+##
+## Usage: nocolor FILE [...]
+## Usage: cat FILE [...] | nocolor
+
 s#\x1b\[[0-9;]*[mK]##g
 
 # Bash version: ${1//\[*([0-9;])[mK]/}

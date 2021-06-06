@@ -1,5 +1,11 @@
 #!/bin/sed -f
 
+## Remove subsequent pairs of lines that are identical, and join other pairs in
+## the form E1 != E2 (or E1 <- (missing element).
+##
+## Usage: filterIdenticalPairs FILE [...]
+## Usage: cat FILE [...] | filterIdenticalPairs
+
 ${ s/$/ <- (missing element)/; b }
 N
 /^\([^\n]*\)\n\1$/d
