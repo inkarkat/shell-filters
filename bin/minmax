@@ -1,5 +1,16 @@
 #!/usr/bin/awk -f
 
+BEGIN {
+    if (ARGV[1] ~ /^(--(help|man|usage)|-[Hh?])$/) {
+	print "Print the lowest and highest number found in ARGS or the input."
+	print ""
+	print "Usage: minmax  ARG [...] [-?|-H|--man|--usage]"
+	print "Usage: cat FILE [...] | minmax"
+	isHelp = 1
+	exit
+    }
+}
+
 function tally(value)
 {
     min = (value < min ? value : min)
@@ -21,5 +32,5 @@ BEGIN {
     }
 }
 END {
-    printf "%d %d\n", min, max
+    if ( ! isHelp) printf "%d %d\n", min, max
 }

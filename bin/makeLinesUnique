@@ -1,5 +1,15 @@
 #!/usr/bin/awk -f
 
+BEGIN {
+    if (ARGV[1] ~ /^(--(help|man|usage)|-[Hh?])$/) {
+	print "Make lines unique by appending a (2) count to them if necessary."
+	print ""
+	print "Usage: makeLinesUnique FILE [...] [-?|-H|--man|--usage]"
+	print "Usage: cat FILE [...] | makeLinesUnique]"
+	exit
+    }
+}
+
 function appendNumber(line)
 {
     return line " (" (++c[line] + 1) ")"
