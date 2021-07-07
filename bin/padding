@@ -1,21 +1,51 @@
 #!/bin/bash
 
-printUsage()
+printShortUsage()
 {
-    cat <<HELPTEXT
-Add one line of padding before and after output when there is actually output.
-HELPTEXT
-    echo
-    printf 'Usage: %q %s\n' "$(basename "$1")" '[--] [FILE ...] [-?|-h|--help]'
+    # Note: short followed by long option; if the user knows the short one, she can
+    # skim the long one.
+    printf 'Usage: %q %s\n' "$(basename "$1")" '[-b|--before TEXT] [-a|--after TEXT] [--] [FILE ...] [-?|-h|--help]'
     echo
     printf 'Usage: cat FILE [...] | %q %s\n' "$(basename "$1")" '[...]'
 }
-case "$1" in
-    --help|-h|-\?)	shift; printUsage "$0"; exit 0;;
-esac
+printUsage()
+{
+    # This is the short help when launched with no or incorrect arguments.
+    # It is printed to stderr to avoid accidental processing.
+    printShortUsage "$1" >&2
+    printf >&2 '\nTry %q --help for more information.\n' "$(basename "$1")"
+}
+printLongUsage()
+{
+    # This is the long "man page" when launched with the help argument.
+    # It is printed to stdout to allow paging with 'more'.
+    cat <<HELPDESCRIPTION
+Add one line of padding / passed TEXT before and after output when there is
+actually output.
+HELPDESCRIPTION
+    echo
+    printShortUsage "$1"
+    echo
+    cat <<HELPTEXT
+    --before|-b TEXT	Use TEXT before the input instead of an empty line.
+    --after|-a TEXT	Use TEXT after the input instead of an empty line.
+HELPTEXT
+}
 
+readonly NL=$'\n'
+while [ $# -ne 0 ]
+do
+    case "$1" in
+	--help|-h|-\?)	    shift; printLongUsage "$0"; exit 0;;
+	--before|-b)	    shift; escapedLine="${1//\\/\\\\}"; before="${freshPreLines}${freshPreLines:+\\$NL}${escapedLine//${NL}/\\$NL}"; shift;;
+	--after|-a)	    shift; escapedLine="${1//\\/\\\\}"; after="${freshPostLines}${freshPostLines:+\\$NL}${escapedLine//${NL}/\\$NL}"; shift;;
+	--)		    shift; break;;
+	-*)		    { echo "ERROR: Unknown option \"$1\"!"; echo; printUsage "$0"; } >&2; exit 2;;
+	*)		    break;;
+    esac
+done
 
-exec sed -e '1i\
-
-$a\
-' "$@"
+exec sed -e "1i\\
+$before
+\$a\\
+$after" "$@"
