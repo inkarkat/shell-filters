@@ -1,6 +1,6 @@
 #!/bin/bash
 
-: ${HIGHLIGHTRELATIVEAGE_COLORS:=[38;2;255;255;255m [38;2;238;238;238m [38;2;72;72;72m [38;2;175;21;26m [38;2;79;9;10m}
+: ${HIGHLIGHTRELATIVEAGE_COLORS:=[38;5;155m [38;5;149m [38;5;132m [38;5;124m [38;5;161m}
 : ${HIGHLIGHTRELATIVEAGE_RESET=[0m}
 
 printUsage()
@@ -9,7 +9,7 @@ printUsage()
 Highlight relative dates with colors, depending on the age.
 HELPTEXT
     echo
-    printf 'Usage: %q %s\n' "$(basename "$1")" '[-d|--delete-date] [-e SED-EXPR ...] [--] [FILE ...] [-?|-h|--help]'
+    printf 'Usage: %q %s\n' "$(basename "$1")" '[-d|--delete-date] [-p|--palette dashboard] [-e SED-EXPR ...] [--] [FILE ...] [-?|-h|--help]'
     echo
     printf 'Usage: cat FILE [...] | %q %s\n' "$(basename "$1")" '[...]'
 }
@@ -21,6 +21,17 @@ do
     case "$1" in
 	--help|-h|-\?)	    shift; printUsage "$0"; exit 0;;
 	--delete-date|-d)   shift; match='\(.*\)'; replacement='\3';;
+	--palette|-p)	    shift
+			    case "$1" in
+				dashboard)  HIGHLIGHTRELATIVEAGE_COLORS='[38;2;255;255;255m [38;2;238;238;238m [38;2;72;72;72m [38;2;175;21;26m [38;2;79;9;10m';;
+				*)	    printf 'ERROR: Invalid palette: %s\n' "$1"
+					    echo
+					    printUsage "$0"
+					    exit 2
+					    ;;
+			    esac >&2
+			    shift
+			    ;;
 	--)		    sedArgs+=("$1"); shift; break;;
 	*)		    sedArgs+=("$1"); shift;;
     esac
