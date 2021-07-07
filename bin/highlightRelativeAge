@@ -1,0 +1,37 @@
+#!/bin/bash
+
+: ${HIGHLIGHTRELATIVEAGE_COLORS:=[38;2;255;255;255m [38;2;238;238;238m [38;2;72;72;72m [38;2;175;21;26m [38;2;79;9;10m}
+: ${HIGHLIGHTRELATIVEAGE_RESET=[0m}
+
+printUsage()
+{
+    cat <<HELPTEXT
+Highlight relative dates with colors, depending on the age.
+HELPTEXT
+    echo
+    printf 'Usage: %q %s\n' "$(basename "$1")" '[-d|--delete-date] [-e SED-EXPR ...] [--] [FILE ...] [-?|-h|--help]'
+    echo
+    printf 'Usage: cat FILE [...] | %q %s\n' "$(basename "$1")" '[...]'
+}
+match=
+replacement='\2'
+typeset -a sedArgs=()
+while [ $# -ne 0 ]
+do
+    case "$1" in
+	--help|-h|-\?)	    shift; printUsage "$0"; exit 0;;
+	--delete-date|-d)   shift; match='\(.*\)'; replacement='\3';;
+	--)		    sedArgs+=("$1"); shift; break;;
+	*)		    sedArgs+=("$1"); shift;;
+    esac
+done
+
+typeset -a COLOR=($HIGHLIGHTRELATIVEAGE_COLORS)
+
+sed \
+    -e "s/^\\(\x1b\[[0-9;]*[mK]\\)\\?\\(.*minutes\\? ago[[:space:]]\\+\\)${match}/${COLOR[0]}${replacement}${HIGHLIGHTRELATIVEAGE_RESET}\\1/" \
+    -e "s/^\\(\x1b\[[0-9;]*[mK]\\)\\?\\(.*hours\\? ago[[:space:]]\\+\\)${match}/${COLOR[1]}${replacement}${HIGHLIGHTRELATIVEAGE_RESET}\\1/" \
+    -e "s/^\\(\x1b\[[0-9;]*[mK]\\)\\?\\(.*[1-9][0-9]\\+ days ago[[:space:]]\\+\\)${match}/${COLOR[2]}${replacement}${HIGHLIGHTRELATIVEAGE_RESET}\\1/" \
+    -e "s/^\\(\x1b\[[0-9;]*[mK]\\)\\?\\(.*months\\? ago[[:space:]]\\+\\)${match}/${COLOR[3]}${replacement}${HIGHLIGHTRELATIVEAGE_RESET}\\1/" \
+    -e "s/^\\(\x1b\[[0-9;]*[mK]\\)\\?\\(.*years\\? ago[[:space:]]\\+\\)${match}/${COLOR[4]}${replacement}${HIGHLIGHTRELATIVEAGE_RESET}\\1/" \
+    "${sedArgs[@]}" "$@"
