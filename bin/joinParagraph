@@ -1,0 +1,60 @@
+#!/bin/bash
+
+printShortUsage()
+{
+    # Note: short followed by long option; if the user knows the short one, she can
+    # skim the long one.
+    printf 'Usage: %q %s\n' "$(basename "$1")" '[-s|--separator SEP] [-k|--keep-empty-lines] [SED-ARGS ...] [--] FILE [...] [-?|-h|--help]'
+    echo
+    printf 'Usage: cat FILE [...] | %q %s\n' "$(basename "$1")" '[...]'
+}
+printUsage()
+{
+    # This is the short help when launched with no or incorrect arguments.
+    # It is printed to stderr to avoid accidental processing.
+    printShortUsage "$1" >&2
+    printf >&2 '\nTry %q --help for more information.\n' "$(basename "$1")"
+}
+printLongUsage()
+{
+    # This is the long "man page" when launched with the help argument.
+    # It is printed to stdout to allow paging with 'more'.
+    cat <<HELPDESCRIPTION
+Join subsequent lines until a (run of) empty line(s) is encountered.
+HELPDESCRIPTION
+    echo
+    printShortUsage "$1"
+    echo
+    cat <<HELPTEXT
+    --separator|-s SEP	Use SEP (instead of a single space) to join lines within
+			a paragraph.
+    --keep-empty-lines|-k
+			Do not suppress the (runs of) empty line(s) that
+			represent the paragraph delimiters.
+HELPTEXT
+}
+
+separator=' '
+emptyLineAction=d
+typeset -a sedArgs=()
+while [ $# -ne 0 ]
+do
+    case "$1" in
+	--help|-h|-\?)	shift; printLongUsage "$0"; exit 0;;
+	--separator|-s)	shift; separator="$1"; shift;;
+	--keep-empty-lines|-k)
+			shift; emptyLineAction=b;;
+	--)		sedArgs+=("$1"); shift; break;;
+	*)		sedArgs+=("$1"); shift;;
+    esac
+done
+
+literalSeparator="$separator"
+literalSeparator="${literalSeparator//\\/\\\\}"
+literalSeparator="${literalSeparator//&/\\&}"
+literalSeparator="${literalSeparator//$'\n'/\\n}"
+exec sed \
+    -e "/^\$/{ x; /./{ s/^\\n//; s#\\n#${literalSeparator//#/\\#}#g; p }; g; ${emptyLineAction} }" \
+    -e "\${ H; g; s/^\\n//; s#\\n#${literalSeparator//#/\\#}#g; b }" \
+    -e 'H; d' \
+    "${sedArgs[@]}" "$@"
