@@ -32,17 +32,17 @@ do
 			    esac >&2
 			    shift
 			    ;;
-	--)		    sedArgs+=("$1"); shift; break;;
+	--)		    break;;
 	*)		    sedArgs+=("$1"); shift;;
     esac
 done
 
 typeset -a COLOR=($HIGHLIGHTRELATIVEAGE_COLORS)
 
-sed \
+sed "${sedArgs[@]}" \
     -e "s/^\\(\x1b\[[0-9;]*[mK]\\)\\?\\(.*minutes\\? ago[[:space:]]\\+\\)${match}/${COLOR[0]}${replacement}${HIGHLIGHTRELATIVEAGE_RESET}\\1/" \
     -e "s/^\\(\x1b\[[0-9;]*[mK]\\)\\?\\(.*hours\\? ago[[:space:]]\\+\\)${match}/${COLOR[1]}${replacement}${HIGHLIGHTRELATIVEAGE_RESET}\\1/" \
     -e "s/^\\(\x1b\[[0-9;]*[mK]\\)\\?\\(.*[1-9][0-9]\\+ days ago[[:space:]]\\+\\)${match}/${COLOR[2]}${replacement}${HIGHLIGHTRELATIVEAGE_RESET}\\1/" \
     -e "s/^\\(\x1b\[[0-9;]*[mK]\\)\\?\\(.*months\\? ago[[:space:]]\\+\\)${match}/${COLOR[3]}${replacement}${HIGHLIGHTRELATIVEAGE_RESET}\\1/" \
     -e "s/^\\(\x1b\[[0-9;]*[mK]\\)\\?\\(.*years\\? ago[[:space:]]\\+\\)${match}/${COLOR[4]}${replacement}${HIGHLIGHTRELATIVEAGE_RESET}\\1/" \
-    "${sedArgs[@]}" "$@"
+    "$@"
