@@ -6,5 +6,6 @@ typeset -a converterCommand=(tr --squeeze-repeats ' ' $'\t')
 if [ $# -eq 0 ]; then
     exec "${converterCommand[@]}"
 else
+    set -o pipefail
     cat -- "$@" | "${converterCommand[@]}"
 fi
