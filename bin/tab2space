@@ -1,3 +1,9 @@
 #!/bin/bash
 
-exec tr $'\t' ' ' "$@"
+[ "$1" = -- ] && shift
+typeset -a converterCommand=(tr $'\t' ' ')
+if [ $# -eq 0 ]; then
+    exec "${converterCommand[@]}"
+else
+    cat -- "$@" | "${converterCommand[@]}"
+fi

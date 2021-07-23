@@ -1,3 +1,10 @@
 #!/bin/bash
 
-exec tr --squeeze-repeats ' ' $'\t' "$@"
+[ "$1" = -- ] && shift
+
+typeset -a converterCommand=(tr --squeeze-repeats ' ' $'\t')
+if [ $# -eq 0 ]; then
+    exec "${converterCommand[@]}"
+else
+    cat -- "$@" | "${converterCommand[@]}"
+fi
