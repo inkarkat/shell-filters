@@ -4,7 +4,7 @@ printShortUsage()
 {
     # Note: short followed by long option; if the user knows the short one, she can
     # skim the long one.
-    printf 'Usage: %q %s\n' "$(basename "$1")" '"[Ww ][Dd ][HH:]MM:SS" [...] [-?|-h|--help]'
+    printf 'Usage: %q %s\n' "$(basename "$1")" '"[Ww ][Dd |D-][HH:]MM:SS" [...] [-?|-h|--help]'
     printf 'Usage: cat FILE [...] | %q %s\n' "$(basename "$1")" '[-s|--skip SKIP&PATTERN [...]] [-m|--match MATCH&PATTERN [...]]'
 }
 printUsage()
@@ -19,7 +19,7 @@ printLongUsage()
     # This is the long "man page" when launched with the help argument.
     # It is printed to stdout to allow paging with 'more'.
     cat <<HELPDESCRIPTION
-Convert matches of [Ww ][Dd ][HH:]MM:SS into seconds.
+Convert matches of [Ww ][Dd |D-][HH:]MM:SS into seconds.
 HELPDESCRIPTION
     echo
     printShortUsage "$1"
@@ -56,7 +56,11 @@ awk -F $'\n' \
 function convert(duration,      calendar, n, clock, days, weeks, result, hasMatch)
 {
     n = split(gensub(/^.* /, "", 1, duration), clock, /:/)
-    split(duration, calendar, / /)
+    c = split(duration, calendar, / /)
+    if (match(clock[1], /^[[:digit:]]+-/)) {
+	calendar[c] = substr(clock[1], RSTART, RLENGTH - 1) "d"
+	clock[1] = substr(clock[1], RSTART + RLENGTH)
+    }
 
     if (calendar[1] ~ /^[[:digit:]]+w$/) {
 	weeks = substr(calendar[1], 1, length(calendar[1]) - 1)
@@ -92,7 +96,7 @@ function join(n, list, seps,      i, result) {
     return result
 }
 BEGIN {
-    DURATION_PATTERN = "\\<([[:digit:]]+w )?([[:digit:]]+d )?[[:digit:]]+(:[[:digit:]]{2}){1,2}\\>"
+    DURATION_PATTERN = "\\<([[:digit:]]+w )?([[:digit:]]+(d |-))?[[:digit:]]+(:[[:digit:]]{2}){1,2}\\>"
 
     if (ARGC > 1) {
 	for (i = 1; i < ARGC; ++i) {
