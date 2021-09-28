@@ -1,7 +1,7 @@
 #!/bin/bash
 
-: ${HIGHLIGHTRELATIVEAGE_COLORS:=[38;5;155m [38;5;149m [38;5;132m [38;5;124m [38;5;161m}
 : ${HIGHLIGHTRELATIVEAGE_RESET=[0m}
+: ${HIGHLIGHTRELATIVEAGE_COLORS:="[38;5;155m [38;5;149m $HIGHLIGHTRELATIVEAGE_RESET [38;5;132m [38;5;124m [38;5;161m"}
 
 printUsage()
 {
@@ -23,7 +23,7 @@ do
 	--delete-date|-d)   shift; match='\(.*\)'; replacement='\3';;
 	--palette|-p)	    shift
 			    case "$1" in
-				dashboard)  HIGHLIGHTRELATIVEAGE_COLORS='[38;2;255;255;255m [38;2;238;238;238m [38;2;72;72;72m [38;2;175;21;26m [38;2;79;9;10m';;
+				dashboard)  HIGHLIGHTRELATIVEAGE_COLORS="[38;2;255;255;255m [38;2;238;238;238m $HIGHLIGHTRELATIVEAGE_RESET [38;2;72;72;72m [38;2;175;21;26m [38;2;79;9;10m";;
 				*)	    printf 'ERROR: Invalid palette: %s\n' "$1"
 					    echo
 					    printUsage "$0"
@@ -40,9 +40,10 @@ done
 typeset -a COLOR=($HIGHLIGHTRELATIVEAGE_COLORS)
 
 sed "${sedArgs[@]}" \
-    -e "s/^\\(\x1b\[[0-9;]*[mK]\\)\\?\\(.*minutes\\? ago[[:space:]]\\+\\)${match}/${COLOR[0]}${replacement}${HIGHLIGHTRELATIVEAGE_RESET}\\1/" \
-    -e "s/^\\(\x1b\[[0-9;]*[mK]\\)\\?\\(.*hours\\? ago[[:space:]]\\+\\)${match}/${COLOR[1]}${replacement}${HIGHLIGHTRELATIVEAGE_RESET}\\1/" \
-    -e "s/^\\(\x1b\[[0-9;]*[mK]\\)\\?\\(.*[1-9][0-9]\\+ days ago[[:space:]]\\+\\)${match}/${COLOR[2]}${replacement}${HIGHLIGHTRELATIVEAGE_RESET}\\1/" \
-    -e "s/^\\(\x1b\[[0-9;]*[mK]\\)\\?\\(.*months\\? ago[[:space:]]\\+\\)${match}/${COLOR[3]}${replacement}${HIGHLIGHTRELATIVEAGE_RESET}\\1/" \
-    -e "s/^\\(\x1b\[[0-9;]*[mK]\\)\\?\\(.*years\\? ago[[:space:]]\\+\\)${match}/${COLOR[4]}${replacement}${HIGHLIGHTRELATIVEAGE_RESET}\\1/" \
+    -e "s/^\\(\x1b\[[0-9;]*[mK]\\)\\?\\(.*minutes\\? ago[[:space:]]\\+\\)${match}/${COLOR[0]}${replacement}${HIGHLIGHTRELATIVEAGE_RESET}\\1/; t" \
+    -e "s/^\\(\x1b\[[0-9;]*[mK]\\)\\?\\(.*hours\\? ago[[:space:]]\\+\\)${match}/${COLOR[1]}${replacement}${HIGHLIGHTRELATIVEAGE_RESET}\\1/; t" \
+    -e "s/^\\(\x1b\[[0-9;]*[mK]\\)\\?\\(.*[1-9][0-9]\\+ days ago[[:space:]]\\+\\)${match}/${COLOR[3]}${replacement}${HIGHLIGHTRELATIVEAGE_RESET}\\1/; t" \
+    -e "s/^\\(\x1b\[[0-9;]*[mK]\\)\\?\\(.*[1-9] days\\? ago[[:space:]]\\+\\)${match}/${COLOR[2]}${replacement}${HIGHLIGHTRELATIVEAGE_RESET}\\1/; t" \
+    -e "s/^\\(\x1b\[[0-9;]*[mK]\\)\\?\\(.*months\\? ago[[:space:]]\\+\\)${match}/${COLOR[4]}${replacement}${HIGHLIGHTRELATIVEAGE_RESET}\\1/; t" \
+    -e "s/^\\(\x1b\[[0-9;]*[mK]\\)\\?\\(.*years\\? ago[[:space:]]\\+\\)${match}/${COLOR[5]}${replacement}${HIGHLIGHTRELATIVEAGE_RESET}\\1/; t" \
     "$@"
