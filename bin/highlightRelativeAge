@@ -37,7 +37,8 @@ do
     esac
 done
 
-typeset -a COLOR=($HIGHLIGHTRELATIVEAGE_COLORS)
+typeset -a COLOR=()
+IFS='' read -r -a COLOR <<<"${HIGHLIGHTRELATIVEAGE_COLORS// /}"
 
 sed "${sedArgs[@]}" \
     -e "s/^\\(\x1b\[[0-9;]*[mK]\\)\\?\\(.*minutes\\? ago[[:space:]]\\+\\)${match}/${COLOR[0]}${replacement}${HIGHLIGHTRELATIVEAGE_RESET}\\1/; t" \
