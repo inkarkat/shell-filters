@@ -5,10 +5,10 @@
 ## Usage: nocolor FILE [...]
 ## Usage: cat FILE [...] | nocolor
 
-s#\x1b\[[0-9;]*[mK]##g
+s#\x1b\[[0-9:;]*[mK]##g
 
-# Bash version: ${1//\[*([0-9;])[mK]/}
+# Bash version: ${1//\[*([0-9:;])[mK]/}
 # nocolor()
 # {
-#     eval "$1=\"\${2//\\[*([0-9;])[mK]/}\""
+#     eval "$1=\"\${2//\\[*([0-9:;])[mK]/}\""
 # }
