@@ -18,11 +18,12 @@ typeset -a colorArg=()
 isColor=; [ -t 1 ] && isColor=t
 case "$1" in
     --help|-h|-\?)	shift; printUsage "$0"; exit 0;;
-    --no-color|--color=never)	colorArg=("$1"); isColor=; shift;;
+    --no-color|--color=never)
+			colorArg=("$1"); isColor=; shift;;
     --color=always)	colorArg=("$1"); isColor=t; shift;;
     --color)		colorArg=("$1" "$2")
-			case "" in
-			    always)	isColor=t;;
+			case "$2" in
+			    always) isColor=t;;
 			    never)  isColor=;;
 			esac
 			shift; shift
