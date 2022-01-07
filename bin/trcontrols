@@ -11,7 +11,8 @@ into printable representations; e.g. <Esc> into ^[ (highlighted ${TRCONTROLS_PRE
 is to the terminal and no --no-color is given).
 HELPTEXT
     echo
-    printf 'Usage: %q %s\n' "$(basename "$1")" '[--color=(always|auto|never)|--no-color] [SED-OPTIONS ...] [FILE ...] [-?|-h|--help]'
+    printf 'Usage: %q %s\n' "$(basename "$1")" '[--color=(always|auto|never)|--no-color] [SED-OPTIONS ...] FILE [...] [-?|-h|--help]'
+    printf 'Usage: cat FILE [...] | %q %s\n' "$(basename "$1")" '...'
 }
 
 isColor=; [ -t 1 ] && isColor=t

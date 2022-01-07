@@ -11,7 +11,8 @@ is to the terminal unless --no-color is given); ANSI escape sequences for
 coloring and cursor control are kept and executed.
 HELPTEXT
     echo
-    printf 'Usage: %q %s\n' "$(basename "$1")" '[--color=(always|auto|never)|--no-color] [SED-OPTIONS ...] [FILE ...] [-?|-h|--help]'
+    printf 'Usage: %q %s\n' "$(basename "$1")" '[--color=(always|auto|never)|--no-color] [SED-OPTIONS ...] FILE [...] [-?|-h|--help]'
+    printf 'Usage: cat FILE [...] | %q %s\n' "$(basename "$1")" '...'
 }
 
 typeset -a colorArg=()
