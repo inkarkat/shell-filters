@@ -1,16 +1,19 @@
 #!/bin/bash
 
+: ${TRCONTROLS_PREFIX=[07m}
+: ${TRCONTROLS_SUFFIX=[0m}
+
 printUsage()
 {
     cat <<HELPTEXT
-Translate all unprintable characters; ANSI escape sequences for coloring and
-cursor control are kept and executed.
+Translate all unprintable characters (and highlight them (e.g. ${TRCONTROLS_PREFIX}^[${TRCONTROLS_SUFFIX}) when output
+is to the terminal unless --no-color is given); ANSI escape sequences for
+coloring and cursor control are kept and executed.
 HELPTEXT
+    echo
     printf 'Usage: %q %s\n' "$(basename "$1")" '[--color=(always|auto|never)|--no-color] [SED-OPTIONS ...] [FILE ...] [-?|-h|--help]'
 }
 
-: ${TRCONTROLS_PREFIX=[07m}
-: ${TRCONTROLS_SUFFIX=[0m}
 typeset -a colorArg=()
 isColor=; [ -t 1 ] && isColor=t
 case "$1" in

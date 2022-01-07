@@ -1,16 +1,19 @@
 #!/bin/bash
 
+: ${TRCONTROLS_PREFIX=[07m}
+: ${TRCONTROLS_SUFFIX=[0m}
+
 printUsage()
 {
     cat <<HELPTEXT
 Translate all unprintable control characters (including ANSI escape sequences)
-into printable representations; e.g. <Esc> into ^[.
+into printable representations; e.g. <Esc> into ^[ (highlighted ${TRCONTROLS_PREFIX}^[${TRCONTROLS_SUFFIX} when output
+is to the terminal and no --no-color is given).
 HELPTEXT
+    echo
     printf 'Usage: %q %s\n' "$(basename "$1")" '[--color=(always|auto|never)|--no-color] [SED-OPTIONS ...] [FILE ...] [-?|-h|--help]'
 }
 
-: ${TRCONTROLS_PREFIX=[07m}
-: ${TRCONTROLS_SUFFIX=[0m}
 isColor=; [ -t 1 ] && isColor=t
 case "$1" in
     --help|-h|-\?)	shift; printUsage "$0"; exit 0;;
