@@ -162,8 +162,6 @@ adjust()
     esac
 
     [ $newValue -lt 0 ] && newValue=0
-    # Use this instead if no delay at all does not make sense.
-    #[ $newValue -le 0 ] && newValue=1
     eval "$var=\$newValue"
 }
 
