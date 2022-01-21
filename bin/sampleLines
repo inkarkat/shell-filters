@@ -27,7 +27,7 @@ printShortUsage()
 {
     # Note: short followed by long option; if the user knows the short one, she can
     # skim the long one.
-    printf 'Usage: %q %s\n' "$(basename "$1")" '[-r|--reset-on PATTERN] [-i|--inline-or-non|--inline-or-passthrough|-I|--inline-always [--inline-prefix IP] [-c|--clear] [-a|--append-reset|-k|--keep-reset]] [-s|--summarize WHAT[,PLURAL-WHAT] --summary-only] [-n|--count WHAT] [-t|--timespan TIMESPAN[SUFFIX][ADJUSTMENT]] [-T|--initial-delay TIMESPAN[SUFFIX]] [-?|-h|--help]'
+    printf 'Usage: %q %s\n' "$(basename "$1")" '[-r|--reset-on PATTERN] [-i|--inline-or-none|--inline-or-passthrough|-I|--inline-always [--inline-prefix IP] [-c|--clear] [-a|--append-reset|-k|--keep-reset]] [-s|--summarize WHAT[,PLURAL-WHAT] --summary-only] [-n|--count WHAT] [-t|--timespan TIMESPAN[SUFFIX][ADJUSTMENT]] [-T|--initial-delay TIMESPAN[SUFFIX]] [-?|-h|--help]'
 }
 printUsage()
 {
