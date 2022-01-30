@@ -1,0 +1,79 @@
+#!/bin/bash
+shopt -qs extglob
+
+printUsage()
+{
+    cat <<HELPTEXT
+Make all output appear in ATTRIBUTE and/or COLOR (via ANSI escape sequences).
+HELPTEXT
+    echo
+    printf 'Usage: %q %s\n' "$(basename "$1")" '[none|bold|underscore|blink|reverse|concealed|faint|italic|rapid|crossed-out|alternate|curly|double-underline|overline] [background black|red|green|yellow|blue|violet|cyan|grey|0-255|#RRGGBB|#RGB|0-255;0-255;0-255] [[foreground] black|red|green|yellow|blue|violet|cyan|grey|0-255|#RRGGBB|#RGB|0-255;0-255;0-255] -- FILE [...] [-?|-h|--help]'
+    echo
+    printf 'Usage: %q %s\n' "$(basename "$1")" '[ATTRIBUTE] [COLOR [COLOR]] MESSAGE [...]'
+    echo
+    printf 'Usage: cat FILE [...] | %q [ATTRIBUTE] [COLOR [COLOR]]\n' "$(basename "$1")"
+}
+typeset -a attributes=()
+case "$1" in
+    --help|-h|-\?)	shift; printUsage "$0"; exit 0;;
+
+    none)		shift; attributes+=(0);;
+    bold)		shift; attributes+=(1);;
+    underscore)		shift; attributes+=(4);;
+    blink)		shift; attributes+=(5);;
+    reverse)		shift; attributes+=(7);;
+    concealed)		shift; attributes+=(8);;
+    faint)		shift; attributes+=(2);;
+    italic)		shift; attributes+=(3);;
+    rapid)		shift; attributes+=(6);;
+    crossed-out)	shift; attributes+=(9);;
+    alternate)		shift; attributes+=(11);;
+    curly)		shift; attributes+=(4:3);;
+    double-underline)	shift; attributes+=(21);;
+    overline)		shift; attributes+=(53);;
+esac
+for ((i = 0; i < 2; i++))
+do
+    where=
+    case "$1" in
+	background)	shift; where=4;;
+	foreground)	shift; where=3;;
+    esac
+    case "$1" in
+	black)		shift; attributes+=(${where:-3}0);;
+	red)		shift; attributes+=(${where:-3}1);;
+	green)		shift; attributes+=(${where:-3}2);;
+	yellow)		shift; attributes+=(${where:-3}3);;
+	blue)		shift; attributes+=(${where:-3}4);;
+	violet)		shift; attributes+=(${where:-3}5);;
+	cyan)		shift; attributes+=(${where:-3}6);;
+	grey)		shift; attributes+=(${where:-3}7);;
+	[0-9]?([0-9]?([0-9])))
+			attributes+=("${where:-3}8;5;$1"); shift;;
+	\#[0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F])
+			attributes+=($(printf "${where:-3}8;2;%d;%d;%d" "0x${1:1:2}" "0x${1:3:2}" "0x${1:5}")); shift;;
+	\#[0-9a-fA-F][0-9a-fA-F][0-9a-fA-F])
+			attributes+=($(printf "${where:-3}8;2;%d;%d;%d" "0x${1:1:1}${1:1:1}" "0x${1:2:1}${1:2:1}" "0x${1:3}${1:3}")); shift;;
+	[0-9]?([0-9]?([0-9]))\;[0-9]?([0-9]?([0-9]))\;[0-9]?([0-9]?([0-9])))
+			attributes+=("${where:-3}8;2;$1"); shift;;
+	*)  if [ ${#attributes[@]} -eq 0 -o -n "$where" ]; then
+		printUsage "$0" >&2
+		exit 2
+	    fi
+	    break
+	    ;;
+    esac
+done
+attributes=("${attributes[@]/#/[}")
+attributes=("${attributes[@]/%/m}")
+IFS=''
+joinedAttributes="${attributes[*]}"
+
+typeset -a COLOR=(sed -e "s/\\[0m/${joinedAttributes}/g" -e "s/^/${joinedAttributes}/" -e "s/$/[0m/")
+if [ $# -eq 0 ]; then
+    exec "${COLOR[@]}"
+elif [ $# -ge 2 -a "$1" = '--' ]; then
+    cat "$@" | "${COLOR[@]}"
+else
+    printf '%s\n' "$*" | "${COLOR[@]}"
+fi
