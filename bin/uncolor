@@ -13,10 +13,16 @@ HELPTEXT
     printf 'Usage: cat FILE [...] | %q [...] [ATTRIBUTE] [COLOR [COLOR]] [...]\n' "$(basename "$1")"
 }
 
+# Mask 256-color sequences so that the individual elements are not mistakenly
+# recognized.
+typeset -a sedMask256Color=(-e 's#\x1b\[\([0-9:;]\+;\)\?\([34]8\);5;\([0-9]\+\)\(;[0-9:;]\+\)\?m#[\1\25\3\4m#g')
+typeset -a sedUnmask256Color=(-e 's#\x1b\[\([0-9:;]\+;\)\?\([34]8\)5\([0-9]\+\)\(;[0-9:;]\+\)\?m#[\1\2;5;\3\4m#g')
+
 getSequence()
 {
     colored --get "$@" 2>/dev/null | \
-	sed -e 's#^\x1b\[##' -e 's#m$##'
+	sed -e 's#^\x1b\[##' -e 's#m$##' \
+	    "${sedMask256Color[@]}"
 }
 
 typeset -a sequences=()
@@ -50,13 +56,20 @@ typeset -a sedSequenceRemoval=()
 for s in "${sequences[@]}"
 do
     sedSequenceRemoval+=(-e "s#\\x1b\\[\\(${s}\\)m##g")   # Standalone sequence
-    sedSequenceRemoval+=(-e "s#\\(\\x1b\\[[0-9:;]*\\);\\(${s}\\)m#\\1m#g")	# Sequence at the end of larger sequence
-    sedSequenceRemoval+=(-e "s#\\x1b\\[\\(${s}\\);\\([0-9:;]*m\\)#[\\2#g")	# Sequence at the start of larger sequence
-    sedSequenceRemoval+=(-e "s#\\(\\x1b\\[[0-9:;]*\\);\\(${s}\\);\\([0-9:;]*m\\)#\\1;\\3#g")	# Sequence in the middle of larger sequence
+    sedSequenceRemoval+=(-e "s#\\(\\x1b\\[[0-9:;]*\\);\\(${s}\\)m#\\1m#g")	# Sequence at the end of larger sequence
+    sedSequenceRemoval+=(-e "s#\\x1b\\[\\(${s}\\);\\([0-9:;]*m\\)#[\\2#g")	# Sequence at the start of larger sequence
+    sedSequenceRemoval+=(-e "s#\\(\\x1b\\[[0-9:;]*\\);\\(${s}\\);\\([0-9:;]*m\\)#\\1;\\3#g")	# Sequence in the middle of larger sequence
 done
 
-exec sed -e ':restart' \
-    -e 's#\(\x1b\[[0-9:;]*;\)0\+\([1-9][0-9:;]*m\)#\1\2#g' \
-    "${sedSequenceRemoval[@]}" \
-    -e 't restart' \
+exec sed \
+    "${sedMask256Color[@]}" \
+    -e ':restartRemoveLeadingZeros' \
+	-e 's#\(\x1b\[[0-9:;]*[;]\)0\+\([1-9][0-9:;]*m\)#\1\2#g' \
+	-e 't restartRemoveLeadingZeros' \
+    -e ':restartRemoval' \
+	"${sedSequenceRemoval[@]}" \
+	-e 't restartRemoval' \
+    -e ':restartUnmask' \
+	"${sedUnmask256Color[@]}" \
+	-e 't restartUnmask' \
     "$@"
