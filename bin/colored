@@ -1,13 +1,14 @@
 #!/bin/bash
 shopt -qs extglob
 
+readonly ATTRIBUTE_COLOR_SYNTAX='[none|bold|underscore|blink|reverse|concealed|faint|italic|rapid|crossed-out|alternate|curly|double-underline|overline] [background black|red|green|yellow|blue|violet|cyan|grey|0-255|#RRGGBB|#RGB|0-255;0-255;0-255] [[foreground] black|red|green|yellow|blue|violet|cyan|grey|0-255|#RRGGBB|#RGB|0-255;0-255;0-255]'
 printUsage()
 {
     cat <<HELPTEXT
 Make all output appear in ATTRIBUTE and/or COLOR (via ANSI escape sequences).
 HELPTEXT
     echo
-    printf 'Usage: [COLORED_SEPARATE_SEQUENCES=true] %q %s\n' "$(basename "$1")" '[none|bold|underscore|blink|reverse|concealed|faint|italic|rapid|crossed-out|alternate|curly|double-underline|overline] [background black|red|green|yellow|blue|violet|cyan|grey|0-255|#RRGGBB|#RGB|0-255;0-255;0-255] [[foreground] black|red|green|yellow|blue|violet|cyan|grey|0-255|#RRGGBB|#RGB|0-255;0-255;0-255] -- FILE [...] [-?|-h|--help]'
+    printf 'Usage: [COLORED_SEPARATE_SEQUENCES=true] %q %s %s\n' "$(basename "$1")" "$ATTRIBUTE_COLOR_SYNTAX" '-- FILE [...] [-?|-h|--help|--list-colors]'
     echo
     printf 'Usage: %q %s\n' "$(basename "$1")" '[ATTRIBUTE] [COLOR [COLOR]] MESSAGE [...]'
     echo
@@ -20,6 +21,7 @@ isPrintSequence=
 typeset -a attributes=()
 case "$1" in
     --help|-h|-\?)	shift; printUsage "$0"; exit 0;;
+    --list-colors)	shift; printf '%s\n' "$ATTRIBUTE_COLOR_SYNTAX"; exit 0;;
     --get|-g)		shift; isPrintSequence=t;;
 esac
 case "$1" in

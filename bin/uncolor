@@ -6,7 +6,8 @@ printUsage()
 Remove ANSI escape sequences for ATTRIBUTE and/or COLOR selectively from the output.
 HELPTEXT
     echo
-    printf 'Usage: %q %s\n' "$(basename "$1")" '[none|bold|underscore|blink|reverse|concealed|faint|italic|rapid|crossed-out|alternate|curly|double-underline|overline] [background black|red|green|yellow|blue|violet|cyan|grey|0-255|#RRGGBB|#RGB|0-255;0-255;0-255] [[foreground] black|red|green|yellow|blue|violet|cyan|grey|0-255|#RRGGBB|#RGB|0-255;0-255;0-255] [...] -- FILE [...]'
+    local attributeColorSyntax; attributeColorSyntax="$(colored --list-colors)" || exit 3
+    printf 'Usage: %q %s %s\n' "$(basename "$1")" "$attributeColorSyntax" '[...] -- FILE [...]'
     echo
     printf 'Usage: cat FILE [...] | %q [ATTRIBUTE] [COLOR [COLOR]] [...]\n' "$(basename "$1")"
 }
