@@ -23,8 +23,11 @@ typeset -a sedUnmaskRGBColor=(-e 's#\x1b\[\([0-9:;]\+;\)\?\([34]8\)2\([0-9]\+
 getSequence()
 {
     colored --get "$@" 2>/dev/null | \
-	sed -e 's#^\x1b\[##' -e 's#m$##' \
-	    "${sedMask256Color[@]}" "${sedMaskRGBColor[@]}"
+	sed \
+	    -e ':restartMask' \
+	    "${sedMask256Color[@]}" "${sedMaskRGBColor[@]}" \
+	    -e 't restartMask' \
+	    -e 's#^\x1b\[##' -e 's#m$##'
 }
 
 typeset -a sequences=()
