@@ -14,7 +14,11 @@ HELPTEXT
 
 getSequence()
 {
-    colored --get "$@" 2>/dev/null
+    local rawSequence; rawSequence="$(colored --get "$@" 2>/dev/null)" || return $?
+    local sequence
+    sequence="${rawSequence/#\[/}"
+    sequence="${sequence/%m/}"
+    printf %s "$sequence"
 }
 
 typeset -a sequences=()
@@ -43,8 +47,6 @@ if [ ${#sequences[@]} -eq 0 ]; then
     printUsage "$0" >&2
     exit 2
 fi
-sequences=("${sequences[@]/#\[/}")
-sequences=("${sequences[@]/%m/}")
 
 typeset -a sedSequenceRemoval=()
 for s in "${sequences[@]}"
