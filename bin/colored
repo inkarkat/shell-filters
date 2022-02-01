@@ -7,16 +7,22 @@ printUsage()
 Make all output appear in ATTRIBUTE and/or COLOR (via ANSI escape sequences).
 HELPTEXT
     echo
-    printf 'Usage: %q %s\n' "$(basename "$1")" '[none|bold|underscore|blink|reverse|concealed|faint|italic|rapid|crossed-out|alternate|curly|double-underline|overline] [background black|red|green|yellow|blue|violet|cyan|grey|0-255|#RRGGBB|#RGB|0-255;0-255;0-255] [[foreground] black|red|green|yellow|blue|violet|cyan|grey|0-255|#RRGGBB|#RGB|0-255;0-255;0-255] -- FILE [...] [-?|-h|--help]'
+    printf 'Usage: [COLORED_SEPARATE_SEQUENCES=true] %q %s\n' "$(basename "$1")" '[none|bold|underscore|blink|reverse|concealed|faint|italic|rapid|crossed-out|alternate|curly|double-underline|overline] [background black|red|green|yellow|blue|violet|cyan|grey|0-255|#RRGGBB|#RGB|0-255;0-255;0-255] [[foreground] black|red|green|yellow|blue|violet|cyan|grey|0-255|#RRGGBB|#RGB|0-255;0-255;0-255] -- FILE [...] [-?|-h|--help]'
     echo
     printf 'Usage: %q %s\n' "$(basename "$1")" '[ATTRIBUTE] [COLOR [COLOR]] MESSAGE [...]'
     echo
     printf 'Usage: cat FILE [...] | %q [ATTRIBUTE] [COLOR [COLOR]]\n' "$(basename "$1")"
+    echo
+    printf 'Usage: %q -g|--get [ATTRIBUTE] [COLOR [COLOR]]\n' "$(basename "$1")"
+    printf 'Usage: %q [ATTRIBUTE] [COLOR [COLOR]] -g|--get\n' "$(basename "$1")"
 }
+isPrintSequence=
 typeset -a attributes=()
 case "$1" in
     --help|-h|-\?)	shift; printUsage "$0"; exit 0;;
-
+    --get|-g)		shift; isPrintSequence=t;;
+esac
+case "$1" in
     none)		shift; attributes+=(0);;
     bold)		shift; attributes+=(1);;
     underscore)		shift; attributes+=(4);;
@@ -64,13 +70,20 @@ do
 	    ;;
     esac
 done
-attributes=("${attributes[@]/#/[}")
-attributes=("${attributes[@]/%/m}")
-IFS=''
-joinedAttributes="${attributes[*]}"
+if [ "$COLORED_SEPARATE_SEQUENCES" ]; then
+    attributes=("${attributes[@]/#/[}")
+    attributes=("${attributes[@]/%/m}")
+    IFS=''
+    joinedAttributes="${attributes[*]}"
+else
+    IFS=';'
+    joinedAttributes="[${attributes[*]}m"
+fi
 
 typeset -a COLOR=(sed -e "s/\\[0m/${joinedAttributes}/g" -e "s/^/${joinedAttributes}/" -e "s/$/[0m/")
-if [ $# -eq 0 ]; then
+if [ $# -eq 0 -a "$isPrintSequence" ] || [ $# -eq 1 -a \( "$1" = --get -o "$1" = -g \) ]; then
+    printf %s "$joinedAttributes"
+elif [ $# -eq 0 ]; then
     exec "${COLOR[@]}"
 elif [ $# -ge 2 -a "$1" = '--' ]; then
     cat "$@" | "${COLOR[@]}"
