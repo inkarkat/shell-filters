@@ -13,16 +13,18 @@ HELPTEXT
     printf 'Usage: cat FILE [...] | %q [...] [ATTRIBUTE] [COLOR [COLOR]] [...]\n' "$(basename "$1")"
 }
 
-# Mask 256-color sequences so that the individual elements are not mistakenly
-# recognized.
+# Mask 256-color and RGB sequences so that the individual elements are not
+# mistakenly recognized.
 typeset -a sedMask256Color=(-e 's#\x1b\[\([0-9:;]\+;\)\?\([34]8\);5;\([0-9]\+\)\(;[0-9:;]\+\)\?m#[\1\25\3\4m#g')
 typeset -a sedUnmask256Color=(-e 's#\x1b\[\([0-9:;]\+;\)\?\([34]8\)5\([0-9]\+\)\(;[0-9:;]\+\)\?m#[\1\2;5;\3\4m#g')
+typeset -a sedMaskRGBColor=(-e 's#\x1b\[\([0-9:;]\+;\)\?\([34]8\);2;\([0-9]\+\);\([0-9]\+\);\([0-9]\+\)\(;[0-9:;]\+\)\?m#[\1\22\3\4\5\6m#g')
+typeset -a sedUnmaskRGBColor=(-e 's#\x1b\[\([0-9:;]\+;\)\?\([34]8\)2\([0-9]\+\)\([0-9]\+\)\([0-9]\+\)\(;[0-9:;]\+\)\?m#[\1\2;2;\3;\4;\5\6m#g')
 
 getSequence()
 {
     colored --get "$@" 2>/dev/null | \
 	sed -e 's#^\x1b\[##' -e 's#m$##' \
-	    "${sedMask256Color[@]}"
+	    "${sedMask256Color[@]}" "${sedMaskRGBColor[@]}"
 }
 
 typeset -a sequences=()
@@ -62,7 +64,7 @@ do
 done
 
 exec sed \
-    "${sedMask256Color[@]}" \
+    "${sedMask256Color[@]}" "${sedMaskRGBColor[@]}" \
     -e ':restartRemoveLeadingZeros' \
 	-e 's#\(\x1b\[[0-9:;]*[;]\)0\+\([1-9][0-9:;]*m\)#\1\2#g' \
 	-e 't restartRemoveLeadingZeros' \
@@ -70,6 +72,6 @@ exec sed \
 	"${sedSequenceRemoval[@]}" \
 	-e 't restartRemoval' \
     -e ':restartUnmask' \
-	"${sedUnmask256Color[@]}" \
+	"${sedUnmaskRGBColor[@]}" "${sedUnmask256Color[@]}" \
 	-e 't restartUnmask' \
     "$@"
