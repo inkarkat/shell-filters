@@ -7,9 +7,9 @@ Remove ANSI escape sequences for ATTRIBUTE and/or COLOR selectively from the out
 HELPTEXT
     echo
     local attributeColorSyntax; attributeColorSyntax="$(colored --list-colors)" || exit 3
-    printf 'Usage: %q %s %s\n' "$(basename "$1")" "$attributeColorSyntax" '[...] -- FILE [...]'
+    printf 'Usage: %q %s %s\n' "$(basename "$1")" "--attributes|$attributeColorSyntax" '[...] -- FILE [...]'
     echo
-    printf 'Usage: cat FILE [...] | %q [ATTRIBUTE] [COLOR [COLOR]] [...]\n' "$(basename "$1")"
+    printf 'Usage: cat FILE [...] | %q [...] [ATTRIBUTE] [COLOR [COLOR]] [...]\n' "$(basename "$1")"
 }
 typeset -a sequences=()
 while [ $# -ne 0 ]
@@ -17,6 +17,7 @@ do
     case "$1" in
 	--help|-h|-\?)	shift; printUsage "$0"; exit 0;;
 	--)		break;;
+	--attributes)	shift; sequences+=('[1-9]\|11\|21\|53\|4:3');;
 	foreground|background)
 			if ! sequences+=("$(colored --get "$1" "$2" 2>/dev/null)"); then
 			    printUsage "$0" >&2
