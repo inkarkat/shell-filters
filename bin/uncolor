@@ -42,10 +42,10 @@ sequences=("${sequences[@]/%m/}")
 typeset -a sedSequenceRemoval=()
 for s in "${sequences[@]}"
 do
-    sedSequenceRemoval+=(-e "s#\\x1b\\[${s}m##g")   # Standalone sequence
-    sedSequenceRemoval+=(-e "s#\\(\\x1b\\[[0-9:;]*\\);${s}m#\\1m#g")	# Sequence at the end of larger sequence
-    sedSequenceRemoval+=(-e "s#\\x1b\\[${s};\\([0-9:;]*m\\)#[\\1#g")	# Sequence at the start of larger sequence
-    sedSequenceRemoval+=(-e "s#\\(\\x1b\\[[0-9:;]*\\);${s};\\([0-9:;]*m\\)#\\1;\\2#g")	# Sequence in the middle of larger sequence
+    sedSequenceRemoval+=(-e "s#\\x1b\\[\\(${s}\\)m##g")   # Standalone sequence
+    sedSequenceRemoval+=(-e "s#\\(\\x1b\\[[0-9:;]*\\);\\(${s}\\)m#\\1m#g")	# Sequence at the end of larger sequence
+    sedSequenceRemoval+=(-e "s#\\x1b\\[\\(${s}\\);\\([0-9:;]*m\\)#[\\2#g")	# Sequence at the start of larger sequence
+    sedSequenceRemoval+=(-e "s#\\(\\x1b\\[[0-9:;]*\\);\\(${s}\\);\\([0-9:;]*m\\)#\\1;\\3#g")	# Sequence in the middle of larger sequence
 done
 
 exec sed -e ':restart' \
