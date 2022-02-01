@@ -8,7 +8,7 @@ Remove ANSI escape sequences for ATTRIBUTE and/or COLOR selectively from the out
 HELPTEXT
     echo
     local attributeColorSyntax; attributeColorSyntax="$(colored --list-colors)" || exit 3
-    printf 'Usage: %q %s %s\n' "$(basename "$1")" "--attributes|$attributeColorSyntax" '[...] -- FILE [...]'
+    printf 'Usage: %q %s %s\n' "$(basename "$1")" "--attributes|--(basic|256|rgb)-(colors|foregrounds|backgrounds)|--non-basic-colors|$attributeColorSyntax" '[...] -- FILE [...]'
     echo
     printf 'Usage: cat FILE [...] | %q [...] [ATTRIBUTE] [COLOR [COLOR]] [...]\n' "$(basename "$1")"
 }
@@ -36,7 +36,21 @@ do
     case "$1" in
 	--help|-h|-\?)	shift; printUsage "$0"; exit 0;;
 	--)		break;;
-	--attributes)	shift; sequences+=('[1-9]\|11\|21\|53\|4:3');;
+
+	--attributes)		shift; sequences+=('[1-9]\|11\|21\|53\|4:3');;
+	--basic-colors)		shift; sequences+=('[34][0-7]');;
+	--basic-foregrounds)	shift; sequences+=('3[0-7]');;
+	--basic-backgrounds)	shift; sequences+=('4[0-7]');;
+	--256-colors)		shift; sequences+=('[34]85[0-9]\+');;
+	--256-foregrounds)	shift; sequences+=('385[0-9]\+');;
+	--256-backgrounds)	shift; sequences+=('485[0-9]\+');;
+	--rgb-colors)		shift; sequences+=('[34]82[0-9]\+[0-9]\+[0-9]\+');;
+	--rgb-foregrounds)	shift; sequences+=('382[0-9]\+[0-9]\+[0-9]\+');;
+	--rgb-backgrounds)	shift; sequences+=('482[0-9]\+[0-9]\+[0-9]\+');;
+	--foregrounds)		shift; sequences+=('3[0-7]\|385[0-9]\+\|382[0-9]\+[0-9]\+[0-9]\+');;
+	--backgrounds)		shift; sequences+=('4[0-7]\|485[0-9]\+\|482[0-9]\+[0-9]\+[0-9]\+');;
+	--non-basic-colors)	shift; sequences+=('[34]85[0-9]\+\|[34]82[0-9]\+[0-9]\+[0-9]\+');;
+
 	foreground|background)
 			if ! sequences+=("$(getSequence "$1" "$2")"); then
 			    printUsage "$0" >&2
