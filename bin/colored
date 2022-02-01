@@ -7,7 +7,7 @@ printUsage()
 Make all output appear in ATTRIBUTE and/or COLOR (via ANSI escape sequences).
 HELPTEXT
     echo
-    printf 'Usage: %q %s\n' "$(basename "$1")" '[none|bold|underscore|blink|reverse|concealed|faint|italic|rapid|crossed-out|alternate|curly|double-underline|overline] [background black|red|green|yellow|blue|violet|cyan|grey|0-255|#RRGGBB|#RGB|0-255;0-255;0-255] [[foreground] black|red|green|yellow|blue|violet|cyan|grey|0-255|#RRGGBB|#RGB|0-255;0-255;0-255] -- FILE [...] [-?|-h|--help]'
+    printf 'Usage: [COLORED_SEPARATE_SEQUENCES=true] %q %s\n' "$(basename "$1")" '[none|bold|underscore|blink|reverse|concealed|faint|italic|rapid|crossed-out|alternate|curly|double-underline|overline] [background black|red|green|yellow|blue|violet|cyan|grey|0-255|#RRGGBB|#RGB|0-255;0-255;0-255] [[foreground] black|red|green|yellow|blue|violet|cyan|grey|0-255|#RRGGBB|#RGB|0-255;0-255;0-255] -- FILE [...] [-?|-h|--help]'
     echo
     printf 'Usage: %q %s\n' "$(basename "$1")" '[ATTRIBUTE] [COLOR [COLOR]] MESSAGE [...]'
     echo
@@ -70,10 +70,15 @@ do
 	    ;;
     esac
 done
-attributes=("${attributes[@]/#/[}")
-attributes=("${attributes[@]/%/m}")
-IFS=''
-joinedAttributes="${attributes[*]}"
+if [ "$COLORED_SEPARATE_SEQUENCES" ]; then
+    attributes=("${attributes[@]/#/[}")
+    attributes=("${attributes[@]/%/m}")
+    IFS=''
+    joinedAttributes="${attributes[*]}"
+else
+    IFS=';'
+    joinedAttributes="[${attributes[*]}m"
+fi
 
 typeset -a COLOR=(sed -e "s/\\[0m/${joinedAttributes}/g" -e "s/^/${joinedAttributes}/" -e "s/$/[0m/")
 if [ $# -eq 0 -a "$isPrintSequence" ] || [ $# -eq 1 -a \( "$1" = --get -o "$1" = -g \) ]; then
