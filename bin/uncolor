@@ -11,6 +11,12 @@ HELPTEXT
     echo
     printf 'Usage: cat FILE [...] | %q [...] [ATTRIBUTE] [COLOR [COLOR]] [...]\n' "$(basename "$1")"
 }
+
+getSequence()
+{
+    colored --get "$@" 2>/dev/null
+}
+
 typeset -a sequences=()
 while [ $# -ne 0 ]
 do
@@ -19,13 +25,13 @@ do
 	--)		break;;
 	--attributes)	shift; sequences+=('[1-9]\|11\|21\|53\|4:3');;
 	foreground|background)
-			if ! sequences+=("$(colored --get "$1" "$2" 2>/dev/null)"); then
+			if ! sequences+=("$(getSequence "$1" "$2")"); then
 			    printUsage "$0" >&2
 			    exit 2
 			fi
 			shift; shift
 			;;
-	*)		if ! sequences+=("$(colored --get "$1" 2>/dev/null)"); then
+	*)		if ! sequences+=("$(getSequence "$1")"); then
 			    printUsage "$0" >&2
 			    exit 2
 			fi
