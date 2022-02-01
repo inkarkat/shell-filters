@@ -1,0 +1,48 @@
+#!/bin/bash
+
+printUsage()
+{
+    cat <<HELPTEXT
+Remove ANSI escape sequences for ATTRIBUTE and/or COLOR selectively from the output.
+HELPTEXT
+    echo
+    printf 'Usage: %q %s\n' "$(basename "$1")" '[none|bold|underscore|blink|reverse|concealed|faint|italic|rapid|crossed-out|alternate|curly|double-underline|overline] [background black|red|green|yellow|blue|violet|cyan|grey|0-255|#RRGGBB|#RGB|0-255;0-255;0-255] [[foreground] black|red|green|yellow|blue|violet|cyan|grey|0-255|#RRGGBB|#RGB|0-255;0-255;0-255] [...] -- FILE [...]'
+    echo
+    printf 'Usage: cat FILE [...] | %q [ATTRIBUTE] [COLOR [COLOR]] [...]\n' "$(basename "$1")"
+}
+typeset -a sequences=()
+while [ $# -ne 0 ]
+do
+    case "$1" in
+	--help|-h|-\?)	shift; printUsage "$0"; exit 0;;
+	--)		break;;
+	foreground|background)
+			sequences+=("$(colored --get "$1" "$2")") || exit 2
+			shift; shift
+			;;
+	*)		sequences+=("$(colored --get "$1")") || exit 2
+			shift
+			;;
+    esac
+done
+if [ ${#sequences[@]} -eq 0 ]; then
+    printUsage "$0" >&2
+    exit 2
+fi
+sequences=("${sequences[@]/#\[/}")
+sequences=("${sequences[@]/%m/}")
+
+typeset -a sedSequenceRemoval=()
+for s in "${sequences[@]}"
+do
+    sedSequenceRemoval+=(-e "s#\\x1b\\[${s}m##g")   # Standalone sequence
+    sedSequenceRemoval+=(-e "s#\\(\\x1b\\[[0-9:;]*\\);${s}m#\\1m#g")	# Sequence at the end of larger sequence
+    sedSequenceRemoval+=(-e "s#\\x1b\\[${s};\\([0-9:;]*m\\)#[\\1#g")	# Sequence at the start of larger sequence
+    sedSequenceRemoval+=(-e "s#\\(\\x1b\\[[0-9:;]*\\);${s};\\([0-9:;]*m\\)#\\1;\\2#g")	# Sequence in the middle of larger sequence
+done
+
+exec sed -e ':restart' \
+    -e 's#\(\x1b\[\([0-9:;]\+\);\)\?0\+\([1-9][0-9:;]*m\)#\1\3#g' \
+    "${sedSequenceRemoval[@]}" \
+    -e 't restart' \
+    "$@"
