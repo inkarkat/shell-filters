@@ -1,0 +1,94 @@
+#!/bin/bash
+set -o pipefail
+
+printUsage()
+{
+    cat <<HELPTEXT
+Remove ANSI escape sequences for ATTRIBUTE and/or COLOR selectively from the output.
+HELPTEXT
+    echo
+    local attributeColorSyntax; attributeColorSyntax="$(colored --list-colors)" || exit 3
+    printf 'Usage: %q %s %s\n' "$(basename "$1")" "--attributes|--(basic|256|rgb)-(colors|foregrounds|backgrounds)|--non-basic-colors|$attributeColorSyntax" '[...] -- FILE [...]'
+    echo
+    printf 'Usage: cat FILE [...] | %q [...] [ATTRIBUTE] [COLOR [COLOR]] [...]\n' "$(basename "$1")"
+}
+
+# Mask 256-color and RGB sequences so that the individual elements are not
+# mistakenly recognized.
+typeset -a sedMask256Color=(-e 's#\x1b\[\([0-9:;]\+;\)\?\([34]8\);5;\([0-9]\+\)\(;[0-9:;]\+\)\?m#[\1\25\3\4m#g')
+typeset -a sedUnmask256Color=(-e 's#\x1b\[\([0-9:;]\+;\)\?\([34]8\)5\([0-9]\+\)\(;[0-9:;]\+\)\?m#[\1\2;5;\3\4m#g')
+typeset -a sedMaskRGBColor=(-e 's#\x1b\[\([0-9:;]\+;\)\?\([34]8\);2;\([0-9]\+\);\([0-9]\+\);\([0-9]\+\)\(;[0-9:;]\+\)\?m#[\1\22\3\4\5\6m#g')
+typeset -a sedUnmaskRGBColor=(-e 's#\x1b\[\([0-9:;]\+;\)\?\([34]8\)2\([0-9]\+\)\([0-9]\+\)\([0-9]\+\)\(;[0-9:;]\+\)\?m#[\1\2;2;\3;\4;\5\6m#g')
+
+getSequence()
+{
+    colored --get "$@" 2>/dev/null | \
+	sed \
+	    -e ':restartMask' \
+	    "${sedMask256Color[@]}" "${sedMaskRGBColor[@]}" \
+	    -e 't restartMask' \
+	    -e 's#^\x1b\[##' -e 's#m$##'
+}
+
+typeset -a sequences=()
+while [ $# -ne 0 ]
+do
+    case "$1" in
+	--help|-h|-\?)	shift; printUsage "$0"; exit 0;;
+	--)		break;;
+
+	--attributes)		shift; sequences+=('[1-9]\|11\|21\|53\|4:3');;
+	--basic-colors)		shift; sequences+=('[34][0-7]');;
+	--basic-foregrounds)	shift; sequences+=('3[0-7]');;
+	--basic-backgrounds)	shift; sequences+=('4[0-7]');;
+	--256-colors)		shift; sequences+=('[34]85[0-9]\+');;
+	--256-foregrounds)	shift; sequences+=('385[0-9]\+');;
+	--256-backgrounds)	shift; sequences+=('485[0-9]\+');;
+	--rgb-colors)		shift; sequences+=('[34]82[0-9]\+[0-9]\+[0-9]\+');;
+	--rgb-foregrounds)	shift; sequences+=('382[0-9]\+[0-9]\+[0-9]\+');;
+	--rgb-backgrounds)	shift; sequences+=('482[0-9]\+[0-9]\+[0-9]\+');;
+	--foregrounds)		shift; sequences+=('3[0-7]\|385[0-9]\+\|382[0-9]\+[0-9]\+[0-9]\+');;
+	--backgrounds)		shift; sequences+=('4[0-7]\|485[0-9]\+\|482[0-9]\+[0-9]\+[0-9]\+');;
+	--non-basic-colors)	shift; sequences+=('[34]85[0-9]\+\|[34]82[0-9]\+[0-9]\+[0-9]\+');;
+
+	foreground|background)
+			if ! sequences+=("$(getSequence "$1" "$2")"); then
+			    printUsage "$0" >&2
+			    exit 2
+			fi
+			shift; shift
+			;;
+	*)		if ! sequences+=("$(getSequence "$1")"); then
+			    printUsage "$0" >&2
+			    exit 2
+			fi
+			shift
+			;;
+    esac
+done
+if [ ${#sequences[@]} -eq 0 ]; then
+    printUsage "$0" >&2
+    exit 2
+fi
+
+typeset -a sedSequenceRemoval=()
+for s in "${sequences[@]}"
+do
+    sedSequenceRemoval+=(-e "s#\\x1b\\[\\(${s}\\)m##g")   # Standalone sequence
+    sedSequenceRemoval+=(-e "s#\\(\\x1b\\[[0-9:;]*\\);\\(${s}\\)m#\\1m#g")	# Sequence at the end of larger sequence
+    sedSequenceRemoval+=(-e "s#\\x1b\\[\\(${s}\\);\\([0-9:;]*m\\)#[\\2#g")	# Sequence at the start of larger sequence
+    sedSequenceRemoval+=(-e "s#\\(\\x1b\\[[0-9:;]*\\);\\(${s}\\);\\([0-9:;]*m\\)#\\1;\\3#g")	# Sequence in the middle of larger sequence
+done
+
+exec sed \
+    "${sedMask256Color[@]}" "${sedMaskRGBColor[@]}" \
+    -e ':restartRemoveLeadingZeros' \
+	-e 's#\(\x1b\[[0-9:;]*[;]\)0\+\([1-9][0-9:;]*m\)#\1\2#g' \
+	-e 't restartRemoveLeadingZeros' \
+    -e ':restartRemoval' \
+	"${sedSequenceRemoval[@]}" \
+	-e 't restartRemoval' \
+    -e ':restartUnmask' \
+	"${sedUnmaskRGBColor[@]}" "${sedUnmask256Color[@]}" \
+	-e 't restartUnmask' \
+    "$@"
