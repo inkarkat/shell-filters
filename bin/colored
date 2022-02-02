@@ -10,36 +10,40 @@ HELPTEXT
     echo
     printf 'Usage: [COLORED_SEPARATE_SEQUENCES=true] %q %s %s\n' "$(basename "$1")" "$ATTRIBUTE_COLOR_SYNTAX" '-- FILE [...] [-?|-h|--help|--list-colors]'
     echo
-    printf 'Usage: %q %s\n' "$(basename "$1")" '[ATTRIBUTE] [COLOR [COLOR]] MESSAGE [...]'
+    printf 'Usage: %q %s\n' "$(basename "$1")" '[ATTRIBUTE [...]] [COLOR [COLOR]] MESSAGE [...]'
     echo
-    printf 'Usage: cat FILE [...] | %q [ATTRIBUTE] [COLOR [COLOR]]\n' "$(basename "$1")"
+    printf 'Usage: cat FILE [...] | %q [ATTRIBUTE [...]] [COLOR [COLOR]]\n' "$(basename "$1")"
     echo
-    printf 'Usage: %q -g|--get [ATTRIBUTE] [COLOR [COLOR]]\n' "$(basename "$1")"
-    printf 'Usage: %q [ATTRIBUTE] [COLOR [COLOR]] -g|--get\n' "$(basename "$1")"
+    printf 'Usage: %q -g|--get [ATTRIBUTE [...]] [COLOR [COLOR]]\n' "$(basename "$1")"
+    printf 'Usage: %q [ATTRIBUTE [...]] [COLOR [COLOR]] -g|--get\n' "$(basename "$1")"
 }
 isPrintSequence=
-typeset -a attributes=()
+typeset -a sequences=()
 case "$1" in
     --help|-h|-\?)	shift; printUsage "$0"; exit 0;;
     --list-colors)	shift; printf '%s\n' "$ATTRIBUTE_COLOR_SYNTAX"; exit 0;;
     --get|-g)		shift; isPrintSequence=t;;
 esac
-case "$1" in
-    none)		shift; attributes+=(0);;
-    bold)		shift; attributes+=(1);;
-    underscore)		shift; attributes+=(4);;
-    blink)		shift; attributes+=(5);;
-    reverse)		shift; attributes+=(7);;
-    concealed)		shift; attributes+=(8);;
-    faint)		shift; attributes+=(2);;
-    italic)		shift; attributes+=(3);;
-    rapid)		shift; attributes+=(6);;
-    crossed-out)	shift; attributes+=(9);;
-    alternate)		shift; attributes+=(11);;
-    curly)		shift; attributes+=(4:3);;
-    double-underline)	shift; attributes+=(21);;
-    overline)		shift; attributes+=(53);;
-esac
+while [ $# -ne 0 ]
+do
+    case "$1" in
+	none)			shift; sequences+=(0);;
+	bold)			shift; sequences+=(1);;
+	underscore)		shift; sequences+=(4);;
+	blink)			shift; sequences+=(5);;
+	reverse)		shift; sequences+=(7);;
+	concealed)		shift; sequences+=(8);;
+	faint)			shift; sequences+=(2);;
+	italic)			shift; sequences+=(3);;
+	rapid)			shift; sequences+=(6);;
+	crossed-out)		shift; sequences+=(9);;
+	alternate)		shift; sequences+=(11);;
+	curly)			shift; sequences+=(4:3);;
+	double-underline)	shift; sequences+=(21);;
+	overline)		shift; sequences+=(53);;
+	*)			break;;
+    esac
+done
 for ((i = 0; i < 2; i++))
 do
     where=
@@ -48,23 +52,23 @@ do
 	foreground)	shift; where=3;;
     esac
     case "$1" in
-	black)		shift; attributes+=(${where:-3}0);;
-	red)		shift; attributes+=(${where:-3}1);;
-	green)		shift; attributes+=(${where:-3}2);;
-	yellow)		shift; attributes+=(${where:-3}3);;
-	blue)		shift; attributes+=(${where:-3}4);;
-	violet)		shift; attributes+=(${where:-3}5);;
-	cyan)		shift; attributes+=(${where:-3}6);;
-	grey)		shift; attributes+=(${where:-3}7);;
+	black)		shift; sequences+=(${where:-3}0);;
+	red)		shift; sequences+=(${where:-3}1);;
+	green)		shift; sequences+=(${where:-3}2);;
+	yellow)		shift; sequences+=(${where:-3}3);;
+	blue)		shift; sequences+=(${where:-3}4);;
+	violet)		shift; sequences+=(${where:-3}5);;
+	cyan)		shift; sequences+=(${where:-3}6);;
+	grey)		shift; sequences+=(${where:-3}7);;
 	[0-9]?([0-9]?([0-9])))
-			attributes+=("${where:-3}8;5;$1"); shift;;
+			sequences+=("${where:-3}8;5;$1"); shift;;
 	\#[0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F])
-			attributes+=($(printf "${where:-3}8;2;%d;%d;%d" "0x${1:1:2}" "0x${1:3:2}" "0x${1:5}")); shift;;
+			sequences+=($(printf "${where:-3}8;2;%d;%d;%d" "0x${1:1:2}" "0x${1:3:2}" "0x${1:5}")); shift;;
 	\#[0-9a-fA-F][0-9a-fA-F][0-9a-fA-F])
-			attributes+=($(printf "${where:-3}8;2;%d;%d;%d" "0x${1:1:1}${1:1:1}" "0x${1:2:1}${1:2:1}" "0x${1:3}${1:3}")); shift;;
+			sequences+=($(printf "${where:-3}8;2;%d;%d;%d" "0x${1:1:1}${1:1:1}" "0x${1:2:1}${1:2:1}" "0x${1:3}${1:3}")); shift;;
 	[0-9]?([0-9]?([0-9]))\;[0-9]?([0-9]?([0-9]))\;[0-9]?([0-9]?([0-9])))
-			attributes+=("${where:-3}8;2;$1"); shift;;
-	*)  if [ ${#attributes[@]} -eq 0 -o -n "$where" ]; then
+			sequences+=("${where:-3}8;2;$1"); shift;;
+	*)  if [ ${#sequences[@]} -eq 0 -o -n "$where" ]; then
 		printUsage "$0" >&2
 		exit 2
 	    fi
@@ -72,19 +76,21 @@ do
 	    ;;
     esac
 done
+saveIFS="$IFS"
 if [ "$COLORED_SEPARATE_SEQUENCES" ]; then
-    attributes=("${attributes[@]/#/[}")
-    attributes=("${attributes[@]/%/m}")
+    sequences=("${sequences[@]/#/[}")
+    sequences=("${sequences[@]/%/m}")
     IFS=''
-    joinedAttributes="${attributes[*]}"
+    joinedSequences="${sequences[*]}"
 else
     IFS=';'
-    joinedAttributes="[${attributes[*]}m"
+    joinedSequences="[${sequences[*]}m"
 fi
+IFS="$saveIFS"
 
-typeset -a COLOR=(sed -e "s/\\[0m/${joinedAttributes}/g" -e "s/^/${joinedAttributes}/" -e "s/$/[0m/")
+typeset -a COLOR=(sed -e "s/\\[0m/${joinedSequences}/g" -e "s/^/${joinedSequences}/" -e "s/$/[0m/")
 if [ $# -eq 0 -a "$isPrintSequence" ] || [ $# -eq 1 -a \( "$1" = --get -o "$1" = -g \) ]; then
-    printf %s "$joinedAttributes"
+    printf %s "$joinedSequences"
 elif [ $# -eq 0 ]; then
     exec "${COLOR[@]}"
 elif [ $# -ge 2 -a "$1" = '--' ]; then
