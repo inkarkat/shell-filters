@@ -26,6 +26,7 @@ typeset -a sedUnmaskRGBColor=(-e 's#\x1b\[\([0-9:;]\+;\)\?\([34]8\)\{1,2\}2\{
 typeset -a sedMaskSingle=(-e 's#\x1b\[\([0-9:;]\+;\)\?\([1-9]\|11\|21\|53\|4:3\|[34][0-7]\)\(;[0-9:;]\+\)\?m#[\1\2\3m#g')
 typeset -a sedUnmaskSingle=(-e 's#\x1b\[\([0-9:;]\+;\)\?\([1-9]\|11\|21\|53\|4:3\|[34][0-7]\)\(;[0-9:;]\+\)\?m#[\1\2\3m#g')
 
+typeset -a sedStripSequence=(-e 's#^\x1b\[##' -e 's#m$##')
 getSequence()
 {
     colored --get "$@" 2>/dev/null | \
@@ -33,7 +34,7 @@ getSequence()
 	    -e ':restartMask' \
 	    "${sedMask256Color[@]}" "${sedMaskRGBColor[@]}" \
 	    -e 't restartMask' \
-	    -e 's#^\x1b\[##' -e 's#m$##'
+	    "${sedStripSequence[@]}"
 }
 getReplacementSequence()
 {
@@ -43,7 +44,7 @@ getReplacementSequence()
 	    "${sedMaskSingle[@]}" \
 	    "${sedMask256Color[@]///}" "${sedMaskRGBColor[@]///}" \
 	    -e 't restartMask' \
-	    -e 's#^\x1b\[##' -e 's#m$##'
+	    "${sedStripSequence[@]}"
 }
 
 typeset -a sedSequenceRemoval=()
