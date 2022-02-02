@@ -53,6 +53,7 @@ unsequence()
 
 while [ $# -ne 0 ]
 do
+    foregroundBackgroundPrefix=
     case "$1" in
 	--help|-h|-\?)	shift; printUsage "$0"; exit 0;;
 	--)		break;;
@@ -60,24 +61,25 @@ do
 	--attributes)		shift; sequence='[1-9]\|11\|21\|53\|4:3';;
 
 	--basic-colors)		shift; sequence='[34][0-7]';;
-	--basic-foregrounds)	shift; sequence='3[0-7]';;
-	--basic-backgrounds)	shift; sequence='4[0-7]';;
+	--basic-foregrounds)	shift; sequence='3[0-7]'; foregroundBackgroundPrefix=foreground;;
+	--basic-backgrounds)	shift; sequence='4[0-7]'; foregroundBackgroundPrefix=background;;
 
 	--256-colors)		shift; sequence='[34]85[0-9]\+';;
-	--256-foregrounds)	shift; sequence='385[0-9]\+';;
-	--256-backgrounds)	shift; sequence='485[0-9]\+';;
+	--256-foregrounds)	shift; sequence='385[0-9]\+'; foregroundBackgroundPrefix=foreground;;
+	--256-backgrounds)	shift; sequence='485[0-9]\+'; foregroundBackgroundPrefix=background;;
 
 	--rgb-colors)		shift; sequence='[34]82[0-9]\+[0-9]\+[0-9]\+';;
-	--rgb-foregrounds)	shift; sequence='382[0-9]\+[0-9]\+[0-9]\+';;
-	--rgb-backgrounds)	shift; sequence='482[0-9]\+[0-9]\+[0-9]\+';;
+	--rgb-foregrounds)	shift; sequence='382[0-9]\+[0-9]\+[0-9]\+'; foregroundBackgroundPrefix=foreground;;
+	--rgb-backgrounds)	shift; sequence='482[0-9]\+[0-9]\+[0-9]\+'; foregroundBackgroundPrefix=background;;
 
 	--colors)		shift; sequence='[34][0-7]\|[34]85[0-9]\+\|[34]82[0-9]\+[0-9]\+[0-9]\+';;
-	--foregrounds)		shift; sequence='3[0-7]\|385[0-9]\+\|382[0-9]\+[0-9]\+[0-9]\+';;
-	--backgrounds)		shift; sequence='4[0-7]\|485[0-9]\+\|482[0-9]\+[0-9]\+[0-9]\+';;
+	--foregrounds)		shift; sequence='3[0-7]\|385[0-9]\+\|382[0-9]\+[0-9]\+[0-9]\+'; foregroundBackgroundPrefix=foreground;;
+	--backgrounds)		shift; sequence='4[0-7]\|485[0-9]\+\|482[0-9]\+[0-9]\+[0-9]\+'; foregroundBackgroundPrefix=background;;
 
 	--non-basic-colors)	shift; sequence='[34]85[0-9]\+\|[34]82[0-9]\+[0-9]\+[0-9]\+';;
 
 	foreground|background)
+			foregroundBackgroundPrefix="$1"
 			if ! sequence="$(getSequence "$1" "$2")"; then
 			    printUsage "$0" >&2
 			    exit 2
@@ -103,7 +105,7 @@ do
 		fi
 		shift; shift
 		;;
-	    *)	if ! replacementSequence="$(getReplacementSequence "$1")"; then
+	    *)	if ! replacementSequence="$(getReplacementSequence ${foregroundBackgroundPrefix:+"$foregroundBackgroundPrefix"} "$1")"; then
 		    printUsage "$0" >&2
 		    exit 2
 		fi
