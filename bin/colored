@@ -10,12 +10,12 @@ HELPTEXT
     echo
     printf 'Usage: [COLORED_SEPARATE_SEQUENCES=true] %q %s %s\n' "$(basename "$1")" "$ATTRIBUTE_COLOR_SYNTAX" '-- FILE [...] [-?|-h|--help|--list-colors]'
     echo
-    printf 'Usage: %q %s\n' "$(basename "$1")" '[ATTRIBUTE] [COLOR [COLOR]] MESSAGE [...]'
+    printf 'Usage: %q %s\n' "$(basename "$1")" '[ATTRIBUTE [...]] [COLOR [COLOR]] MESSAGE [...]'
     echo
-    printf 'Usage: cat FILE [...] | %q [ATTRIBUTE] [COLOR [COLOR]]\n' "$(basename "$1")"
+    printf 'Usage: cat FILE [...] | %q [ATTRIBUTE [...]] [COLOR [COLOR]]\n' "$(basename "$1")"
     echo
-    printf 'Usage: %q -g|--get [ATTRIBUTE] [COLOR [COLOR]]\n' "$(basename "$1")"
-    printf 'Usage: %q [ATTRIBUTE] [COLOR [COLOR]] -g|--get\n' "$(basename "$1")"
+    printf 'Usage: %q -g|--get [ATTRIBUTE [...]] [COLOR [COLOR]]\n' "$(basename "$1")"
+    printf 'Usage: %q [ATTRIBUTE [...]] [COLOR [COLOR]] -g|--get\n' "$(basename "$1")"
 }
 isPrintSequence=
 typeset -a sequences=()
@@ -24,22 +24,26 @@ case "$1" in
     --list-colors)	shift; printf '%s\n' "$ATTRIBUTE_COLOR_SYNTAX"; exit 0;;
     --get|-g)		shift; isPrintSequence=t;;
 esac
-case "$1" in
-    none)		shift; sequences+=(0);;
-    bold)		shift; sequences+=(1);;
-    underscore)		shift; sequences+=(4);;
-    blink)		shift; sequences+=(5);;
-    reverse)		shift; sequences+=(7);;
-    concealed)		shift; sequences+=(8);;
-    faint)		shift; sequences+=(2);;
-    italic)		shift; sequences+=(3);;
-    rapid)		shift; sequences+=(6);;
-    crossed-out)	shift; sequences+=(9);;
-    alternate)		shift; sequences+=(11);;
-    curly)		shift; sequences+=(4:3);;
-    double-underline)	shift; sequences+=(21);;
-    overline)		shift; sequences+=(53);;
-esac
+while [ $# -ne 0 ]
+do
+    case "$1" in
+	none)			shift; sequences+=(0);;
+	bold)			shift; sequences+=(1);;
+	underscore)		shift; sequences+=(4);;
+	blink)			shift; sequences+=(5);;
+	reverse)		shift; sequences+=(7);;
+	concealed)		shift; sequences+=(8);;
+	faint)			shift; sequences+=(2);;
+	italic)			shift; sequences+=(3);;
+	rapid)			shift; sequences+=(6);;
+	crossed-out)		shift; sequences+=(9);;
+	alternate)		shift; sequences+=(11);;
+	curly)			shift; sequences+=(4:3);;
+	double-underline)	shift; sequences+=(21);;
+	overline)		shift; sequences+=(53);;
+	*)			break;;
+    esac
+done
 for ((i = 0; i < 2; i++))
 do
     where=
