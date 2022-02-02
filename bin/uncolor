@@ -20,6 +20,12 @@ typeset -a sedUnmask256Color=(-e 's#\x1b\[\([0-9:;]\+;\)\?\([34]8\)\{1,2\}5\{
 typeset -a sedMaskRGBColor=(-e 's#\x1b\[\([0-9:;]\+;\)\?\([34]8\);2;\([0-9]\+\);\([0-9]\+\);\([0-9]\+\)\(;[0-9:;]\+\)\?m#[\1\22\3\4\5\6m#g')
 typeset -a sedUnmaskRGBColor=(-e 's#\x1b\[\([0-9:;]\+;\)\?\([34]8\)\{1,2\}2\{1,2\}\([0-9]\+\)\{1,2\}\([0-9]\+\)\{1,2\}\([0-9]\+\)\(;[0-9:;]\+\)\?m#[\1\2;2;\3;\4;\5\6m#g')
 
+# Mask single (attribute and basic color) sequences only in replacements to
+# avoid endless loops when the same sequence is matched - this can easily happen
+# with the color classes like --foregrounds.
+typeset -a sedMaskSingle=(-e 's#\x1b\[\([0-9:;]\+;\)\?\([1-9]\|11\|21\|53\|4:3\|[34][0-7]\)\(;[0-9:;]\+\)\?m#[\1\2\3m#g')
+typeset -a sedUnmaskSingle=(-e 's#\x1b\[\([0-9:;]\+;\)\?\([1-9]\|11\|21\|53\|4:3\|[34][0-7]\)\(;[0-9:;]\+\)\?m#[\1\2\3m#g')
+
 getSequence()
 {
     colored --get "$@" 2>/dev/null | \
@@ -34,6 +40,7 @@ getReplacementSequence()
     colored --get "$@" 2>/dev/null | \
 	sed \
 	    -e ':restartMask' \
+	    "${sedMaskSingle[@]}" \
 	    "${sedMask256Color[@]///}" "${sedMaskRGBColor[@]///}" \
 	    -e 't restartMask' \
 	    -e 's#^\x1b\[##' -e 's#m$##'
@@ -132,6 +139,6 @@ exec sed \
 	"${sedSequenceRemoval[@]}" \
 	-e 't restartRemoval' \
     -e ':restartUnmask' \
-	"${sedUnmaskRGBColor[@]}" "${sedUnmask256Color[@]}" \
+	"${sedUnmaskRGBColor[@]}" "${sedUnmask256Color[@]}" "${sedUnmaskSingle[@]}" \
 	-e 't restartUnmask' \
     "$@"
