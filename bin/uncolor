@@ -36,15 +36,19 @@ getSequence()
 	    -e 't restartMask' \
 	    "${sedStripSequence[@]}"
 }
+maskReplacement()
+{
+    sed \
+	-e ':restartMask' \
+	"${sedMaskSingle[@]}" \
+	"${sedMask256Color[@]///}" "${sedMaskRGBColor[@]///}" \
+	-e 't restartMask' \
+	"${sedStripSequence[@]}"
+}
 getReplacementSequence()
 {
     colored --get "$@" 2>/dev/null | \
-	sed \
-	    -e ':restartMask' \
-	    "${sedMaskSingle[@]}" \
-	    "${sedMask256Color[@]///}" "${sedMaskRGBColor[@]///}" \
-	    -e 't restartMask' \
-	    "${sedStripSequence[@]}"
+	maskReplacement
 }
 
 typeset -a sedSequenceRemoval=()
