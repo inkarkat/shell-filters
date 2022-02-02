@@ -1,6 +1,11 @@
 #!/bin/bash
 set -o pipefail
 
+: ${UNCOLOR_CLEAR_ATTRIBUTES=$'\e[0m'}
+: ${UNCOLOR_CLEAR_COLORS=$'\e[30;48;5;231m'}
+: ${UNCOLOR_CLEAR_FOREGROUND=$'\e[30m'}
+: ${UNCOLOR_CLEAR_BACKGROUND=$'\e[48;5;231m'}
+
 printUsage()
 {
     cat <<HELPTEXT
@@ -8,7 +13,7 @@ Remove ANSI escape sequences for ATTRIBUTE and/or COLOR selectively from the out
 HELPTEXT
     echo
     local attributeColorSyntax; attributeColorSyntax="$(colored --list-colors)" || exit 3
-    printf 'Usage: %q %s %s\n' "$(basename "$1")" "--attributes|--[basic-|256-|rgb-](colors|foregrounds|backgrounds)|--non-basic-colors|$attributeColorSyntax [to ATTRIBUTE|COLOR]" '[...] -- FILE [...]'
+    printf 'Usage: %q %s %s\n' "$(basename "$1")" "[-c|--clear] --attributes|--[basic-|256-|rgb-](colors|foregrounds|backgrounds)|--non-basic-colors|$attributeColorSyntax [to ATTRIBUTE|COLOR]" '[...] -- FILE [...]'
     echo
     printf 'Usage: cat FILE [...] | %q [...] [ATTRIBUTE|COLOR] [to ATTRIBUTE|COLOR] [...]\n' "$(basename "$1")"
 }
@@ -62,33 +67,35 @@ unsequence()
     sedSequenceRemoval+=(-e "s#\\(\\x1b\\[[0-9:;]*\\);\\(${s}\\);\\([0-9:;]*m\\)#\\1;${r}${r:+;}\\3#g")	# Sequence in the middle of larger sequence
 }
 
-
+isClear=
 while [ $# -ne 0 ]
 do
+    sequenceType=
     foregroundBackgroundPrefix=
     case "$1" in
 	--help|-h|-\?)	shift; printUsage "$0"; exit 0;;
+	--clear|-c)	shift; isClear=t; continue;;
 	--)		break;;
 
-	--attributes)		shift; sequence='[1-9]\|11\|21\|53\|4:3';;
+	--attributes)		shift; sequence='[1-9]\|11\|21\|53\|4:3'; sequenceType=attributes;;
 
-	--basic-colors)		shift; sequence='[34][0-7]';;
+	--basic-colors)		shift; sequence='[34][0-7]'; sequenceType=colors;;
 	--basic-foregrounds)	shift; sequence='3[0-7]'; foregroundBackgroundPrefix=foreground;;
 	--basic-backgrounds)	shift; sequence='4[0-7]'; foregroundBackgroundPrefix=background;;
 
-	--256-colors)		shift; sequence='[34]85[0-9]\+';;
+	--256-colors)		shift; sequence='[34]85[0-9]\+'; sequenceType=colors;;
 	--256-foregrounds)	shift; sequence='385[0-9]\+'; foregroundBackgroundPrefix=foreground;;
 	--256-backgrounds)	shift; sequence='485[0-9]\+'; foregroundBackgroundPrefix=background;;
 
-	--rgb-colors)		shift; sequence='[34]82[0-9]\+[0-9]\+[0-9]\+';;
+	--rgb-colors)		shift; sequence='[34]82[0-9]\+[0-9]\+[0-9]\+'; sequenceType=colors;;
 	--rgb-foregrounds)	shift; sequence='382[0-9]\+[0-9]\+[0-9]\+'; foregroundBackgroundPrefix=foreground;;
 	--rgb-backgrounds)	shift; sequence='482[0-9]\+[0-9]\+[0-9]\+'; foregroundBackgroundPrefix=background;;
 
-	--colors)		shift; sequence='[34][0-7]\|[34]85[0-9]\+\|[34]82[0-9]\+[0-9]\+[0-9]\+';;
+	--colors)		shift; sequence='[34][0-7]\|[34]85[0-9]\+\|[34]82[0-9]\+[0-9]\+[0-9]\+'; sequenceType=colors;;
 	--foregrounds)		shift; sequence='3[0-7]\|385[0-9]\+\|382[0-9]\+[0-9]\+[0-9]\+'; foregroundBackgroundPrefix=foreground;;
 	--backgrounds)		shift; sequence='4[0-7]\|485[0-9]\+\|482[0-9]\+[0-9]\+[0-9]\+'; foregroundBackgroundPrefix=background;;
 
-	--non-basic-colors)	shift; sequence='[34]85[0-9]\+\|[34]82[0-9]\+[0-9]\+[0-9]\+';;
+	--non-basic-colors)	shift; sequence='[34]85[0-9]\+\|[34]82[0-9]\+[0-9]\+[0-9]\+'; sequenceType=colors;;
 
 	foreground|background)
 			foregroundBackgroundPrefix="$1"
@@ -125,6 +132,11 @@ do
 		;;
 	esac
 	unsequence "$sequence" "$replacementSequence"
+    elif [ "$isClear" ]; then
+	clearVariableName="${sequenceType:-$foregroundBackgroundPrefix}"
+	clearVariableName="UNCOLOR_CLEAR_${clearVariableName^^}"
+	clearSequence="$(printf '%s\n' "${!clearVariableName}" | maskReplacement)"
+	unsequence "$sequence" "$clearSequence"
     else
 	unsequence "$sequence"
     fi
