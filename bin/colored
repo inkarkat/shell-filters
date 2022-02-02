@@ -72,6 +72,7 @@ do
 	    ;;
     esac
 done
+saveIFS="$IFS"
 if [ "$COLORED_SEPARATE_SEQUENCES" ]; then
     attributes=("${attributes[@]/#/[}")
     attributes=("${attributes[@]/%/m}")
@@ -81,6 +82,7 @@ else
     IFS=';'
     joinedAttributes="[${attributes[*]}m"
 fi
+IFS="$saveIFS"
 
 typeset -a COLOR=(sed -e "s/\\[0m/${joinedAttributes}/g" -e "s/^/${joinedAttributes}/" -e "s/$/[0m/")
 if [ $# -eq 0 -a "$isPrintSequence" ] || [ $# -eq 1 -a \( "$1" = --get -o "$1" = -g \) ]; then
