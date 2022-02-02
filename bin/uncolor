@@ -47,19 +47,19 @@ do
 	--help|-h|-\?)	shift; printUsage "$0"; exit 0;;
 	--)		break;;
 
-	--attributes)		shift; unsequence '[1-9]\|11\|21\|53\|4:3';;
-	--basic-colors)		shift; unsequence '[34][0-7]';;
-	--basic-foregrounds)	shift; unsequence '3[0-7]';;
-	--basic-backgrounds)	shift; unsequence '4[0-7]';;
-	--256-colors)		shift; unsequence '[34]85[0-9]\+';;
-	--256-foregrounds)	shift; unsequence '385[0-9]\+';;
-	--256-backgrounds)	shift; unsequence '485[0-9]\+';;
-	--rgb-colors)		shift; unsequence '[34]82[0-9]\+[0-9]\+[0-9]\+';;
-	--rgb-foregrounds)	shift; unsequence '382[0-9]\+[0-9]\+[0-9]\+';;
-	--rgb-backgrounds)	shift; unsequence '482[0-9]\+[0-9]\+[0-9]\+';;
-	--foregrounds)		shift; unsequence '3[0-7]\|385[0-9]\+\|382[0-9]\+[0-9]\+[0-9]\+';;
-	--backgrounds)		shift; unsequence '4[0-7]\|485[0-9]\+\|482[0-9]\+[0-9]\+[0-9]\+';;
-	--non-basic-colors)	shift; unsequence '[34]85[0-9]\+\|[34]82[0-9]\+[0-9]\+[0-9]\+';;
+	--attributes)		shift; sequence='[1-9]\|11\|21\|53\|4:3';;
+	--basic-colors)		shift; sequence='[34][0-7]';;
+	--basic-foregrounds)	shift; sequence='3[0-7]';;
+	--basic-backgrounds)	shift; sequence='4[0-7]';;
+	--256-colors)		shift; sequence='[34]85[0-9]\+';;
+	--256-foregrounds)	shift; sequence='385[0-9]\+';;
+	--256-backgrounds)	shift; sequence='485[0-9]\+';;
+	--rgb-colors)		shift; sequence='[34]82[0-9]\+[0-9]\+[0-9]\+';;
+	--rgb-foregrounds)	shift; sequence='382[0-9]\+[0-9]\+[0-9]\+';;
+	--rgb-backgrounds)	shift; sequence='482[0-9]\+[0-9]\+[0-9]\+';;
+	--foregrounds)		shift; sequence='3[0-7]\|385[0-9]\+\|382[0-9]\+[0-9]\+[0-9]\+';;
+	--backgrounds)		shift; sequence='4[0-7]\|485[0-9]\+\|482[0-9]\+[0-9]\+[0-9]\+';;
+	--non-basic-colors)	shift; sequence='[34]85[0-9]\+\|[34]82[0-9]\+[0-9]\+[0-9]\+';;
 
 	foreground|background)
 			if ! sequence="$(getSequence "$1" "$2")"; then
@@ -67,16 +67,15 @@ do
 			    exit 2
 			fi
 			shift; shift
-			unsequence "$sequence"
 			;;
 	*)		if ! sequence="$(getSequence "$1")"; then
 			    printUsage "$0" >&2
 			    exit 2
 			fi
 			shift
-			unsequence "$sequence"
 			;;
     esac
+    unsequence "$sequence"
 done
 if [ ${#sedSequenceRemoval[@]} -eq 0 ]; then
     printUsage "$0" >&2
