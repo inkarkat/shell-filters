@@ -8,9 +8,9 @@ Remove ANSI escape sequences for ATTRIBUTE and/or COLOR selectively from the out
 HELPTEXT
     echo
     local attributeColorSyntax; attributeColorSyntax="$(colored --list-colors)" || exit 3
-    printf 'Usage: %q %s %s\n' "$(basename "$1")" "--attributes|--(basic|256|rgb)-(colors|foregrounds|backgrounds)|--non-basic-colors|$attributeColorSyntax" '[...] -- FILE [...]'
+    printf 'Usage: %q %s %s\n' "$(basename "$1")" "--attributes|--[basic-|256-|rgb-](colors|foregrounds|backgrounds)|--non-basic-colors|$attributeColorSyntax" '[...] -- FILE [...]'
     echo
-    printf 'Usage: cat FILE [...] | %q [...] [ATTRIBUTE] [COLOR [COLOR]] [...]\n' "$(basename "$1")"
+    printf 'Usage: cat FILE [...] | %q [...] [ATTRIBUTE|COLOR] [...]\n' "$(basename "$1")"
 }
 
 # Mask 256-color and RGB sequences so that the individual elements are not
@@ -48,17 +48,23 @@ do
 	--)		break;;
 
 	--attributes)		shift; sequence='[1-9]\|11\|21\|53\|4:3';;
+
 	--basic-colors)		shift; sequence='[34][0-7]';;
 	--basic-foregrounds)	shift; sequence='3[0-7]';;
 	--basic-backgrounds)	shift; sequence='4[0-7]';;
+
 	--256-colors)		shift; sequence='[34]85[0-9]\+';;
 	--256-foregrounds)	shift; sequence='385[0-9]\+';;
 	--256-backgrounds)	shift; sequence='485[0-9]\+';;
+
 	--rgb-colors)		shift; sequence='[34]82[0-9]\+[0-9]\+[0-9]\+';;
 	--rgb-foregrounds)	shift; sequence='382[0-9]\+[0-9]\+[0-9]\+';;
 	--rgb-backgrounds)	shift; sequence='482[0-9]\+[0-9]\+[0-9]\+';;
+
+	--colors)		shift; sequence='[34][0-7]\|[34]85[0-9]\+\|[34]82[0-9]\+[0-9]\+[0-9]\+';;
 	--foregrounds)		shift; sequence='3[0-7]\|385[0-9]\+\|382[0-9]\+[0-9]\+[0-9]\+';;
 	--backgrounds)		shift; sequence='4[0-7]\|485[0-9]\+\|482[0-9]\+[0-9]\+[0-9]\+';;
+
 	--non-basic-colors)	shift; sequence='[34]85[0-9]\+\|[34]82[0-9]\+[0-9]\+[0-9]\+';;
 
 	foreground|background)
