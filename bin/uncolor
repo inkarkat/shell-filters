@@ -134,7 +134,7 @@ fi
 exec sed \
     "${sedMask256Color[@]}" "${sedMaskRGBColor[@]}" \
     -e ':restartRemoveLeadingZeros' \
-	-e 's#\(\x1b\[[0-9:;]*[;]\)0\+\([1-9][0-9:;]*m\)#\1\2#g' \
+	-e 's#\(\x1b\[\([0-9:;]*[;]\)\?\)0\+\([1-9][0-9:;]*m\)#\1\3#g' \
 	-e 't restartRemoveLeadingZeros' \
     -e ':restartRemoval' \
 	"${sedSequenceRemoval[@]}" \
