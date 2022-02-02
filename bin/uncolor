@@ -52,7 +52,7 @@ unsequence()
 {
     local s="${1:?}"; shift
     local r="$1"; shift
-    sedSequenceRemoval+=(-e "s#\\x1b\\[\\(${s}\\)m#${r}#g")   # Standalone sequence
+    sedSequenceRemoval+=(-e "s#\\x1b\\[\\(${s}\\)m#${r:+[}${r}${r:+m}#g")   # Standalone sequence
     sedSequenceRemoval+=(-e "s#\\(\\x1b\\[[0-9:;]*\\);\\(${s}\\)m#\\1${r:+;}${r}m#g")	# Sequence at the end of larger sequence
     sedSequenceRemoval+=(-e "s#\\x1b\\[\\(${s}\\);\\([0-9:;]*m\\)#[${r}${r:+;}\\2#g")	# Sequence at the start of larger sequence
     sedSequenceRemoval+=(-e "s#\\(\\x1b\\[[0-9:;]*\\);\\(${s}\\);\\([0-9:;]*m\\)#\\1;${r}${r:+;}\\3#g")	# Sequence in the middle of larger sequence
