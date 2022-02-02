@@ -131,6 +131,7 @@ if [ ${#sedSequenceRemoval[@]} -eq 0 ]; then
     exit 2
 fi
 
+export ECHOTRACE_IFS=$'\n' VERBOSE_IFS=$'\n'	# Break arguments over lines in debugging output.
 exec sed \
     "${sedMask256Color[@]}" "${sedMaskRGBColor[@]}" \
     -e ':restartRemoveLeadingZeros' \
