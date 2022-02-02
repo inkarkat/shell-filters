@@ -30,55 +30,58 @@ getSequence()
 	    -e 's#^\x1b\[##' -e 's#m$##'
 }
 
-typeset -a sequences=()
+typeset -a sedSequenceRemoval=()
+unsequence()
+{
+    local s="${1:?}"; shift
+    sedSequenceRemoval+=(-e "s#\\x1b\\[\\(${s}\\)m##g")   # Standalone sequence
+    sedSequenceRemoval+=(-e "s#\\(\\x1b\\[[0-9:;]*\\);\\(${s}\\)m#\\1m#g")	# Sequence at the end of larger sequence
+    sedSequenceRemoval+=(-e "s#\\x1b\\[\\(${s}\\);\\([0-9:;]*m\\)#[\\2#g")	# Sequence at the start of larger sequence
+    sedSequenceRemoval+=(-e "s#\\(\\x1b\\[[0-9:;]*\\);\\(${s}\\);\\([0-9:;]*m\\)#\\1;\\3#g")	# Sequence in the middle of larger sequence
+}
+
+
 while [ $# -ne 0 ]
 do
     case "$1" in
 	--help|-h|-\?)	shift; printUsage "$0"; exit 0;;
 	--)		break;;
 
-	--attributes)		shift; sequences+=('[1-9]\|11\|21\|53\|4:3');;
-	--basic-colors)		shift; sequences+=('[34][0-7]');;
-	--basic-foregrounds)	shift; sequences+=('3[0-7]');;
-	--basic-backgrounds)	shift; sequences+=('4[0-7]');;
-	--256-colors)		shift; sequences+=('[34]85[0-9]\+');;
-	--256-foregrounds)	shift; sequences+=('385[0-9]\+');;
-	--256-backgrounds)	shift; sequences+=('485[0-9]\+');;
-	--rgb-colors)		shift; sequences+=('[34]82[0-9]\+[0-9]\+[0-9]\+');;
-	--rgb-foregrounds)	shift; sequences+=('382[0-9]\+[0-9]\+[0-9]\+');;
-	--rgb-backgrounds)	shift; sequences+=('482[0-9]\+[0-9]\+[0-9]\+');;
-	--foregrounds)		shift; sequences+=('3[0-7]\|385[0-9]\+\|382[0-9]\+[0-9]\+[0-9]\+');;
-	--backgrounds)		shift; sequences+=('4[0-7]\|485[0-9]\+\|482[0-9]\+[0-9]\+[0-9]\+');;
-	--non-basic-colors)	shift; sequences+=('[34]85[0-9]\+\|[34]82[0-9]\+[0-9]\+[0-9]\+');;
+	--attributes)		shift; unsequence '[1-9]\|11\|21\|53\|4:3';;
+	--basic-colors)		shift; unsequence '[34][0-7]';;
+	--basic-foregrounds)	shift; unsequence '3[0-7]';;
+	--basic-backgrounds)	shift; unsequence '4[0-7]';;
+	--256-colors)		shift; unsequence '[34]85[0-9]\+';;
+	--256-foregrounds)	shift; unsequence '385[0-9]\+';;
+	--256-backgrounds)	shift; unsequence '485[0-9]\+';;
+	--rgb-colors)		shift; unsequence '[34]82[0-9]\+[0-9]\+[0-9]\+';;
+	--rgb-foregrounds)	shift; unsequence '382[0-9]\+[0-9]\+[0-9]\+';;
+	--rgb-backgrounds)	shift; unsequence '482[0-9]\+[0-9]\+[0-9]\+';;
+	--foregrounds)		shift; unsequence '3[0-7]\|385[0-9]\+\|382[0-9]\+[0-9]\+[0-9]\+';;
+	--backgrounds)		shift; unsequence '4[0-7]\|485[0-9]\+\|482[0-9]\+[0-9]\+[0-9]\+';;
+	--non-basic-colors)	shift; unsequence '[34]85[0-9]\+\|[34]82[0-9]\+[0-9]\+[0-9]\+';;
 
 	foreground|background)
-			if ! sequences+=("$(getSequence "$1" "$2")"); then
+			if ! sequence="$(getSequence "$1" "$2")"; then
 			    printUsage "$0" >&2
 			    exit 2
 			fi
 			shift; shift
+			unsequence "$sequence"
 			;;
-	*)		if ! sequences+=("$(getSequence "$1")"); then
+	*)		if ! sequence="$(getSequence "$1")"; then
 			    printUsage "$0" >&2
 			    exit 2
 			fi
 			shift
+			unsequence "$sequence"
 			;;
     esac
 done
-if [ ${#sequences[@]} -eq 0 ]; then
+if [ ${#sedSequenceRemoval[@]} -eq 0 ]; then
     printUsage "$0" >&2
     exit 2
 fi
-
-typeset -a sedSequenceRemoval=()
-for s in "${sequences[@]}"
-do
-    sedSequenceRemoval+=(-e "s#\\x1b\\[\\(${s}\\)m##g")   # Standalone sequence
-    sedSequenceRemoval+=(-e "s#\\(\\x1b\\[[0-9:;]*\\);\\(${s}\\)m#\\1m#g")	# Sequence at the end of larger sequence
-    sedSequenceRemoval+=(-e "s#\\x1b\\[\\(${s}\\);\\([0-9:;]*m\\)#[\\2#g")	# Sequence at the start of larger sequence
-    sedSequenceRemoval+=(-e "s#\\(\\x1b\\[[0-9:;]*\\);\\(${s}\\);\\([0-9:;]*m\\)#\\1;\\3#g")	# Sequence in the middle of larger sequence
-done
 
 exec sed \
     "${sedMask256Color[@]}" "${sedMaskRGBColor[@]}" \
