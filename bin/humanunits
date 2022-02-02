@@ -6,19 +6,25 @@ printUsage()
 Convert numbers in text into human-readable K / M / G / ... units.
 HELPTEXT
     echo
+    printf 'Usage: %q %s\n' "$(basename "$1")" '[--] FILE [...] [-?|-h|--help]'
     printf 'Usage: cat FILE [...] | %q\n' "$(basename "$1")"
 }
 case "$1" in
     --help|-h|-\?)	shift; printUsage "$0"; exit 0;;
 esac
 
-# numfmt only converts leading numbers (and skips anything after the number), so
-# we need to split up line(s) on each (whitespace +) number. To be able to
-# reassemble the original line breaks, we convert newline into ASCII 01 = SOH
-# (unfortunately, numfmt doesn't pass through ASCI 00 = NUL), and retranslate
-# afterwards.
-tr "$'\n'" "$'\001'" | \
-    sed -e 's/\(^\|[ \t]\+\)[0-9]\+/\n&/g' -e 's/\d001/\n&/g' | \
-    numfmt --invalid=ignore --to=iec | \
-    tr -d "$'\n'" | \
-    sed -e 's/\d001/\n/g'
+convertToHumanUnits()
+{
+    # numfmt only converts leading numbers (and skips anything after the
+    # number), so we need to split up line(s) on each (whitespace +) number. To
+    # be able to reassemble the original line breaks, we convert newline into
+    # ASCII 01 = SOH (unfortunately, numfmt doesn't pass through ASCI 00 = NUL),
+    # and retranslate afterwards.
+    tr "$'\n'" "$'\001'" | \
+	sed -e 's/\(^\|[ \t]\+\)[0-9]\+/\n&/g' -e 's/\d001/\n&/g' | \
+	numfmt --invalid=ignore --to=iec | \
+	tr -d "$'\n'" | \
+	sed -e 's/\d001/\n/g'
+}
+
+eval "${*:+cat -- "$@" |}" convertToHumanUnits
