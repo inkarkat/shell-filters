@@ -19,16 +19,27 @@ esac
 
 convertToHumanUnits()
 {
-    # numfmt only converts leading numbers (and skips anything after the
-    # number), so we need to split up line(s) on each (whitespace +) number. To
-    # be able to reassemble the original line breaks, we convert newline into
-    # ASCII 01 = SOH (unfortunately, numfmt doesn't pass through ASCI 00 = NUL),
-    # and retranslate afterwards.
-    tr "$'\n'" "$'\001'" | \
-	sed -e 's/\(^\|[ \t]\+\)[0-9]\+/\n&/g' -e 's/\d001/\n&/g' | \
+    # numfmt only converts leading numbers, only if they are followed by
+    # whitespace, and tries to keep the existing width if there's whitespace in
+    # front of the number. Anything after the number is skipped, so we need to
+    # split up line(s) on each (non-alnum +) number. By matching non-alnum, we
+    # accept prefixes like " or ( (even though numfmt does not), but don't match
+    # inside "foobar3000". There still needs to be a whitespace after the
+    # number, though, so "(3000)" is kept, but "(3000 bugs)" -> "(3K bugs)".
+    # That single non-alnum and/or a single whitespace is kept on the original
+    # line, any additional whitespace (usable for padding) and the number are
+    # broken to the next one. So a single space means translation as-is, while
+    # multiple spaces suggest keeping the width through padding if possible.
+    # (If we put all whitespace on the line before the number, it could happen
+    # that nothing would be left after the translation, and after reassembly
+    # there would be no separation to the preceding text at all.)
+    # To be able to reassemble the original line breaks, we convert existing
+    # newlines into space (to maintain the whitespace necessary for numfmt to
+    # accept it) + ^G (numfmt doesn't pass through ASCI 00 = NUL), and
+    # retranslate afterwards.
+    sed -e 's/$/ \d007/' -e 's/\([^[:alnum:][:space:]][[:space:]]\|[[:space:]]\)\([[:space:]]*[0-9]\+\)/\1\n\2/g' | \
 	numfmt --invalid=ignore "${toArg[@]}" | \
-	tr -d "$'\n'" | \
-	sed -e 's/\d001/\n/g'
+	sed -e ':begin' -e 's/ \d007$//' -e t -e '$!N; s/\n//g; t begin'
 }
 
 eval "${*:+cat -- "$@" |}" convertToHumanUnits
