@@ -104,7 +104,7 @@ exec sed \
     -e "s/\\xa1/${TRCONTROLS_PREFIX}|!${TRCONTROLS_SUFFIX}/g" \
     -e "s/\\xa2/${TRCONTROLS_PREFIX}|\"${TRCONTROLS_SUFFIX}/g" \
     -e "s/\\xa3/${TRCONTROLS_PREFIX}|#${TRCONTROLS_SUFFIX}/g" \
-    -e "s/\\xa4/${TRCONTROLS_PREFIX}|$${TRCONTROLS_SUFFIX}/g" \
+    -e "s/\\xa4/${TRCONTROLS_PREFIX}|\$${TRCONTROLS_SUFFIX}/g" \
     -e "s/\\xa5/${TRCONTROLS_PREFIX}|%${TRCONTROLS_SUFFIX}/g" \
     -e "s/\\xa6/${TRCONTROLS_PREFIX}|&${TRCONTROLS_SUFFIX}/g" \
     -e "s/\\xa7/${TRCONTROLS_PREFIX}|'${TRCONTROLS_SUFFIX}/g" \
