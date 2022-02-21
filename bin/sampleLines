@@ -49,8 +49,7 @@ HELPDESCRIPTION
     cat <<HELPTEXT
     --reset-on|-r PATTERN
 			Reset the sampling interval on lines matching PATTERN,
-			and and unconditionally print these lines. PATTERN is a
-			POSIX-style unanchored extended regular expression.
+			and and unconditionally print these lines.
     --inline-or-none|-i	Overwrite the existing terminal line instead of
 			accumulating the sampled lines in the output.
 			When not outputting to a terminal, suppress all output.
@@ -100,6 +99,7 @@ HELPDESCRIPTION
     --initial-delay|-T TIMESPAN[SUFFIX]
 			Wait for TIMESPAN before printing anything. By default,
 			the first line is printed immediately.
+All PATTERNs are POSIX-style unanchored extended regular expressions.
 Example:
 HELPTEXT
 
