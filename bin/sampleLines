@@ -361,7 +361,7 @@ do
 	    fi
 	fi
 
-	if [ -n "${totalCountWhat+t}" ]; then
+	if [ $total -gt 0 ] && [ -n "${totalCountWhat+t}" ]; then
 	    sample="${sample}${SAMPLELINES_COUNT_PREFIX}${totalCountWhat}${totalCountWhat:+ }${total}${SAMPLELINES_COUNT_SUFFIX}"
 	fi
 
