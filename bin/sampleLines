@@ -27,7 +27,7 @@ printShortUsage()
 {
     # Note: short followed by long option; if the user knows the short one, she can
     # skim the long one.
-    printf 'Usage: %q %s\n' "$(basename "$1")" '[-r|--reset-on PATTERN] [-i|--inline-or-none|--inline-or-passthrough|-I|--inline-always [--inline-prefix IP] [-c|--clear] [-a|--append-reset|-k|--keep-reset]] [-s|--summarize WHAT[,PLURAL-WHAT] --summary-only] [-n|--count WHAT] [-t|--timespan TIMESPAN[SUFFIX][ADJUSTMENT]] [-T|--initial-delay TIMESPAN[SUFFIX]] [-?|-h|--help]'
+    printf 'Usage: %q %s\n' "$(basename "$1")" '[-r|--reset-on PATTERN [-r ...]] [-i|--inline-or-none|--inline-or-passthrough|-I|--inline-always [--inline-prefix IP] [-c|--clear] [-a|--append-reset|-k|--keep-reset]] [-s|--summarize WHAT[,PLURAL-WHAT] --summary-only] [-n|--count WHAT] [-s|--skip PATTERN [-s ...]] [-m|--match PATTERN [-m ...]] [-t|--timespan TIMESPAN[SUFFIX][ADJUSTMENT]] [-T|--initial-delay TIMESPAN[SUFFIX]] [-?|-h|--help]'
 }
 printUsage()
 {
@@ -49,8 +49,7 @@ HELPDESCRIPTION
     cat <<HELPTEXT
     --reset-on|-r PATTERN
 			Reset the sampling interval on lines matching PATTERN,
-			and and unconditionally print these lines. PATTERN is a
-			POSIX-style unanchored extended regular expression.
+			and and unconditionally print these lines.
     --inline-or-none|-i	Overwrite the existing terminal line instead of
 			accumulating the sampled lines in the output.
 			When not outputting to a terminal, suppress all output.
@@ -79,7 +78,12 @@ HELPDESCRIPTION
     --summary-only	Instead of printing summary and selected output, just
 			summarize the amount of lines.
     --count|-n WHAT	Append the total count after the current line (prefixed
-			by WHAT).
+			by WHAT (always singluar, as in "file 3")).
+    --skip|-s PATTERN	Do not count lines that match PATTERN (both for summary
+			and total counts).
+    --match|-m PATTERN	Only consider lines that match PATTERN when counting
+			(both for summary and total counts); other lines (and
+			those that also match --skip PATTERN) are ignored.
     --timespan|-t TIMESPAN[SUFFIX][ADJUSTMENT]
 			Print a line every TIMESPAN instead of every second.
 			SUFFIX may be 'ms' for milliseconds, 's' for seconds
@@ -95,6 +99,7 @@ HELPDESCRIPTION
     --initial-delay|-T TIMESPAN[SUFFIX]
 			Wait for TIMESPAN before printing anything. By default,
 			the first line is printed immediately.
+All PATTERNs are POSIX-style unanchored extended regular expressions.
 Example:
 HELPTEXT
 
@@ -180,6 +185,8 @@ summarizeWhat=
 summarizeWhatPlural=
 unset totalCountWhat
 isSummaryOnly=
+skipPattern=
+matchPattern=
 timespan=1
 timespanAdjustment=
 initialDelay=0
@@ -188,7 +195,7 @@ do
     case "$1" in
 	--help|-h|-\?)	shift; printLongUsage "$0"; exit 0;;
 	--reset-on|-r)
-			shift; resetPattern="$1"; shift;;
+			shift; resetPattern="${resetPattern}${resetPattern:+}${1:?}"; shift;;
 	--append-reset|-a)
 			shift; resetAction=append;;
 	--keep-reset|-k)
@@ -221,6 +228,8 @@ do
 			;;
 	--summary-only)	shift; isSummaryOnly=t;;
 	--count|-n)	shift; totalCountWhat="$1"; shift;;
+	--skip|-s)	shift; skipPattern="${skipPattern}${skipPattern:+|}${1:?}"; shift;;
+	--match|-m)	shift; matchPattern="${matchPattern}${matchPattern:+|}${1:?}"; shift;;
 	--timespan|-t)	shift; < <(timeWithAdjustmentToSeconds "$1") IFS=$'\t' read -r timespan timespanAdjustment || exit 2; shift;;
 	--initial-delay|-T)
 			shift; initialDelay="$(timeToSeconds "$1")" || exit $?; shift;;
@@ -294,8 +303,14 @@ isFirstExpiry=t
 keepResetPrefix=
 while IFS=$'\n' read -r line || { [ "$summarizeWhat" ] || suffix=; [ -n "$line" ]; }
 do
-    let count+=1
-    let total+=1
+    isSkipThisLine=
+    [ "$matchPattern" ] && [[ ! "$line" =~ $matchPattern ]] && isSkipThisLine=t
+    [ "$skipPattern" ] && [[ "$line" =~ $skipPattern ]] && isSkipThisLine=t
+    if [ ! "$isSkipThisLine" ]; then
+	let count+=1
+	let total+=1
+    fi
+
     isTakeThisLine=''
     keepResetSuffix=
     if [ "$resetPattern" ] && [[ "$line" =~ $resetPattern ]]; then
@@ -317,7 +332,7 @@ do
 		summarySuffix=
 	    else
 		summarySuffix=' omitted'
-		let count-=1    # Don't include the current line (that is printed) in the count.
+		[ "$isSkipThisLine" ] || let count-=1    # Don't include the current line (that is printed) in the count.
 	    fi
 
 	    if [ $count -eq 0 ]; then
@@ -346,7 +361,7 @@ do
 	    fi
 	fi
 
-	if [ -n "${totalCountWhat+t}" ]; then
+	if [ $total -gt 0 ] && [ -n "${totalCountWhat+t}" ]; then
 	    sample="${sample}${SAMPLELINES_COUNT_PREFIX}${totalCountWhat}${totalCountWhat:+ }${total}${SAMPLELINES_COUNT_SUFFIX}"
 	fi
 
