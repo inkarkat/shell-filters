@@ -107,4 +107,4 @@ literalSuffix="${literalSuffix//&/\\&}"
 literalSuffix="${literalSuffix//$'\n'/\\n}"
 
 eval "${commands:+{ }" "${commands[@]:-exec}" "${commands:+" ; } |"}" \
-    'sed -e :restart "${additionalSedPreProcessing[@]}" -e "s#\\(^${isKeepWhitespace:+[[:space:]]*}\\)\\(.*[^${isKeepWhitespace:+^[:space:]}\\r]\\|\\)\\(${isKeepWhitespace:+[[:space:]]*}\\r\\?\$\\)#\\1${literalPrefix//#/\\#}\\2${literalSuffix//#/\\#}\\3#" "${additionalSedPostProcessing[@]}" "$@"'
+    'sed -e :restart "${additionalSedPreProcessing[@]}" -e "s#\\(^${isKeepWhitespace:+[[:space:]]*}\\)\\(.*[^${isKeepWhitespace:+[:space:]}\\r]\\|\\)\\(${isKeepWhitespace:+[[:space:]]*}\\r\\?\$\\)#\\1${literalPrefix//#/\\#}\\2${literalSuffix//#/\\#}\\3#" "${additionalSedPostProcessing[@]}" "$@"'
