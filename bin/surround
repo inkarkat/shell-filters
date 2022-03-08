@@ -46,20 +46,22 @@ HELPTEXT
 
 typeset -a commands=()
 isKeepWhitespace=
-additionalSedPreProcessing=()
-additionalSedPostProcessing=()
+skipEmptyPattern=
+unset literalJoiner
+literalJoinerPattern=
 while [ $# -ne 0 ]
 do
     case "$1" in
 	--help|-h|-\?)	shift; printLongUsage "$0"; exit 0;;
 	--keep-whitespace|-k)	shift; isKeepWhitespace=t;;
-	--skip-empty|-s)	shift; additionalSedPreProcessing+=(-e '/^[[:space:]]*\r\?$/b');;
+	--skip-empty|-s)	shift; skipEmptyPattern='/^[[:space:]]*\r\?$/';;
 	--join-by|-j)	shift
+			literalJoinerPattern="$(printf %s "$1" | sed -e '$!d' -e '$s/[][\$*.^#]/\\&/g')"    # Only take the last line of the joiner; previous line(s) have already been printed.
+
 			literalJoiner="$1"; shift
 			literalJoiner="${literalJoiner//\\/\\\\}"
 			literalJoiner="${literalJoiner//&/\\&}"
 			literalJoiner="${literalJoiner//$'\n'/\\n}"
-			additionalSedPostProcessing+=(-e 'x; G; s/\n//; x; s/.*//; x' -e "\$!{ s#\$#${literalJoiner//#/\\#}#; t loop; :loop; /\\n/P; s/^[^\\n]*\\n//; t loop; h; N; s/^[^\\n]*\\n//; b restart }")
 			;;
 	--command|-c)	shift; commands+=(${commands:+;} "$1"); shift;;
 	--exec)		shift
@@ -85,6 +87,16 @@ done
 if [ $# -le 1 ] || [ ${#commands[@]} -gt 0 -a $# -ne 2 ]; then
     printUsage "$0" >&2
     exit 2
+fi
+additionalSedPreProcessing=()
+additionalSedPostProcessing=()
+includePreviousIncompleteLine=
+if [ -n "${literalJoiner+t}" ]; then
+    includePreviousIncompleteLine='x; G; s/\n//; x; s/.*//; x'
+    additionalSedPostProcessing+=(-e "$includePreviousIncompleteLine" -e "\$!{ s#\$#${literalJoiner//#/\\#}#; t loop; :loop; /\\n/P; s/^[^\\n]*\\n//; t loop; h; N; s/^[^\\n]*\\n//; b restart }")
+fi
+if [ -n "$skipEmptyPattern" ]; then
+    additionalSedPreProcessing+=(-e "${skipEmptyPattern}{ ${includePreviousIncompleteLine}${includePreviousIncompleteLine:+; }${literalJoinerPattern:+s#${literalJoinerPattern}\$##}${literalJoinerPattern:+; }b }")
 fi
 
 literalPrefix="$1"; shift
