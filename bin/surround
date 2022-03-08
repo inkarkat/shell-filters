@@ -48,16 +48,13 @@ typeset -a commands=()
 isKeepWhitespace=
 skipEmptyPattern=
 unset literalJoiner
-literalJoinerPattern=
 while [ $# -ne 0 ]
 do
     case "$1" in
 	--help|-h|-\?)	shift; printLongUsage "$0"; exit 0;;
 	--keep-whitespace|-k)	shift; isKeepWhitespace=t;;
-	--skip-empty|-s)	shift; skipEmptyPattern='/^[[:space:]]*\r\?$/';;
+	--skip-empty|-s)	shift; skipEmptyPattern='[[:space:]]*\r\?';;
 	--join-by|-j)	shift
-			literalJoinerPattern="$(printf %s "$1" | sed -e '$!d' -e '$s/[][\$*.^#]/\\&/g')"    # Only take the last line of the joiner; previous line(s) have already been printed.
-
 			literalJoiner="$1"; shift
 			literalJoiner="${literalJoiner//\\/\\\\}"
 			literalJoiner="${literalJoiner//&/\\&}"
@@ -93,10 +90,10 @@ additionalSedPostProcessing=()
 includePreviousIncompleteLine=
 if [ -n "${literalJoiner+t}" ]; then
     includePreviousIncompleteLine='x; G; s/\n//; x; s/.*//; x'
-    additionalSedPostProcessing+=(-e "$includePreviousIncompleteLine" -e "\$!{ s#\$#${literalJoiner//#/\\#}#; t loop; :loop; /\\n/P; s/^[^\\n]*\\n//; t loop; h; N; s/^[^\\n]*\\n//; b restart }")
+    additionalSedPostProcessing+=(-e "$includePreviousIncompleteLine" -e "\$!{ N; ${skipEmptyPattern:+/\\n}${skipEmptyPattern}${skipEmptyPattern:+\$/!}{ s#\\n[^\\n]*\$#${literalJoiner//#/\\#}&#; /\\n.*\\n/!b lastOfCurrentAndNextLine; P; s/^[^\\n]*\\n//; :lastOfCurrentAndNextLine; h; s/\\n[^\\n]*\$//; x; s/^[^\\n]*\\n//; b restart } }")
 fi
 if [ -n "$skipEmptyPattern" ]; then
-    additionalSedPreProcessing+=(-e "${skipEmptyPattern}{ ${includePreviousIncompleteLine}${includePreviousIncompleteLine:+; }${literalJoinerPattern:+s#${literalJoinerPattern}\$##}${literalJoinerPattern:+; }b }")
+    additionalSedPreProcessing+=(-e "/^${skipEmptyPattern}\$/{ ${includePreviousIncompleteLine}${includePreviousIncompleteLine:+; }b }")
 fi
 
 literalPrefix="$1"; shift
