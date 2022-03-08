@@ -75,15 +75,15 @@ if [ $# -le 1 ] || [ ${#commands[@]} -gt 0 -a $# -ne 2 ]; then
     exit 2
 fi
 
-prefix=$1; shift
-literalPrefix=$prefix
-literalPrefix=${literalPrefix//\\/\\\\}
-literalPrefix=${literalPrefix//&/\\&}
+literalPrefix="$1"; shift
+literalPrefix="${literalPrefix//\\/\\\\}"
+literalPrefix="${literalPrefix//&/\\&}"
+literalPrefix="${literalPrefix//$'\n'/\\n}"
 
-suffix=$1; shift
-literalSuffix=$suffix
-literalSuffix=${literalSuffix//\\/\\\\}
-literalSuffix=${literalSuffix//&/\\&}
+literalSuffix="$1"; shift
+literalSuffix="${literalSuffix//\\/\\\\}"
+literalSuffix="${literalSuffix//&/\\&}"
+literalSuffix="${literalSuffix//$'\n'/\\n}"
 
 eval "${commands:+{ }" "${commands[@]:-exec}" "${commands:+" ; } |"}" \
     'sed "${additionalSedProcessing[@]}" -e "s#\\(^${isKeepWhitespace:+[[:space:]]*}\\)\\(.*[^${isKeepWhitespace:+^[:space:]}\\r]\\|\\)\\(${isKeepWhitespace:+[[:space:]]*}\\r\\?\$\\)#\\1${literalPrefix//#/\\#}\\2${literalSuffix//#/\\#}\\3#" "$@"'

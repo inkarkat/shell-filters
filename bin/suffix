@@ -75,9 +75,9 @@ if [ $# -eq 0 ] || [ ${#commands[@]} -gt 0 -a $# -ne 1 ]; then
     exit 2
 fi
 
-suffix=$1; shift
-literalSuffix=$suffix
-literalSuffix=${literalSuffix//\\/\\\\}
-literalSuffix=${literalSuffix//&/\\&}
+literalSuffix="$1"; shift
+literalSuffix="${literalSuffix//\\/\\\\}"
+literalSuffix="${literalSuffix//&/\\&}"
+literalSuffix="${literalSuffix//$'\n'/\\n}"
 eval "${commands:+{ }" "${commands[@]:-exec}" "${commands:+" ; } |"}" \
     'sed "${additionalSedProcessing[@]}" -e "s#\\(${isKeepWhitespace:+[[:space:]]*}\\r\\?\$\\)#${literalSuffix//#/\\#}\\1#" "$@"'
