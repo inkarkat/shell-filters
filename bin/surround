@@ -4,11 +4,11 @@ printShortUsage()
 {
     # Note: short followed by long option; if the user knows the short one, she can
     # skim the long one.
-    printf 'Usage: %q %s\n' "$(basename "$1")" '[-k|--keep-whitespace] [-s|--skip-empty] [--] PREFIX SUFFIX FILE [...] [-?|-h|--help]'
+    printf 'Usage: %q %s\n' "$(basename "$1")" '[-k|--keep-whitespace] [-s|--skip-empty] [-j|--join-by TEXT] [--] PREFIX SUFFIX FILE [...] [-?|-h|--help]'
     echo
-    printf 'Usage: %q %s\n' "$(basename "$1")" '[-k|--keep-whitespace] [-s|--skip-empty] -c|--command "COMMANDLINE" [...] | --exec SIMPLECOMMAND ... ; [...] [--] PREFIX SUFFIX'
+    printf 'Usage: %q %s\n' "$(basename "$1")" '[-k|--keep-whitespace] [-s|--skip-empty] [-j|--join-by TEXT] -c|--command "COMMANDLINE" [...] | --exec SIMPLECOMMAND ... ; [...] [--] PREFIX SUFFIX'
     echo
-    printf 'Usage: cat FILE [...] | %q %s\n' "$(basename "$1")" '[-k|--keep-whitespace] [-s|--skip-empty] [--] PREFIX SUFFIX'
+    printf 'Usage: cat FILE [...] | %q %s\n' "$(basename "$1")" '[-k|--keep-whitespace] [-s|--skip-empty] [-j|--join-by TEXT] [--] PREFIX SUFFIX'
 }
 printUsage()
 {
@@ -33,6 +33,10 @@ HELPDESCRIPTION
 			whitespace after SUFFIX.
     --skip-empty|-s	Do not prefix lines that are empty or just contain
 			whitespace; print them as-is.
+    --join-by|-j TEXT	Join surrounded lines with TEXT instead of printing them
+			on separate lines. TEXT will only be put in between
+			lines, not at the beginning and not at the end, and with
+			--skip-empty also not around empty lines.
     --command|-c CMD	Execute CMD as a command-line and prefix its output.
     --exec COMMAND ;	Execute COMMAND; all following arguments are taken to be
 			arguments to the COMMAND until an argument consisting of
@@ -42,13 +46,21 @@ HELPTEXT
 
 typeset -a commands=()
 isKeepWhitespace=
-additionalSedProcessing=()
+additionalSedPreProcessing=()
+additionalSedPostProcessing=()
 while [ $# -ne 0 ]
 do
     case "$1" in
 	--help|-h|-\?)	shift; printLongUsage "$0"; exit 0;;
 	--keep-whitespace|-k)	shift; isKeepWhitespace=t;;
-	--skip-empty|-s)	shift; additionalSedProcessing+=(-e '/^[[:space:]]*\r\?$/b');;
+	--skip-empty|-s)	shift; additionalSedPreProcessing+=(-e '/^[[:space:]]*\r\?$/b');;
+	--join-by|-j)	shift
+			literalJoiner="$1"; shift
+			literalJoiner="${literalJoiner//\\/\\\\}"
+			literalJoiner="${literalJoiner//&/\\&}"
+			literalJoiner="${literalJoiner//$'\n'/\\n}"
+			additionalSedPostProcessing+=(-e 'x; G; s/\n//; x; s/.*//; x' -e "\$!{ s#\$#${literalJoiner//#/\\#}#; t loop; :loop; /\\n/P; s/^[^\\n]*\\n//; t loop; h; N; s/^[^\\n]*\\n//; b restart }")
+			;;
 	--command|-c)	shift; commands+=(${commands:+;} "$1"); shift;;
 	--exec)		shift
 			cmd=
@@ -86,4 +98,4 @@ literalSuffix="${literalSuffix//&/\\&}"
 literalSuffix="${literalSuffix//$'\n'/\\n}"
 
 eval "${commands:+{ }" "${commands[@]:-exec}" "${commands:+" ; } |"}" \
-    'sed "${additionalSedProcessing[@]}" -e "s#\\(^${isKeepWhitespace:+[[:space:]]*}\\)\\(.*[^${isKeepWhitespace:+^[:space:]}\\r]\\|\\)\\(${isKeepWhitespace:+[[:space:]]*}\\r\\?\$\\)#\\1${literalPrefix//#/\\#}\\2${literalSuffix//#/\\#}\\3#" "$@"'
+    'sed -e :restart "${additionalSedPreProcessing[@]}" -e "s#\\(^${isKeepWhitespace:+[[:space:]]*}\\)\\(.*[^${isKeepWhitespace:+^[:space:]}\\r]\\|\\)\\(${isKeepWhitespace:+[[:space:]]*}\\r\\?\$\\)#\\1${literalPrefix//#/\\#}\\2${literalSuffix//#/\\#}\\3#" "${additionalSedPostProcessing[@]}" "$@"'
