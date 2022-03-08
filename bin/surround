@@ -90,7 +90,7 @@ additionalSedPostProcessing=()
 includePreviousIncompleteLine=
 if [ -n "${literalJoiner+t}" ]; then
     includePreviousIncompleteLine='x; G; s/\n//; x; s/.*//; x'
-    additionalSedPostProcessing+=(-e "$includePreviousIncompleteLine" -e "\$!{ N; ${skipEmptyPattern:+/\\n}${skipEmptyPattern}${skipEmptyPattern:+\$/!}{ s#\\n[^\\n]*\$#${literalJoiner//#/\\#}&#; /\\n.*\\n/!b lastOfCurrentAndNextLine; P; s/^[^\\n]*\\n//; :lastOfCurrentAndNextLine; h; s/\\n.*\$//; x; s/^[^\\n]*\\n//; b restart } }")
+    additionalSedPostProcessing+=(-e "$includePreviousIncompleteLine" -e "\$!{ N; ${skipEmptyPattern:+/\\n}${skipEmptyPattern}${skipEmptyPattern:+\$/!}{ s#\\n[^\\n]*\$#${literalJoiner//#/\\#}&#; :untilLastOfCurrent /\\n.*\\n/!b lastOfCurrentAndNextLine; P; s/^[^\\n]*\\n//; b untilLastOfCurrent; :lastOfCurrentAndNextLine; h; s/\\n.*\$//; x; s/^[^\\n]*\\n//; b restart } }")
 fi
 if [ -n "$skipEmptyPattern" ]; then
     additionalSedPreProcessing+=(-e "/^${skipEmptyPattern}\$/{ ${includePreviousIncompleteLine}${includePreviousIncompleteLine:+; }b }")
