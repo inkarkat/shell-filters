@@ -1,5 +1,7 @@
 #!/usr/bin/env bats
 
+load spinner
+
 readonly LF=$'\r'
 
 @test "interactive match spinning of accumulate in multiple locations" {

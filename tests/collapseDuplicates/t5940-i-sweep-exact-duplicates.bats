@@ -1,5 +1,7 @@
 #!/usr/bin/env bats
 
+load sweeper
+
 @test "duplicate interactive sweeping in multiple locations" {
     run collapseDuplicates --unbuffered --as sweep <<-'EOF'
 This repeats once.

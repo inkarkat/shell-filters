@@ -1,5 +1,7 @@
 #!/usr/bin/env bats
 
+load sweeper
+
 readonly LF=$'\r'
 
 @test "interactive match sweeping of accumulate in multiple locations" {

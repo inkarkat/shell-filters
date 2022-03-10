@@ -1,5 +1,7 @@
 #!/usr/bin/env bats
 
+load spinner
+
 @test "duplicate interactive spinning in multiple locations" {
     run collapseDuplicates --unbuffered --as spinner <<-'EOF'
 This repeats once.
