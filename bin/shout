@@ -13,7 +13,7 @@ case "$1" in
     --help|-h|-\?)	shift; printUsage "$0"; exit 0;;
 esac
 
-typeset -a SHOUT=(tr 'a-z' 'A-Z')
+typeset -a SHOUT=(sed -e 'y/abcdefghijklmnopqrstuvwxyz/ABCDEFGHIJKLMNOPQRSTUVWXYZ/' -e 's#\(\x1b\[[0-9:;]*\)M#\1m#g')
 if [ $# -eq 0 ]; then
     exec "${SHOUT[@]}"
 elif [ $# -ge 2 -a "$1" = '--' ]; then
