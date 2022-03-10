@@ -1,5 +1,18 @@
 #!/bin/bash
 
+: ${COLLAPSEDUPLICATES_SPINNER=${SPINNER:-'/-\|'}}
+: ${COLLAPSEDUPLICATES_SWEEPS=${SWEEPS:-'[    ],[*   ],[-*  ],[ -* ],[  -*],[   *],[  *-],[ *- ],[*-  ]'}}
+IFS=, read -r -a sweeps <<<"$COLLAPSEDUPLICATES_SWEEPS"
+for ((sweepsCommon = 1;; sweepsCommon++))
+do
+    prefix="${sweeps[0]}"; prefix="${prefix:0:$sweepsCommon}"
+    for s in "${sweeps[@]:1}"
+    do
+	[ "${s:0:$sweepsCommon}" = "$prefix" ] || break 2
+    done
+done
+let sweepsCommon-=1
+
 printShortUsage()
 {
     # Note: short followed by long option; if the user knows the short one, she can
@@ -107,6 +120,9 @@ replacements+=('')  # Add one empty element so that split() will yield at least 
 
 IFS=$'\n'
 exec awk \
+    -v "SPINNER=${COLLAPSEDUPLICATES_SPINNER//\\/\\\\}" \
+    -v "sweeperList=${sweeps[*]//\\/\\\\}" \
+    -v "SWEEPCOMMON=$sweepsCommon" \
     -v "render=$render" \
     -v "isBuffered=$isBuffered" \
     -v "typeList=${types[*]}" \
@@ -119,19 +135,8 @@ exec awk \
 BEGIN {
     FS = "\n"
 
-    SPINNER="/-\\|"
-
-    SWEEPCOMMON=1
-    SWEEPSTART="[    ]"
-    SWEEPS[0]="[*   ]"
-    SWEEPS[1]="[-*  ]"
-    SWEEPS[2]="[ -* ]"
-    SWEEPS[3]="[  -*]"
-    SWEEPS[4]="[   *]"
-    SWEEPS[5]="[  *-]"
-    SWEEPS[6]="[ *- ]"
-    SWEEPS[7]="[*-  ]"
-    SWEEPSLEN=8
+    SWEEPSLEN = split(sweeperList, SWEEPS, "\n")
+    SWEEPSLEN -= 1
 
     N = split(typeList, types)
     if (split(patternList, patterns) != N) {
@@ -182,7 +187,7 @@ function spin(count)
 }
 function sweep(count)
 {
-    return (count == 2 ? SWEEPSTART : SWEEPS[(count - 3) % SWEEPSLEN])
+    return (count == 2 ? SWEEPS[1] : SWEEPS[(count - 3) % SWEEPSLEN + 2])
 }
 function multiply(char, count,      tmp, i)
 {
@@ -243,7 +248,7 @@ function renderCountDelta(text, count,      tmp)
 	case "spinner":
 	    return (count == 1 ? "" : (count == 2 ? " " : "") spin(count))
 	case "sweep":
-	    return (count == 1 ? "" : (count == 2 ? " " sweep(count) : multiply("", length(SWEEPSTART) - SWEEPCOMMON) substr(sweep(count), SWEEPCOMMON + 1)))
+	    return (count == 1 ? "" : (count == 2 ? " " sweep(count) : multiply("", length(SWEEPS[1]) - SWEEPCOMMON) substr(sweep(count), SWEEPCOMMON + 1)))
 	default:
 	    print "Assert: Invalid render type: " render > "/dev/stderr"
 	    exit 3
