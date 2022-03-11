@@ -52,20 +52,20 @@ do
 	foreground)	shift; where=3;;
     esac
     case "$1" in
-	black)		shift; sequences+=(${where:-3}0);;
-	red)		shift; sequences+=(${where:-3}1);;
-	green)		shift; sequences+=(${where:-3}2);;
-	yellow)		shift; sequences+=(${where:-3}3);;
-	blue)		shift; sequences+=(${where:-3}4);;
-	violet)		shift; sequences+=(${where:-3}5);;
-	cyan)		shift; sequences+=(${where:-3}6);;
-	grey)		shift; sequences+=(${where:-3}7);;
+	black)		shift; sequences+=("${where:-3}0");;
+	red)		shift; sequences+=("${where:-3}1");;
+	green)		shift; sequences+=("${where:-3}2");;
+	yellow)		shift; sequences+=("${where:-3}3");;
+	blue)		shift; sequences+=("${where:-3}4");;
+	violet)		shift; sequences+=("${where:-3}5");;
+	cyan)		shift; sequences+=("${where:-3}6");;
+	grey)		shift; sequences+=("${where:-3}7");;
 	[0-9]?([0-9]?([0-9])))
 			sequences+=("${where:-3}8;5;$1"); shift;;
 	\#[0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F])
-			sequences+=($(printf "${where:-3}8;2;%d;%d;%d" "0x${1:1:2}" "0x${1:3:2}" "0x${1:5}")); shift;;
+			sequences+=("$(printf "${where:-3}8;2;%d;%d;%d" "0x${1:1:2}" "0x${1:3:2}" "0x${1:5}")"); shift;;
 	\#[0-9a-fA-F][0-9a-fA-F][0-9a-fA-F])
-			sequences+=($(printf "${where:-3}8;2;%d;%d;%d" "0x${1:1:1}${1:1:1}" "0x${1:2:1}${1:2:1}" "0x${1:3}${1:3}")); shift;;
+			sequences+=("$(printf "${where:-3}8;2;%d;%d;%d" "0x${1:1:1}${1:1:1}" "0x${1:2:1}${1:2:1}" "0x${1:3}${1:3}")"); shift;;
 	[0-9]?([0-9]?([0-9]))\;[0-9]?([0-9]?([0-9]))\;[0-9]?([0-9]?([0-9])))
 			sequences+=("${where:-3}8;2;$1"); shift;;
 	*)  if [ ${#sequences[@]} -eq 0 -o -n "$where" ]; then
