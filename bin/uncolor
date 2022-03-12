@@ -105,6 +105,7 @@ do
 			fi
 			shift; shift
 			;;
+	-*)		{ echo "ERROR: Unknown option \"$1\"!"; echo; printUsage "$0"; } >&2; exit 2;;
 	*)		if ! sequence="$(getSequence "$1")"; then
 			    printUsage "$0" >&2
 			    exit 2
