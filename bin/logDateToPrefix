@@ -1,0 +1,52 @@
+#!/bin/bash
+
+printUsage()
+{
+    cat <<HELPTEXT
+Parse a log format that has separate lines of DATE [TIME] [COMMENT] and put the
+DATE in front of following line(s) that don't have such.
+HELPTEXT
+    echo
+    printf "Usage: [LOGDATETOPREFIX_DEFAULT_TIME=12:00] [OFS=\$'\t'] %q %s\\n" "$(basename "$1")" '[--] [FILE ...] [-?|-h|--help]'
+    printf 'Usage: cat FILE [...] | %q\n' "$(basename "$1")"
+}
+case "$1" in
+    --help|-h|-\?)	shift; printUsage "$0"; exit 0;;
+esac
+
+awk \
+    -v "defaultTime=${LOGDATETOPREFIX_DEFAULT_TIME//\\/\\\\}" \
+    -v "outputFieldSeparator=${OFS//\\/\\\\}" \
+'
+function getFollowingFields()
+{
+    $1 = ""; sub(OFS, ""); return $0
+}
+BEGIN {
+    if (outputFieldSeparator != "") OFS = outputFieldSeparator
+    YEAR = "[[:digit:]]{4}"
+    MONTH = "([[:digit:]]{2}|Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)"
+    DAY = "[0123][[:digit:]]"
+}
+$1 ~ "^(" YEAR "-" MONTH "-" DAY "|" DAY "-" MONTH "-" YEAR ")$" {
+    date = $1
+
+    if ($2 ~ /^[[:digit:]]{2}:[[:digit:]]{2}$/) {
+	time = $2
+
+	if (NF > 2) print
+    } else {
+	isPrint = (NF > 1)
+	time = defaultTime
+	if (defaultTime != "" && NF > 1) {
+	    $0 = $1 OFS defaultTime OFS getFollowingFields()
+	}
+	if (isPrint) print
+    }
+
+    next
+}
+{
+    print date (time == "" ? "" : OFS time) ($0 == "" ? "" : OFS $0)
+}
+' "$@"
