@@ -96,7 +96,7 @@ elif [ ${#opens[@]} -ne ${#closes[@]} ]; then
     exit 2
 fi >&2
 if [ "$isInPlace" ]; then
-    awkCall=(gawk -i inplace -v "INPLACE_SUFFIX=$inPlaceExtension")
+    awkCall=(gawk -i inplace -v "INPLACE_SUFFIX=$inPlaceExtension" -v "inplace::suffix=$inPlaceExtension")
 fi
 
 IFS=$'\n'
