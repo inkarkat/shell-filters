@@ -195,7 +195,7 @@ do
     case "$1" in
 	--help|-h|-\?)	shift; printLongUsage "$0"; exit 0;;
 	--reset-on|-r)
-			shift; resetPattern="${resetPattern}${resetPattern:+}${1:?}"; shift;;
+			shift; resetPattern+="${resetPattern:+}${1:?}"; shift;;
 	--append-reset|-a)
 			shift; resetAction=append;;
 	--keep-reset|-k)
@@ -228,8 +228,8 @@ do
 			;;
 	--summary-only)	shift; isSummaryOnly=t;;
 	--count|-n)	shift; totalCountWhat="$1"; shift;;
-	--skip|-s)	shift; skipPattern="${skipPattern}${skipPattern:+|}${1:?}"; shift;;
-	--match|-m)	shift; matchPattern="${matchPattern}${matchPattern:+|}${1:?}"; shift;;
+	--skip|-s)	shift; skipPattern+="${skipPattern:+|}${1:?}"; shift;;
+	--match|-m)	shift; matchPattern+="${matchPattern:+|}${1:?}"; shift;;
 	--timespan|-t)	shift; < <(timeWithAdjustmentToSeconds "$1") IFS=$'\t' read -r timespan timespanAdjustment || exit 2; shift;;
 	--initial-delay|-T)
 			shift; initialDelay="$(timeToSeconds "$1")" || exit $?; shift;;
@@ -349,7 +349,7 @@ do
 		# the word "again" on every other update with the same count, so
 		# that it toggles on and off for successive same counts.
 		isAgain=t
-		summary="$summary again"
+		summary+=' again'
 	    else
 		isAgain=
 	    fi
@@ -362,7 +362,7 @@ do
 	fi
 
 	if [ $total -gt 0 ] && [ -n "${totalCountWhat+t}" ]; then
-	    sample="${sample}${SAMPLELINES_COUNT_PREFIX}${totalCountWhat}${totalCountWhat:+ }${total}${SAMPLELINES_COUNT_SUFFIX}"
+	    sample+="${SAMPLELINES_COUNT_PREFIX}${totalCountWhat}${totalCountWhat:+ }${total}${SAMPLELINES_COUNT_SUFFIX}"
 	fi
 
 	printf "${prefix}%s%s${suffix}${keepResetSuffix}" "$keepResetPrefix" "$sample"

@@ -66,7 +66,7 @@ do
 			while [ $# -gt 0 -a "$1" != ';' ]
 			do
 			    printf -v quotedArg '%q' "$1"
-			    cmd="${cmd}${cmd:+ }${quotedArg}"
+			    cmd+="${cmd:+ }${quotedArg}"
 			    shift
 			done
 			if [ $# -eq 0 ]; then

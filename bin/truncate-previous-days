@@ -87,7 +87,7 @@ considerArg=
 typeset -a matchArgs=()
 for format in "${formats[@]:-${!patterns[@]}}"
 do
-    considerArg="${considerArg}${considerArg:+\\|}${patterns[$format]}"
+    considerArg+="${considerArg:+\\|}${patterns[$format]}"
     matchArgs+=('--match' "/${bs}${date[$format]}${be}/" -n "/${bs}${date[$format]}${be}/,\$p")
 done
 

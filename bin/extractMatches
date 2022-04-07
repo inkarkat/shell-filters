@@ -303,7 +303,7 @@ do
 	--to|-t)	shift; singleRenderCheck "$0"; render="$1"; shift;;
 	--grep-only-matching)	shift; singleRenderCheck "$0"; render='/dev/stdout'; isQuiet=t; EXTRACTMATCHES_FILE_UPDATE_MATCH_DELAY=0; EXTRACTMATCHES_FILE_UPDATE_COUNT_DELAY=0;;
 	--grep-count)		shift; singleRenderCheck "$0"; render='/dev/stdout'; isQuiet=t; setInfiniteDelays; EXTRACTMATCHES_FILE_UPDATE_MATCH_DELAY=0;;
-	--skip|-s)	shift; skipPattern="${skipPattern}${skipPattern:+|}${1:?}"; shift;;
+	--skip|-s)		shift; skipPattern+="${skipPattern:+|}${1:?}"; shift;;
 	--regexp|-e)		shift; types+=(regexp); patterns+=("${1:?}"); replacements+=('&'); globals+=(0); others+=(''); names+=('') priorities+=(0); shift;;
 	--count|-c)		shift; types+=(count); patterns+=("${1:?}"); replacements+=('&'); globals+=(0); others+=(''); names+=('') priorities+=(0); shift;;
 	--match-count|-M)	shift; types+=(match-count); patterns+=("${1:?}"); replacements+=('&'); globals+=(0); others+=(''); names+=('') priorities+=(0); shift;;

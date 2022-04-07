@@ -86,7 +86,7 @@ cat "$@" | {
 	    if [ -z "$isEmptyLine" ]; then
 		isEmptyLine=t
 		printf '%s' "$emptyLineSeparator"
-		currentLine="${currentLine}${emptyLineSeparator}"; currentLine="${currentLine##*$'\n'}"
+		currentLine+="${emptyLineSeparator}"; currentLine="${currentLine##*$'\n'}"
 	    fi
 	else
 	    if [ "$breakTimeout" ]; then
@@ -102,7 +102,7 @@ cat "$@" | {
 		read -ru "${NOWRAP[0]}" wrappedLine
 		if [ "$wrappedLine" = "$fullLine" ]; then
 		    printf '%s%s' "$s" "$line"
-		    currentLine="${currentLine}${s}${line}"
+		    currentLine+="${s}${line}"
 		else
 		    printf '\n%s' "$line"
 		    currentLine="${line}"
