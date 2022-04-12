@@ -7,7 +7,7 @@ Parse a log format that has separate lines of DATE [TIME] [COMMENT] and put the
 DATE in front of following line(s) that don't have such.
 HELPTEXT
     echo
-    printf "Usage: [LOGDATETOPREFIX_DEFAULT_TIME=12:00] [OFS=\$'\\\\t'] %q %s\\n" "$(basename "$1")" '[--] [FILE ...] [-?|-h|--help]'
+    printf "Usage: [LOGDATETOPREFIX_DEFAULT_TIME=12:00] [LOGDATETOPREFIX_OFS=\$'\\\\t'] %q %s\\n" "$(basename "$1")" '[--] [FILE ...] [-?|-h|--help]'
     printf 'Usage: cat FILE [...] | %q\n' "$(basename "$1")"
 }
 case "$1" in
@@ -16,7 +16,7 @@ esac
 
 awk \
     -v "defaultTime=${LOGDATETOPREFIX_DEFAULT_TIME//\\/\\\\}" \
-    -v "outputFieldSeparator=${OFS//\\/\\\\}" \
+    -v "outputFieldSeparator=${LOGDATETOPREFIX_OFS//\\/\\\\}" \
 '
 function getFollowingFields()
 {
