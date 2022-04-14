@@ -1,0 +1,15 @@
+#!/bin/sed -f
+
+## Remove any ANSI escape sequences (not just coloring) from the output.
+##
+## Usage: noansi FILE [...]
+## Usage: cat FILE [...] | noansi
+
+s#\x1b\[[0-9:;?]*[[:alpha:]]##g
+
+# Bash version: ${1//\[*([0-9:;?])[a-zA-Z]/}
+# AWK version: gensub(/\x1b\[[0-9:;?]*[[:alpha:]]/, "", "g", var)
+# noansi()
+# {
+#     eval "$1=\"\${2//\\[*([0-9:;?])[a-zA-Z]/}\""
+# }
