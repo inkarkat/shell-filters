@@ -1,0 +1,31 @@
+#!/bin/bash
+# Source: https://stackoverflow.com/a/5917762/813602
+shopt -qs extglob
+
+printUsage()
+{
+    cat <<HELPTEXT
+Sort lines by the number of characters (ascending, unless -r|--reverse is given)
+(with equal lines alphabetically sorted unless -s|--stable is given).
+HELPTEXT
+    echo
+    printf 'Usage: %q %s\n' "$(basename "$1")" '[-r|--reverse] [-s|--stable] [--] FILE [...] [-?|-h|--help]'
+    printf 'Usage: cat FILE [...] | %q %s\n' "$(basename "$1")" '[...]'
+}
+typeset -a sortArgs=()
+while [ $# -ne 0 ]
+do
+    case "$1" in
+	--help|-h|-\?)	shift; printUsage "$0"; exit 0;;
+
+	-+([rs]))	sortArgs+=("$1"); shift;;
+	--@(reverse|stable))
+			sortArgs+=("$1"); shift;;
+	--)		break;;
+	*)		break;;
+    esac
+done
+
+awk '{ print length, $0 }' "$@" | \
+    sort -n "${sortArgs[@]}" | \
+    cut -d ' ' -f2-
