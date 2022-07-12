@@ -1,0 +1,6 @@
+It is foobar.
+The fox is red.
+Unrelated content.
+A former admiral in a bar.
+Unlikely text.
+EOF

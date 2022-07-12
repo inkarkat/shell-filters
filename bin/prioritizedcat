@@ -1,0 +1,57 @@
+#!/bin/bash
+shopt -qs extglob
+
+printUsage()
+{
+    cat <<HELPTEXT
+Only print lines that match PATTERN, but if there are no such lines at all,
+print all lines.
+HELPTEXT
+    echo
+    printf 'Usage: %q %s\n' "$(basename "$1")" '[GREP-OPTIONS ...] PATTERN [--] [FILE ...] [-?|-h|--help]'
+    printf 'Usage: cat FILE [...] | %q %s\n' "$(basename "$1")" '[GREP-OPTIONS ...] PATTERN'
+    echo
+    cat <<HELPTEXT
+Omit lines that match PATTERN if there are other matches, but if not, print all
+previously omitted lines.
+HELPTEXT
+    echo
+    printf 'Usage: %q %s\n' "$(basename "$1")" '-v|--invert-match [GREP-OPTIONS ...] PATTERN [--] [FILE ...] [-?|-h|--help]'
+    printf 'Usage: cat FILE [...] | %q %s\n' "$(basename "$1")" '-v|--invert-match [GREP-OPTIONS ...] PATTERN'
+}
+hasPattern=
+typeset -a grepArgs=()
+while [ $# -ne 0 ]
+do
+    case "$1" in
+    --help|-h|-\?)	shift; printUsage "$0"; exit 0;;
+
+    -@([EFGPivwxsaIrRUz]))
+			grepArgs+=("$1"); shift;;
+    --@(extended-regexp|fixed-strings|basic-regexp|perl-regexp|ignore-case|invert-match|word-regexp|line-regexp|no-messages|text|recursive|dereference-recursive|binary|null-data))
+			grepArgs+=("$1"); shift;;
+    -[ef])		grepArgs+=("$1" "$2"); shift; shift; hasPattern=t;;
+    -[mDd])		grepArgs+=("$1" "$2"); shift; shift;;
+    --@(regexp|file)=*)
+			grepArgs+=("$1"); shift; hasPattern=t;;
+    --@(regexp|file))
+			grepArgs+=("$1" "$2"); shift; shift; hasPattern=t;;
+    --@(color|colour|max-count|binary-files|devices|directories|exclude|exclude-from|include)=*)
+			grepArgs+=("$1"); shift;;
+    --@(color|colour|max-count|binary-files|devices|directories|exclude|exclude-from|include))
+			grepArgs+=("$1" "$2"); shift; shift;;
+
+    --)			grepArgs+=("$1"); shift; break;;
+    *)			if [ ! "$hasPattern" ]; then
+			    grepArgs+=("$1"); shift
+			fi
+			break
+			;;
+    esac
+done
+
+TMPFILE="$(mktemp --tmpdir "$(basename -- "$0")-XXXXXX" 2>/dev/null || echo "${TEMP:-/tmp}/$(basename -- "$0").$$$RANDOM")"
+[ "${DEBUG:-}" ] || trap 'rm -f -- "$TMPFILE" 2>/dev/null' EXIT
+
+sourceCommand=; [ $# -eq 0 ] || sourceCommand=cat
+eval "${sourceCommand}${sourceCommand:+ \"\$@\" | }tee \"\$TMPFILE\"" | grep "${grepArgs[@]}" || cat "$TMPFILE"
