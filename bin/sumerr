@@ -48,8 +48,12 @@ finally()
 }
 trap 'finally' EXIT
 
-if [ "$isNeedEval" ]; then
-    eval "${commands[@]}"
-else
-    "${commands[@]}"
-fi 2> >(while read -r line; do printf '\e[01;31m%s\e[0m\n' "$line"; done | tee -- "$TMPFILE")
+execute()
+{
+    if [ "$isNeedEval" ]; then
+	eval "${commands[@]}"
+    else
+	"${commands[@]}"
+    fi
+}
+execute 2> >(while read -r line; do printf '\e[01;31m%s\e[0m\n' "$line"; done | tee -- "$TMPFILE")
