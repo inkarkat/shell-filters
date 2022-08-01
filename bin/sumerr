@@ -6,15 +6,18 @@ printUsage()
 Execute COMMAND, then separately summarize the stderr output after COMMAND's
 execution (and normal output).
 HELPTEXT
-printf 'Usage: %q %s\n' "$(basename "$1")" '-c|--command "COMMANDLINE" [-c ...] | [--] SIMPLECOMMAND [...] [-?|-h|--help]'
+printf 'Usage: %q %s\n' "$(basename "$1")" '[-Y|--summary-only] -c|--command "COMMANDLINE" [-c ...] | [--] SIMPLECOMMAND [...] [-?|-h|--help]'
 }
 
+isSummaryOnly=
 isNeedEval=
 typeset -a commands=()
 while [ $# -ne 0 ]
 do
     case "$1" in
 	--help|-h|-\?)	shift; printUsage "$0"; exit 0;;
+	--summary-only|-Y)
+			shift; isSummaryOnly=t;;
 	--command|-c)	shift; commands+=(${commands:+;} "$1"); isNeedEval=t; shift;;
 	--)		shift; break;;
 	-*)		{ echo "ERROR: Unknown option \"$1\"!"; echo; printUsage "$0"; } >&2; exit 2;;
@@ -42,9 +45,14 @@ finally()
 {
     if [ -s "$TMPFILE" ]; then
 	printf '\n\e[01;31m=== ERRORS ===\e[0m\n'
-	cat -- "$TMPFILE"
+	if [ "$isSummaryOnly" ]; then
+	    sed -e $'s/.*/\e[01;31m&\e[0m/' -- "$TMPFILE"
+	else
+	    cat -- "$TMPFILE"
+	fi
     fi
-    rm -f -- "$TMPFILE" 2>/dev/null
+
+    rm --force -- "$TMPFILE" 2>/dev/null
 }
 trap 'finally' EXIT
 
@@ -56,4 +64,9 @@ execute()
 	"${commands[@]}"
     fi
 }
-execute 2> >(while read -r line; do printf '\e[01;31m%s\e[0m\n' "$line"; done | tee -- "$TMPFILE")
+
+if [ "$isSummaryOnly" ]; then
+    execute 2>"$TMPFILE"
+else
+    execute 2> >(while read -r line; do printf '\e[01;31m%s\e[0m\n' "$line"; done | tee -- "$TMPFILE")
+fi
