@@ -94,7 +94,8 @@ if [ $# -eq 0 -a "$isPrintSequence" ] || [ $# -eq 1 -a \( "$1" = --get -o "$1" =
 elif [ $# -eq 0 ]; then
     exec "${COLOR[@]}"
 elif [ $# -ge 2 -a "$1" = '--' ]; then
-    cat "$@" | "${COLOR[@]}"
+    shift
+    cat -- "$@" | "${COLOR[@]}"
 else
     printf '%s\n' "$*" | "${COLOR[@]}"
 fi

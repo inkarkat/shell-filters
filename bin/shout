@@ -17,7 +17,8 @@ typeset -a SHOUT=(sed -e 'y/abcdefghijklmnopqrstuvwxyz/ABCDEFGHIJKLMNOPQRSTUVWXY
 if [ $# -eq 0 ]; then
     exec "${SHOUT[@]}"
 elif [ $# -ge 2 -a "$1" = '--' ]; then
-    cat "$@" | "${SHOUT[@]}"
+    shift
+    cat -- "$@" | "${SHOUT[@]}"
 else
     printf '%s\n' "$*" | "${SHOUT[@]}"
 fi
