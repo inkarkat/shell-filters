@@ -1,0 +1,147 @@
+#!/bin/bash
+
+: ${WITHEXTRACTEDCONTEXT_CONTEXT_MARKER='{?}'}
+: ${WITHEXTRACTEDCONTEXT_LINE_MARKER='{}'}
+contextMarker="$WITHEXTRACTEDCONTEXT_CONTEXT_MARKER"; unset WITHEXTRACTEDCONTEXT_CONTEXT_MARKER
+lineMarker="$WITHEXTRACTEDCONTEXT_LINE_MARKER"; unset WITHEXTRACTEDCONTEXT_LINE_MARKER
+
+printShortUsage()
+{
+    # Note: short followed by long option; if the user knows the short one, she can
+    # skim the long one.
+    printf 'Usage: cat FILE [...] %q %s\n' "$(basename "$1")" '(-m|--match PATTERN [-r|--replacement REPLACEMENT]) [...] [-x|--reset RESET-PATTERN [-x ...]] [-s|--skip PATTERN [-s ...]] [--skip-empty-context] -c|--command "COMMANDLINE" [-c ...] | [--] SIMPLECOMMAND [...] [-?|-h|--help]'
+}
+printUsage()
+{
+    # This is the short help when launched with no or incorrect arguments.
+    # It is printed to stderr to avoid accidental processing.
+    printShortUsage "$1" >&2
+    printf >&2 '\nTry %q --help for more information.\n' "$(basename "$1")"
+}
+printLongUsage()
+{
+    # This is the long "man page" when launched with the help argument.
+    # It is printed to stdout to allow paging with 'more'.
+    cat <<HELPDESCRIPTION
+Extract a context from line(s) matching PATTERN, and pass the last such context
+to COMMAND whenever a line does not match PATTERN.
+HELPDESCRIPTION
+    echo
+    printShortUsage "$1"
+    echo
+    cat <<HELPTEXT
+    --match|-m PATTERN	    Match PATTERN as the context, and swallow the entire
+			    line.
+    --replacement|-r REPLACEMENT
+			    Use REPLACEMENT (that can refer to PATTERN capture
+			    groups via \1 etc.) instead of the full match of
+			    PATTERN.
+    --reset|-x RESET-PATTERN
+			    Clear the previous context and swallow the entire
+			    line where RESET-PATTERN is encountered.
+    --skip|-s PATTERN	    Don't invoke COMMAND on non-context lines that match
+			    PATTERN; directly print those.
+    --skip-empty-context    Don't invoke COMMAND when the context is empty.
+    --command|-c CMD	    Execute CMD as a command-line. When this is a simple
+			    command, it can also be passed as such. The string
+			    ${lineMarker} is replaced by the line; ${contextMarker} is replaced by the
+			    context.
+PATTERN is a POSIX-style unanchored extended regular expression.
+
+EXIT STATUS:
+    0	Complete success.
+    *   last failure from COMMAND(s)
+    2	Bad invocation, wrong or missing command-line arguments.
+    99	No input has been encountered.
+HELPTEXT
+}
+
+typeset -a patterns=()
+typeset -a replacements=()
+resetPattern=
+skipPattern=
+isSkipEmptyContext=
+isNeedEval=
+typeset -a commands=()
+while [ $# -ne 0 ]
+do
+    case "$1" in
+	--help|-h|-\?)	shift; printLongUsage "$0"; exit 0;;
+	--match|-m)	shift; patterns+=("$1"); replacements+=('&'); shift;;
+	--replacement|-r)
+			shift
+			if [ ${#patterns[@]} -eq 0 ]; then
+			    echo 'Need -m|--match PATTERN before passing REPLACEMENT.'
+			    echo
+			    printUsage "$0"
+			    exit 2
+			fi >&2
+			replacements[-1]="$1"
+			shift
+			;;
+	--skip|-s)	shift; skipPattern+="${skipPattern:+|}${1:?}"; shift;;
+	--reset|-x)	shift; resetPattern+="${resetPattern:+|}${1:?}"; shift;;
+	--skip-empty-context)
+			shift; isSkipEmptyContext=t;;
+	--command|-c)	shift; commands+=(${commands:+;} "$1"); isNeedEval=t; shift;;
+	--)		shift; break;;
+	-*)		{ echo "ERROR: Unknown option \"$1\"!"; echo; printUsage "$0"; } >&2; exit 2;;
+	*)		break;;
+    esac
+done
+if [ $# -ne 0 ]; then
+    if [ "$isNeedEval" ]; then
+	# Combine --command and SIMPLECOMMAND; need to quote SIMPLECOMMAND to
+	# undo the effects of eval.
+	printf -v quotedSimpleCommand '%q ' "$@"
+	printf -v escapedContextMarker %q "$contextMarker"
+	printf -v escapedLineMarker %q "$lineMarker"
+	quotedSimpleCommand="${quotedSimpleCommand//"$escapedContextMarker"/$contextMarker}"
+	quotedSimpleCommand="${quotedSimpleCommand//"$escapedLineMarker"/$lineMarker}"
+	commands+=(${commands:+;} "$quotedSimpleCommand")	# %q escapes {} and {?}, we don't want that to have it interpolated later.
+    else
+	commands=("$@")
+    fi
+fi
+if [ ${#patterns[@]} -eq 0 ]; then
+    echo 'ERROR: No context specified; need to pass -m|--match PATTERN.'
+    echo
+    printUsage "$0"
+    exit 2
+elif [ ${#commands[@]} -eq 0 ]; then
+    echo 'ERROR: No COMMAND(s) specified; need to pass -c|--command "COMMANDLINE", or SIMPLECOMMAND.'
+    echo
+    printUsage "$0"
+    exit 2
+fi >&2
+
+status=
+while IFS=$'\n' read -r line || [ -n "$line" ]
+do
+    for ((i = 0; i < ${#patterns[@]}; i++))
+    do
+	if [[ "$line" =~ ${patterns[$i]} ]]; then
+	    context="$(submatchSubstitute "${replacements[$i]}" "${BASH_REMATCH[@]}")"
+	    continue 2
+	fi
+    done
+
+    if [ -n "$resetPattern" ] && [[ "$line" =~ $resetPattern ]]; then
+	context=''
+	continue
+    elif [ -n "$skipPattern" ] && [[ "$line" =~ $skipPattern ]]; then
+	printf '%s\n' "$line"
+	continue
+    elif [ "$isSkipEmptyContext" ] && [ -z "$context" ]; then
+	continue
+    fi
+
+    typeset -a interpolatedCommands=("${commands[@]//"$lineMarker"/$line}")
+    typeset -a interpolatedCommands=("${interpolatedCommands[@]//"$contextMarker"/$context}")
+    if [ "$isNeedEval" ]; then
+	eval "${interpolatedCommands[@]}"
+    else
+	"${interpolatedCommands[@]}"
+    fi && : ${status:=0} || status=$?
+done
+exit ${status:-99}
