@@ -9,7 +9,7 @@ printShortUsage()
 {
     # Note: short followed by long option; if the user knows the short one, she can
     # skim the long one.
-    printf 'Usage: cat FILE [...] %q %s\n' "$(basename "$1")" '(-m|--match PATTERN [-r|--replacement REPLACEMENT]) [...] [-x|--reset RESET-PATTERN [-x ...]] [-t|--trigger TRIGGER-PATTERN] [-s|--skip PATTERN [-s ...]] [--skip-empty-context] -c|--command "COMMANDLINE" [-c ...] | [--] SIMPLECOMMAND [...] [-?|-h|--help]'
+    printf 'Usage: cat FILE [...] %q %s\n' "$(basename "$1")" '(-m|--match PATTERN [-r|--replacement REPLACEMENT]) [...] [-x|--reset RESET-PATTERN [-x ...]] [-s|--skip SKIP-PATTERN [-s ...]] [-t|--trigger TRIGGER-PATTERN] [--skip-empty-context] -c|--command "COMMANDLINE" [-c ...] | [--] SIMPLECOMMAND [...] [-?|-h|--help]'
 }
 printUsage()
 {
@@ -39,19 +39,20 @@ HELPDESCRIPTION
     --reset|-x RESET-PATTERN
 			    Clear the previous context and swallow the entire
 			    line where RESET-PATTERN is encountered.
+    --skip|-s SKIP-PATTERN  Don't invoke COMMAND on non-context lines that match
+			    SKIP-PATTERN; directly print those.
     --trigger|-t TRIGGER-PATTERN
 			    Only invoke COMMAND on lines that match
 			    TRIGGER-PATTERN. If no -m|--match is given, other
 			    lines will be treated as contexts (in full, without
 			    replacements); else, they will be skipped.
-    --skip|-s PATTERN	    Don't invoke COMMAND on non-context lines that match
-			    PATTERN; directly print those.
     --skip-empty-context    Don't invoke COMMAND when the context is empty.
     --command|-c CMD	    Execute CMD as a command-line. When this is a simple
 			    command, it can also be passed as such. The string
 			    ${lineMarker} is replaced by the line; ${contextMarker} is replaced by the
 			    context.
 PATTERN is a POSIX-style unanchored extended regular expression.
+Precedence: RESET-PATTERN > SKIP-PATTERN > TRIGGER-PATTERN > PATTERN
 
 EXIT STATUS:
     0	Complete success.
@@ -124,6 +125,8 @@ fi >&2
 
 trigger()
 {
+    [ "$isSkipEmptyContext" ] && [ -z "$context" ] && return
+
     typeset -a interpolatedCommands=("${commands[@]//"$lineMarker"/$line}")
     typeset -a interpolatedCommands=("${interpolatedCommands[@]//"$contextMarker"/$context}")
     if [ "$isNeedEval" ]; then
@@ -136,7 +139,13 @@ trigger()
 status=
 while IFS=$'\n' read -r line || [ -n "$line" ]
 do
-    if [ -n "$triggerPattern" ]; then
+    if [ -n "$resetPattern" ] && [[ "$line" =~ $resetPattern ]]; then
+	context=''
+	continue
+    elif [ -n "$skipPattern" ] && [[ "$line" =~ $skipPattern ]]; then
+	printf '%s\n' "$line"
+	continue
+    elif [ -n "$triggerPattern" ]; then
 	if [[ "$line" =~ $triggerPattern ]]; then
 	    trigger
 	elif [ ${#patterns[@]} -eq 0 ]; then
@@ -153,14 +162,6 @@ do
 	fi
     done
 
-    if [ -n "$resetPattern" ] && [[ "$line" =~ $resetPattern ]]; then
-	context=''
-    elif [ -n "$skipPattern" ] && [[ "$line" =~ $skipPattern ]]; then
-	printf '%s\n' "$line"
-    elif [ "$isSkipEmptyContext" ] && [ -z "$context" ]; then
-	:
-    else
-	trigger
-    fi
+    trigger
 done
 exit ${status:-99}
