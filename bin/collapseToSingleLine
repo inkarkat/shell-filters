@@ -4,7 +4,7 @@ printShortUsage()
 {
     # Note: short followed by long option; if the user knows the short one, she can
     # skim the long one.
-    printf 'Usage: %q %s\n' "$(basename "$1")" '[-s|--separator SEP] [-e|--empty-line-separator EMPTY-SEP] [-a|--break-after|-b|--break-before PATTERN] [-t|--break-timeout SECONDS] [-w|--wrap COL] FILE [...] [-?|-h|--help]'
+    printf 'Usage: %q %s\n' "$(basename "$1")" '[-s|--separator SEP] [-e|--empty-line-separator EMPTY-SEP] [-a|--break-after|-b|--break-before PATTERN] [-t|--break-timeout SECONDS] [-w|--wrap COL] [--] FILE [...] [-?|-h|--help]'
     echo
     printf 'Usage: cat FILE [...] | %q %s\n' "$(basename "$1")" '[...]'
 }
@@ -75,7 +75,8 @@ newline()
     printf '\n'
     currentLine=''
 }
-cat "$@" | {
+collapseInput()
+{
     [ "$wrapCol" ] && coproc NOWRAP { nowrap --unbuffered --columns="$wrapCol"; }    # Start a coproc to filter individual lines; this is much more efficient than starting a new process for each line.
 
     while IFS=$'\n' read -r line || [ -n "$line" ]
@@ -119,3 +120,8 @@ cat "$@" | {
     done
     printf '\n'
 }
+if [ $# -eq 0 ]; then
+    collapseInput
+else
+    cat -- "$@" | collapseInput
+fi
