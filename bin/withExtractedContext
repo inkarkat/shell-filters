@@ -115,6 +115,17 @@ elif [ ${#commands[@]} -eq 0 ]; then
     exit 2
 fi >&2
 
+trigger()
+{
+    typeset -a interpolatedCommands=("${commands[@]//"$lineMarker"/$line}")
+    typeset -a interpolatedCommands=("${interpolatedCommands[@]//"$contextMarker"/$context}")
+    if [ "$isNeedEval" ]; then
+	eval "${interpolatedCommands[@]}"
+    else
+	"${interpolatedCommands[@]}"
+    fi && : ${status:=0} || status=$?
+}
+
 status=
 while IFS=$'\n' read -r line || [ -n "$line" ]
 do
@@ -128,20 +139,12 @@ do
 
     if [ -n "$resetPattern" ] && [[ "$line" =~ $resetPattern ]]; then
 	context=''
-	continue
     elif [ -n "$skipPattern" ] && [[ "$line" =~ $skipPattern ]]; then
 	printf '%s\n' "$line"
-	continue
     elif [ "$isSkipEmptyContext" ] && [ -z "$context" ]; then
-	continue
-    fi
-
-    typeset -a interpolatedCommands=("${commands[@]//"$lineMarker"/$line}")
-    typeset -a interpolatedCommands=("${interpolatedCommands[@]//"$contextMarker"/$context}")
-    if [ "$isNeedEval" ]; then
-	eval "${interpolatedCommands[@]}"
+	:
     else
-	"${interpolatedCommands[@]}"
-    fi && : ${status:=0} || status=$?
+	trigger
+    fi
 done
 exit ${status:-99}
