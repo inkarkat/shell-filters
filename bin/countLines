@@ -1,0 +1,143 @@
+#!/bin/bash
+
+if [ -t 1 ]; then
+    : ${COUNTLINES_RESET_PREFIX=[01m}
+    : ${COUNTLINES_RESET_SUFFIX=[0m}
+    : ${COUNTLINES_SUMMARY_PREFIX='[36m('}
+    : ${COUNTLINES_SUMMARY_SUFFIX=')[0m'}
+    : ${COUNTLINES_PREPENDED_COUNT_PREFIX='[36m('}
+    : ${COUNTLINES_PREPENDED_COUNT_SUFFIX=')[0m '}
+    : ${COUNTLINES_APPENDED_COUNT_PREFIX=' [36m('}
+    : ${COUNTLINES_APPENDED_COUNT_SUFFIX=')[0m'}
+else
+    : ${COUNTLINES_RESET_PREFIX=}
+    : ${COUNTLINES_RESET_SUFFIX=}
+    : ${COUNTLINES_SUMMARY_PREFIX='('}
+    : ${COUNTLINES_SUMMARY_SUFFIX=')'}
+    : ${COUNTLINES_PREPENDED_COUNT_PREFIX='('}
+    : ${COUNTLINES_PREPENDED_COUNT_SUFFIX=') '}
+    : ${COUNTLINES_APPENDED_COUNT_PREFIX=' ('}
+    : ${COUNTLINES_APPENDED_COUNT_SUFFIX=')'}
+fi
+
+printShortUsage()
+{
+    # Note: short followed by long option; if the user knows the short one, she can
+    # skim the long one.
+    printf 'Usage: cat FILE [...] | %q %s\n' "$(basename "$1")" '[-r|--reset-on PATTERN [-r ...]] [-S|--summarize WHAT[,PLURAL-WHAT] --summary-only] [--prepend WHAT|--append WHAT] [-s|--skip PATTERN [-s ...]] [-m|--match PATTERN [-m ...]] [-?|-h|--help]'
+}
+printUsage()
+{
+    # This is the short help when launched with no or incorrect arguments.
+    # It is printed to stderr to avoid accidental processing.
+    printShortUsage "$1" >&2
+    printf >&2 '\nTry %q --help for more information.\n' "$(basename "$1")"
+}
+printLongUsage()
+{
+    # This is the long "man page" when launched with the help argument.
+    # It is printed to stdout to allow paging with 'more'.
+    cat <<HELPDESCRIPTION
+Short textual description, either passive (Wrapper for blah), imperative (Write foo into blah), or third person (Writes foo into blah).
+HELPDESCRIPTION
+    echo
+    printShortUsage "$1"
+    echo
+    cat <<HELPTEXT
+    --reset-on|-r PATTERN
+			Reset the counter on lines matching PATTERN.
+    --summarize|-S WHAT[,PLURAL-WHAT]
+			Characterize the amount of lines as WHAT, e.g. "line",
+			"file", you can also pass a separate (non-regular)
+			plural form: "entry,entries").
+    --summary-only	Instead of adding counts to the output, just summarize
+			the amount of lines.
+    --prepend WHAT	Prepend the total count before the current line (prefixed
+			by WHAT (always singluar, as in "file 3")).
+			By default just prepends the count itself.
+    --append WHAT	Append the total count after the current line (prefixed
+			by WHAT (always singluar, as in "file 3")).
+    --skip|-s PATTERN	Do not count lines that match PATTERN (both for summary
+			and total counts).
+    --match|-m PATTERN	Only consider lines that match PATTERN when counting
+			(both for summary and total counts); other lines (and
+			those that also match --skip PATTERN) are ignored.
+
+RELATED COMMANDS:
+
+cla-exitstatus
+
+Example:
+HELPTEXT
+    printf '%q %s\n' "$(basename "$1")" '--foo bar /tmp/foobar' # TODO
+}
+
+suffix='\n'
+resetPattern=
+summarizeWhat=
+summarizeWhatPlural=
+unset prependWhat
+unset appendWhat
+isSummaryOnly=
+skipPattern=
+matchPattern=
+while [ $# -ne 0 ]
+do
+    case "$1" in
+	--help|-h|-\?)	shift; printLongUsage "$0"; exit 0;;
+	--reset-on|-r)
+			shift; resetPattern+="${resetPattern:+}${1:?}"; shift;;
+	--summarize|-S)	shift
+			case "$1" in
+			    *,*)    summarizeWhat="${1%%,*}"
+				    summarizeWhatPlural="${1#*,}"
+				    ;;
+			    *)	    summarizeWhat="$1"
+				    summarizeWhatPlural="${1}s"
+				    ;;
+			    esac
+			shift
+			;;
+	--summary-only)	shift; isSummaryOnly=t;;
+	--append)	shift; appendWhat="$1"; shift;;
+	--prepend)	shift; prependWhat="$1"; shift;;
+	--skip|-s)	shift; skipPattern+="${skipPattern:+|}${1:?}"; shift;;
+	--match|-m)	shift; matchPattern+="${matchPattern:+|}${1:?}"; shift;;
+	--)		shift; break;;
+	-*)		{ echo "ERROR: Unknown option \"$1\"!"; echo; printUsage "$0"; } >&2; exit 2;;
+	*)		break;;
+    esac
+done
+[ -n "${prependWhat+t}" -o -n "${appendWhat+t}" ] || prependWhat='' # Prepend the count by default.
+let total=0
+let count=0
+
+while IFS=$'\n' read -r line || { [ -n "$summarizeWhat" ] || suffix=; [ -n "$line" ]; }
+do
+    isSkipThisLine=
+    [ "$matchPattern" ] && [[ ! "$line" =~ $matchPattern ]] && isSkipThisLine=t
+    [ "$skipPattern" ] && [[ "$line" =~ $skipPattern ]] && isSkipThisLine=t
+    if [ ! "$isSkipThisLine" ]; then
+	let count+=1
+	let total+=1
+    fi
+
+    if [ "$resetPattern" ] && [[ "$line" =~ $resetPattern ]]; then
+	[ "$isSkipThisLine" ] && count=0 || count=1
+	[ "$isSummaryOnly" ] || line="${COUNTLINES_RESET_PREFIX}${line}${COUNTLINES_RESET_SUFFIX}"
+    fi
+    if [ ! "$isSkipThisLine" ] && [ ! "$isSummaryOnly" ]; then
+	line="${prependWhat+$COUNTLINES_PREPENDED_COUNT_PREFIX}${prependWhat}${prependWhat:+ }${prependWhat+$count}${prependWhat+$COUNTLINES_PREPENDED_COUNT_SUFFIX}${line}${appendWhat+$COUNTLINES_APPENDED_COUNT_PREFIX}${appendWhat}${appendWhat:+ }${appendWhat+$count}${appendWhat+$COUNTLINES_APPENDED_COUNT_SUFFIX}"
+    fi
+
+    printf "%s${suffix}" "$line"
+done
+
+if [ -n "$summarizeWhat" ]; then
+    if [ $total -eq 1 ]; then
+	summary="$total $summarizeWhat"
+    else
+	summary="$total $summarizeWhatPlural"
+    fi
+    printf '%s%s in total%s\n' "$COUNTLINES_SUMMARY_PREFIX" "$summary" "$COUNTLINES_SUMMARY_SUFFIX"
+fi
