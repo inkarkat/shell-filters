@@ -1,0 +1,20 @@
+#!/bin/bash
+# Source: https://unix.stackexchange.com/a/31955/18876
+# Source: https://stackoverflow.com/a/16198793/813602
+
+printUsage()
+{
+    cat <<HELPTEXT
+Add a final newline (<EOL>) at the end of the input / passed FILE(s) if it's missing.
+Empty input / FILE(s) will stay empty.
+HELPTEXT
+    printf 'Usage: %q %s\n' "$(basename "$1")" 'FILE [...] [-?|-h|--help]'
+    printf 'Usage: cat FILE [...] %q %s\n' "$(basename "$1")" '[...] [-?|-h|--help]'
+}
+typeset -a sedArgs=(-i)
+case "$1" in
+    --help|-h|-\?)	shift; printUsage "$0"; exit 0;;
+    --)			shift;;
+esac
+[ $# -eq 0 ] && sedArgs=()
+exec sed "${sedArgs[@]}" -e '$a\' -- "$@"
