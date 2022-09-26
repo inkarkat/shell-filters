@@ -1,0 +1,74 @@
+#!/bin/bash
+set -o pipefail
+
+printUsage()
+{
+    cat <<HELPTEXT
+Execute COMMAND(s) and add a separator line containing TEXT (default: empty
+line) in between each (non-empty) output.
+HELPTEXT
+    echo
+    printf 'Usage: %q %s\n' "$(basename "$1")" '[-s|--separator TEXT] -c|--command "COMMANDLINE" [...] | -e|--exec SIMPLECOMMAND [...] ; [...] | [--] SIMPLECOMMAND [...] [-?|-h|--help]'
+}
+
+separator=''
+typeset -a commands=()
+while [ $# -ne 0 ]
+do
+    case "$1" in
+	--help|-h|-\?)	shift; printUsage "$0"; exit 0;;
+	--separator|-s)	shift; separator="$1"; shift;;
+	--command|-c)	shift; commands+=("$1"); shift;;
+	--exec|-e)	shift
+			cmd=
+			while [ $# -gt 0 -a "$1" != ';' ]
+			do
+			    printf -v quotedArg '%q' "$1"
+			    cmd="${cmd}${cmd:+ }${quotedArg}"
+			    shift
+			done
+			if [ $# -eq 0 ]; then
+			    echo 'ERROR: --exec command must be concluded with ;!'; echo; printUsage "$0"
+			    exit 2
+			fi >&2
+			shift
+			commands+=("$cmd")
+			;;
+	--)		shift; break;;
+	-*)		{ echo "ERROR: Unknown option \"$1\"!"; echo; printUsage "$0"; } >&2; exit 2;;
+	*)		break;;
+    esac
+done
+if [ $# -ne 0 ]; then
+    # Combine --command and SIMPLECOMMAND; need to quote SIMPLECOMMAND to
+    # undo the effects of eval.
+    printf -v quotedSimpleCommand '%q ' "$@"
+    commands+=("${quotedSimpleCommand% }")
+fi
+if [ ${#commands[@]} -eq 0 ]; then
+    echo 'ERROR: No COMMAND(s) specified; need to pass -c|--command "COMMANDLINE", or --exec SIMPLECOMMAND [...] ; , or SIMPLECOMMAND.'
+    echo
+    printUsage "$0"
+    exit 2
+fi >&2
+
+status=0
+isFirst=t
+for c in "${commands[@]}"
+do
+    if [ "$isFirst" ]; then
+	eval "$c" | outputOrError
+	typeset -a states=("${PIPESTATUS[@]}")
+	[ ${states[-1]} -eq 0 ] && isFirst=
+
+	# Emulate pipefail excluding the last pipeline (our foreign
+	# outputOrError).
+	for thisStatus in "${states[@]:0:$((${#states[@]}-1))}"
+	do
+	    [ $thisStatus -eq 0 ] || status=$thisStatus
+	done
+    else
+	eval "$c" | { outputAndPrintf '%s\n' "$separator" || :; }
+    fi
+done
+exit $status
