@@ -1,23 +1,49 @@
 #!/bin/bash
 set -o pipefail
 
+printShortUsage()
+{
+    # Note: short followed by long option; if the user knows the short one, she can
+    # skim the long one.
+    printf 'Usage: %q %s\n' "$(basename "$1")" '[-s|--separator TEXT] [--include-errors] -c|--command "COMMANDLINE" [...] | -e|--exec SIMPLECOMMAND [...] ; [...] | [--] SIMPLECOMMAND [...] [-?|-h|--help]'
+}
 printUsage()
 {
-    cat <<HELPTEXT
+    # This is the short help when launched with no or incorrect arguments.
+    # It is printed to stderr to avoid accidental processing.
+    printShortUsage "$1" >&2
+    printf >&2 '\nTry %q --help for more information.\n' "$(basename "$1")"
+}
+printLongUsage()
+{
+    # This is the long "man page" when launched with the help argument.
+    # It is printed to stdout to allow paging with 'more'.
+    cat <<HELPDESCRIPTION
 Execute COMMAND(s) and add a separator line containing TEXT (default: empty
 line) in between each (non-empty) output.
-HELPTEXT
+HELPDESCRIPTION
     echo
-    printf 'Usage: %q %s\n' "$(basename "$1")" '[-s|--separator TEXT] -c|--command "COMMANDLINE" [...] | -e|--exec SIMPLECOMMAND [...] ; [...] | [--] SIMPLECOMMAND [...] [-?|-h|--help]'
+    printShortUsage "$1"
+    echo
+    cat <<HELPTEXT
+    --separator|-s TEXT	Print a line with TEXT in between COMMAND executions
+			with output.
+    --include-errors	Combine command output and command errors so that error
+			output also causes separation. By default, stderr output
+			bypasses the output checking completely.
+HELPTEXT
 }
 
 separator=''
+redirection=
 typeset -a commands=()
 while [ $# -ne 0 ]
 do
     case "$1" in
-	--help|-h|-\?)	shift; printUsage "$0"; exit 0;;
+	--help|-h|-\?)	shift; printLongUsage "$0"; exit 0;;
 	--separator|-s)	shift; separator="$1"; shift;;
+	--include-errors)
+			shift; redirection='2>&1';;
 	--command|-c)	shift; commands+=("$1"); shift;;
 	--exec|-e)	shift
 			cmd=
@@ -57,7 +83,7 @@ isFirst=t
 for c in "${commands[@]}"
 do
     if [ "$isFirst" ]; then
-	eval "$c" | outputOrError
+	eval "${redirection:+{}" "${c}" "${redirection:+; \} }${redirection}" | outputOrError
 	typeset -a states=("${PIPESTATUS[@]}")
 	[ ${states[-1]} -eq 0 ] && isFirst=
 
@@ -68,7 +94,7 @@ do
 	    [ $thisStatus -eq 0 ] || status=$thisStatus
 	done
     else
-	eval "$c" | { outputAndPrintf '%s\n' "$separator" || :; }
+	eval "${redirection:+{}" "${c}" "${redirection:+; \} }${redirection}" | { outputAndPrintf '%s\n' "$separator" || :; }
     fi
 done
 exit $status
