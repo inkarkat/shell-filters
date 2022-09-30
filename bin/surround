@@ -4,11 +4,11 @@ printShortUsage()
 {
     # Note: short followed by long option; if the user knows the short one, she can
     # skim the long one.
-    printf 'Usage: %q %s\n' "$(basename "$1")" '[-k|--keep-whitespace] [-s|--skip-empty] [-j|--join-by TEXT] [--] PREFIX SUFFIX FILE [...] [-?|-h|--help]'
+    printf 'Usage: %q %s\n' "$(basename "$1")" '[-k|--keep-whitespace] [-s|--skip-empty] [-j|--join-by TEXT] [-f|--first-then-indent] [-l|--last-only] [--] PREFIX SUFFIX FILE [...] [-?|-h|--help]'
     echo
-    printf 'Usage: %q %s\n' "$(basename "$1")" '[-k|--keep-whitespace] [-s|--skip-empty] [-j|--join-by TEXT] -c|--command "COMMANDLINE" [...] | --exec SIMPLECOMMAND ... ; [...] [--] PREFIX SUFFIX'
+    printf 'Usage: %q %s\n' "$(basename "$1")" '[...] -c|--command "COMMANDLINE" [...] | --exec SIMPLECOMMAND ... ; [...] [--] PREFIX SUFFIX'
     echo
-    printf 'Usage: cat FILE [...] | %q %s\n' "$(basename "$1")" '[-k|--keep-whitespace] [-s|--skip-empty] [-j|--join-by TEXT] [--] PREFIX SUFFIX'
+    printf 'Usage: cat FILE [...] | %q %s\n' "$(basename "$1")" '[...] [--] PREFIX SUFFIX'
 }
 printUsage()
 {
@@ -37,6 +37,10 @@ HELPDESCRIPTION
 			on separate lines. TEXT will only be put in between
 			lines, not at the beginning and not at the end, and with
 			--skip-empty also not around empty lines.
+    --first-then-indent|-f
+			Prefix the first line, then indent following lines with
+			the same amount of spaces.
+    --last-only|-l	Suffix the last line only.
     --command|-c CMD	Execute CMD as a command-line and prefix its output.
     --exec COMMAND ;	Execute COMMAND; all following arguments are taken to be
 			arguments to the COMMAND until an argument consisting of
@@ -48,6 +52,8 @@ typeset -a commands=()
 isKeepWhitespace=
 skipEmptyPattern=
 unset literalJoiner
+isOnlyFirst=
+isOnlyLast=
 while [ $# -ne 0 ]
 do
     case "$1" in
@@ -60,6 +66,8 @@ do
 			literalJoiner="${literalJoiner//&/\\&}"
 			literalJoiner="${literalJoiner//$'\n'/\\n}"
 			;;
+	--first-then-indent|-f)	shift; isOnlyFirst=t;;
+	--last-only|-l)		shift; isOnlyLast=t;;
 	--command|-c)	shift; commands+=(${commands:+;} "$1"); shift;;
 	--exec)		shift
 			cmd=
@@ -96,7 +104,8 @@ if [ -n "$skipEmptyPattern" ]; then
     additionalSedPreProcessing+=(-e "/^${skipEmptyPattern}\$/{ ${includePreviousIncompleteLine}${includePreviousIncompleteLine:+; }b }")
 fi
 
-literalPrefix="$1"; shift
+prefix="$1"; shift
+literalPrefix="$prefix"
 literalPrefix="${literalPrefix//\\/\\\\}"
 literalPrefix="${literalPrefix//&/\\&}"
 literalPrefix="${literalPrefix//$'\n'/\\n}"
@@ -106,5 +115,18 @@ literalSuffix="${literalSuffix//\\/\\\\}"
 literalSuffix="${literalSuffix//&/\\&}"
 literalSuffix="${literalSuffix//$'\n'/\\n}"
 
+typeset -a lastOnlySuffixSedProcessing=()
+if [ "$isOnlyLast" ]; then
+    lastOnlySuffixSedProcessing=(-e "\$s#\$#${literalSuffix//#/\\#}#")
+    literalSuffix=''
+fi
+
+typeset -a indentSedProcessing=()
+if [ "$isOnlyFirst" ]; then
+    indent="${prefix//?/ }"
+    prefixAddress=1
+    indentSedProcessing=(-e "${prefixAddress}!s#\\(^\\|\\n\\)\\(${isKeepWhitespace:+[ \t\v\f\r]*}\\)\\([^\\n]*[^${isKeepWhitespace:+ \t\v\f}\\n\\r]\\|\\)\\([${isKeepWhitespace:+ \t\v\f}\r]*\$\\)#\\1\2${indent}\\3${literalSuffix//#/\\#}\\4#")
+fi
+
 eval "${commands:+{ }" "${commands[@]:-exec}" "${commands:+" ; } |"}" \
-    'sed -e :restart "${additionalSedPreProcessing[@]}" -e "s#\\(^\\|\\n\\)\\(${isKeepWhitespace:+[ \t\v\f\r]*}\\)\\([^\\n]*[^${isKeepWhitespace:+ \t\v\f}\\n\\r]\\|\\)\\([${isKeepWhitespace:+ \t\v\f}\r]*\$\\)#\\1\2${literalPrefix//#/\\#}\\3${literalSuffix//#/\\#}\\4#" "${additionalSedPostProcessing[@]}" "$@"'
+    'sed -e :restart "${additionalSedPreProcessing[@]}" -e "${prefixAddress}s#\\(^\\|\\n\\)\\(${isKeepWhitespace:+[ \t\v\f\r]*}\\)\\([^\\n]*[^${isKeepWhitespace:+ \t\v\f}\\n\\r]\\|\\)\\([${isKeepWhitespace:+ \t\v\f}\r]*\$\\)#\\1\2${literalPrefix//#/\\#}\\3${literalSuffix//#/\\#}\\4#" "${indentSedProcessing[@]}" "${lastOnlySuffixSedProcessing[@]}" "${additionalSedPostProcessing[@]}" "$@"'

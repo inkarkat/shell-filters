@@ -4,11 +4,11 @@ printShortUsage()
 {
     # Note: short followed by long option; if the user knows the short one, she can
     # skim the long one.
-    printf 'Usage: %q %s\n' "$(basename "$1")" '[-k|--keep-whitespace] [-s|--skip-empty] [--] SUFFIX FILE [...] [-?|-h|--help]'
+    printf 'Usage: %q %s\n' "$(basename "$1")" '[-k|--keep-whitespace] [-s|--skip-empty] [-f|--first-only|-l|--last-only] [--] SUFFIX FILE [...] [-?|-h|--help]'
     echo
-    printf 'Usage: %q %s\n' "$(basename "$1")" '[-k|--keep-whitespace] [-s|--skip-empty] -c|--command "COMMANDLINE" [...] | --exec SIMPLECOMMAND ... ; [...] [--] SUFFIX'
+    printf 'Usage: %q %s\n' "$(basename "$1")" '[...] -c|--command "COMMANDLINE" [...] | --exec SIMPLECOMMAND ... ; [...] [--] SUFFIX'
     echo
-    printf 'Usage: cat FILE [...] | %q %s\n' "$(basename "$1")" '[-k|--keep-whitespace] [-s|--skip-empty] [--] SUFFIX'
+    printf 'Usage: cat FILE [...] | %q %s\n' "$(basename "$1")" '[...] [--] SUFFIX'
 }
 printUsage()
 {
@@ -32,6 +32,8 @@ HELPDESCRIPTION
 			Put trailing whitespace after the SUFFIX.
     --skip-empty|-s	Do not add SUFFIX to lines that are empty or just
 			contain whitespace; print them as-is.
+    --first-only|-f	Suffix the first line only.
+    --last-only|-l	Suffix the last line only.
     --command|-c CMD	Execute CMD as a command-line and add SUFFIX to its
 			output.
     --exec COMMAND ;	Execute COMMAND; all following arguments are taken to be
@@ -42,6 +44,7 @@ HELPTEXT
 
 typeset -a commands=()
 isKeepWhitespace=
+address=
 additionalSedProcessing=()
 while [ $# -ne 0 ]
 do
@@ -49,6 +52,8 @@ do
 	--help|-h|-\?)	shift; printLongUsage "$0"; exit 0;;
 	--keep-whitespace|-k)	shift; isKeepWhitespace=t;;
 	--skip-empty|-s)	shift; additionalSedProcessing+=(-e '/^[[:space:]]*\r\?$/b');;
+	--first-only|-f)	shift; address=1;;
+	--last-only|-l)		shift; address='$';;
 	--command|-c)	shift; commands+=(${commands:+;} "$1"); shift;;
 	--exec)		shift
 			cmd=
@@ -80,4 +85,4 @@ literalSuffix="${literalSuffix//\\/\\\\}"
 literalSuffix="${literalSuffix//&/\\&}"
 literalSuffix="${literalSuffix//$'\n'/\\n}"
 eval "${commands:+{ }" "${commands[@]:-exec}" "${commands:+" ; } |"}" \
-    'sed "${additionalSedProcessing[@]}" -e "s#\\(${isKeepWhitespace:+[[:space:]]*}\\r\\?\$\\)#${literalSuffix//#/\\#}\\1#" "$@"'
+    'sed "${additionalSedProcessing[@]}" -e "${address}s#\\(${isKeepWhitespace:+[[:space:]]*}\\r\\?\$\\)#${literalSuffix//#/\\#}\\1#" "$@"'
