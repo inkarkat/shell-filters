@@ -22,14 +22,16 @@
 printUsage()
 {
     cat <<HELPTEXT
-Truncate long stack traces after showing the first location that belongs to one
-of "our" classes (as defined by \$DELETESTACKTRACELOCATIONS_OUR_PATTERN,
-skipping matches of \$DELETESTACKTRACELOCATIONS_IGNORE_PATTERN).
+Truncate long stack traces after showing the first location and last location
+that belongs to one of "our" classes (as defined by
+\$DELETESTACKTRACELOCATIONS_OUR_PATTERN, skipping matches of
+\$DELETESTACKTRACELOCATIONS_IGNORE_PATTERN).
 Also, do additional pretty printing (like putting the "nested exception is" on a
 new line, and removing uninteresting fluff) and highlighting of various syntax
 elements (unless --no-color is given; customizable via
 \$DELETESTACKTRACELOCATIONS_*_{PRE,SUF}FIX environment variables).
 HELPTEXT
+    echo
     printf 'Usage: %q %s\n' "$(basename "$1")" '[--no-color] [SED-OPTIONS ...] INPUT-FILE [...] [-?|-h|--help]'
     printf 'Usage: cat FILE [...] | %q %s\n' "$(basename "$1")" '[--no-color] [SED-OPTIONS ...]'
 }
