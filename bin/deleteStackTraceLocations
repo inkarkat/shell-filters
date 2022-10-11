@@ -4,8 +4,8 @@
 
 : ${DELETESTACKTRACELOCATIONS_PREFIX_PATTERN='\(\[[0-9:]\+ [A-Z]\+\]: \)\?'}	# Note: This _must_ define exactly one capture group!
 
-: ${DELETESTACKTRACELOCATIONS_IGNORE_PATTERN='com\.\(hpe\?\|mf\)\.opr\.qa\.framework\.runner\.'}
-: ${DELETESTACKTRACELOCATIONS_OUR_PATTERN='com\.\(hpe\?\|mf\)\.'}
+: ${DELETESTACKTRACELOCATIONS_IGNORE_PATTERN='not a valid package name'}
+: ${DELETESTACKTRACELOCATIONS_OUR_PATTERN='[^j][^a][^v][^a][^.]'}
 
 : ${DELETESTACKTRACELOCATIONS_REASON_PREFIX=[48;5;224m}
 : ${DELETESTACKTRACELOCATIONS_REASON_SUFFIX=[0m}
