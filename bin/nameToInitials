@@ -1,0 +1,8 @@
+#!/bin/sed -f
+
+## Convert names (Nkrumar Foobar, Frank N. Stein) to initials (NF, FNS).
+##
+## Usage: nameToInitials FILE [...]
+## Usage: cat FILE [...] | nameToInitials
+
+s/^\([^[:space:]]\{1,3\}\)\|\([^[:space:]]\).*[[:space:]]\([^[:space:]]\)[^[:space:]]*\|\([^[:space:]]\{1,2\}\).*$/\1\2\3\4/
