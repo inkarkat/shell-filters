@@ -1,0 +1,100 @@
+#!/bin/bash
+set -o pipefail
+shopt -qs extglob
+
+printShortUsage()
+{
+    # Note: short followed by long option; if the user knows the short one, she can
+    # skim the long one.
+    printf 'Usage: %q %s\n' "$(basename "$1")" '-m|--match PATTERN [-m|--match OTHER-PATTERN] [-1] [-2] [-3] [--output-delimiter STR] [--total] [-?|-h|--help]'
+}
+printUsage()
+{
+    # This is the short help when launched with no or incorrect arguments.
+    # It is printed to stderr to avoid accidental processing.
+    printShortUsage "$1" >&2
+    printf >&2 '\nTry %q --help for more information.\n' "$(basename "$1")"
+}
+printLongUsage()
+{
+    # This is the long "man page" when launched with the help argument.
+    # It is printed to stdout to allow paging with 'more'.
+    cat <<HELPDESCRIPTION
+Remove matches of PATTERN from each line and compare the remainder line by line
+with non-matching lines / lines that got OTHER-PATTERN removed.
+HELPDESCRIPTION
+    echo
+    printShortUsage "$1"
+    echo
+    cat <<HELPTEXT
+With no options, produce three-column output. Column one contains lines that
+matched PATTERN but don't have corresponding lines without the match of PATTERN,
+column two contains lines that don't match PATTERN / have matched (and removed)
+OTHER-PATTERN, and column three contains lines that both matched PATTERN and
+also have a corresponding line(s) without the match of PATTERN / with the match
+of OTHER-PATTERN removed.
+
+    --match|-m PATTERN	Match (extended SED regexp) PATTERN.
+    -1			Suppress column 1 (lines without corresponding lines
+			without the match of PATTERN).
+    -2			Suppress column 2 (lines that don't match PATTERN / have
+			matched OTHER-PATTERN).
+    -3			Suppress column 3 (lines that both matched PATTERN and
+			also have a corresponding line(s) without the match of
+			PATTERN / with the match of OTHER-PATTERN).
+    --output-delimiter STR
+			Separate columns with STR.
+    --total		Output a summary.
+HELPTEXT
+}
+
+typeset -a commArgs=()
+pattern=
+otherPattern=
+while [ $# -ne 0 ]
+do
+    case "$1" in
+	--help|-h|-\?)	shift; printLongUsage "$0"; exit 0;;
+	--)		shift; break;;
+	--match|-m)	shift
+			[ -n "$pattern" ] && otherPattern="$1" || pattern="$1"
+			shift
+			;;
+	--total|-+([123]))
+			commArgs+=("$1"); shift;;
+	--output-delimiter)
+			commArgs+=("$1" "$2"); shift; shift;;
+	--output-delimiter=*)
+			commArgs+=("$1"); shift;;
+	-*)		{ echo "ERROR: Unknown option \"$1\"!"; echo; printUsage "$0"; } >&2; exit 2;;
+	*)		break;;
+    esac
+done
+if [ $# -ne 0 ]; then
+    printUsage "$0"
+    exit 2
+elif [ -z "$pattern" ]; then
+    echo 'ERROR: No -m|--match PATTERN passed.'
+    echo
+    printUsage "$0"
+    exit 2
+fi >&2
+
+TMPFILE1="$(mktemp --tmpdir "$(basename -- "$0")a-XXXXXX" 2>/dev/null || echo "${TEMP:-/tmp}/$(basename -- "$0")a.$$$RANDOM")"
+TMPFILE2="$(mktemp --tmpdir "$(basename -- "$0")b-XXXXXX" 2>/dev/null || echo "${TEMP:-/tmp}/$(basename -- "$0")b.$$$RANDOM")"
+[ "${DEBUG:-}" ] || trap 'rm -f -- "$TMPFILE1" "$TMPFILE2" 2>/dev/null' EXIT
+
+filterOther()
+{
+    if [ -n "$otherPattern" ]; then
+    	sed -E -n -e "s/${otherPattern//\//\\/}//gp"
+    else
+    	sed -E -e "/${pattern//\//\\/}/d"
+    fi \
+    	| sort --unique > "$TMPFILE2"
+}
+
+tee >(sed -E -ne "s/${pattern//\//\\/}//gp" | sort --unique > "$TMPFILE1") \
+    | filterOther \
+	|| exit $?
+comm "${commArgs[@]}" -- "$TMPFILE1" "$TMPFILE2"
