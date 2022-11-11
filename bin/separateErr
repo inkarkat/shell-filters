@@ -1,0 +1,61 @@
+#!/bin/bash
+
+printShortUsage()
+{
+    # Note: short followed by long option; if the user knows the short one, she can
+    # skim the long one.
+    printf 'Usage: %q %s\n' "$(basename "$1")" '[-v|--invert-match] [-e|--regexp PATTERN [...]] [-?|-h|--help]'
+}
+printUsage()
+{
+    # This is the short help when launched with no or incorrect arguments.
+    # It is printed to stderr to avoid accidental processing.
+    printShortUsage "$1" >&2
+    printf >&2 '\nTry %q --help for more information.\n' "$(basename "$1")"
+}
+printLongUsage()
+{
+    # This is the long "man page" when launched with the help argument.
+    # It is printed to stdout to allow paging with 'more'.
+    cat <<HELPDESCRIPTION
+Echo input lines that match ERROR-PATTERN(s) (by default common ERROR: Warning:
+prefixes) to standard error while keeping everything else on standard output.
+HELPDESCRIPTION
+    echo
+    printShortUsage "$1"
+    echo
+    cat <<HELPTEXT
+    --regexp|-e PATTERN		Lines matching unanchored PATTERN (a sed-style
+				basic regular expression) are printed as error
+				output.
+    --invert-match|-v		Invert the sense of matching, so matching lines
+				are printed as normal output, and everything
+				else as errors.
+Useful to re-separate normal and error output again after capturing or aligning
+both together. Note: The order of the output may change.
+HELPTEXT
+}
+
+readonly sedToStderr='b printToStderr'
+typeset -a sedArgs=()
+inversionRedir=
+while [ $# -ne 0 ]
+do
+    case "$1" in
+	--help|-h|-\?)	shift; printLongUsage "$0"; exit 0;;
+	--regexp|-e)	shift; sedArgs+=(-e "/${1//\//\\/}/${sedToStderr}"); shift;;
+	--invert-match|-v)
+			shift; inversionRedir='3>&1 1>&2 2>&3 3>&-'; shift;;
+	--)		shift; break;;
+	-)		break;; # For supporting special - FILE without prior --
+	-*)		{ echo "ERROR: Unknown option \"$1\"!"; echo; printUsage "$0"; } >&2; exit 2;;
+	*)		break;;
+    esac
+done
+if [ $# -ne 0 ]; then
+    printUsage "$0" >&2
+    exit 2
+fi
+[ ${#sedArgs[@]} -gt 0 ] || sedArgs=(-e '/^\(ERROR\|Error\|Warn\(ing\)\?\|FATAL\|Fatal\): /'"${sedToStderr}")
+
+eval "exec sed \"\${sedArgs[@]}\" -e 'b' -e ':printToStderr' -e 'w /dev/stderr' -e d $inversionRedir"
