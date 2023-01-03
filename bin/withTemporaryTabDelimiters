@@ -44,10 +44,10 @@ if [ ${#commands[@]} -eq 0 ]; then
     exit 2
 fi >&2
 
-spaces2tab -- "${spaceConverterArgs[@]}" | \
-    if [ "$isNeedEval" ]; then
-	eval "${commands[@]}"
-    else
-	"${commands[@]}"
-    fi | \
-    column -s $'\t' -t --keep-empty-lines
+spaces2tab -- "${spaceConverterArgs[@]}" \
+    |	if [ "$isNeedEval" ]; then
+	    eval "${commands[@]}"
+	else
+	    "${commands[@]}"
+	fi \
+    | column -s $'\t' -t --keep-empty-lines
