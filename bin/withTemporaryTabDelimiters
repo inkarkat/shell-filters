@@ -50,4 +50,4 @@ spaces2tab -- "${spaceConverterArgs[@]}" | \
     else
 	"${commands[@]}"
     fi | \
-    column -s $'\t' -t
+    column -s $'\t' -t --keep-empty-lines
