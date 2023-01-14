@@ -27,7 +27,7 @@ printShortUsage()
 {
     # Note: short followed by long option; if the user knows the short one, she can
     # skim the long one.
-    printf 'Usage: %q %s\n' "$(basename "$1")" '[-r|--reset-on PATTERN [-r ...]] [-i|--inline-or-none|--inline-or-passthrough|-I|--inline-always [--inline-prefix IP] [-c|--clear] [-a|--append-reset|-k|--keep-reset]] [-s|--summarize WHAT[,PLURAL-WHAT] --summary-only] [-n|--count WHAT] [-s|--skip PATTERN [-s ...]] [-m|--match PATTERN [-m ...]] [-t|--timespan TIMESPAN[SUFFIX][ADJUSTMENT]] [-T|--initial-delay TIMESPAN[SUFFIX]] [-?|-h|--help]'
+    printf 'Usage: cat FILE [...] | %q %s\n' "$(basename "$1")" '[-r|--reset-on PATTERN [-r ...]] [-i|--inline-or-none|--inline-or-passthrough|-I|--inline-always [--inline-prefix IP] [-c|--clear] [-a|--append-reset|-k|--keep-reset]] [-S|--summarize WHAT[,PLURAL-WHAT] --summary-only] [-n|--count WHAT] [-s|--skip PATTERN [-s ...]] [-m|--match PATTERN [-m ...]] [-t|--timespan TIMESPAN[SUFFIX][ADJUSTMENT]] [-T|--initial-delay TIMESPAN[SUFFIX]] [-?|-h|--help]'
 }
 printUsage()
 {
@@ -69,7 +69,7 @@ HELPDESCRIPTION
 			lines (which could be informative headers or some other
 			crucial context), and continuing the inline sampling
 			below.
-    --summarize|-s WHAT[,PLURAL-WHAT]
+    --summarize|-S WHAT[,PLURAL-WHAT]
 			Before printing selected output, also summarize the
 			amount of lines (characterized as WHAT, e.g. "line",
 			"file", you can also pass a separate (non-regular)
@@ -215,7 +215,7 @@ do
 	--inline-prefix)
 			shift; inlinePrefix="$1"; shift;;
 	--clear|-c)	shift; isClear=t;;
-	--summarize|-s)	shift
+	--summarize|-S)	shift
 			case "$1" in
 			    *,*)    summarizeWhat="${1%%,*}"
 				    summarizeWhatPlural="${1#*,}"
