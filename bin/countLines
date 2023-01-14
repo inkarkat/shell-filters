@@ -19,6 +19,7 @@ else
     : ${COUNTLINES_APPENDED_COUNT_PREFIX=' ('}
     : ${COUNTLINES_APPENDED_COUNT_SUFFIX=')'}
 fi
+: ${COUNTLINES_COUNT_FORMAT:=%d}
 
 printShortUsage()
 {
@@ -127,7 +128,8 @@ do
 	[ "$isSummaryOnly" ] || line="${COUNTLINES_RESET_PREFIX}${line}${COUNTLINES_RESET_SUFFIX}"
     fi
     if [ ! "$isSkipThisLine" ] && [ ! "$isSummaryOnly" ]; then
-	line="${prependWhat+$COUNTLINES_PREPENDED_COUNT_PREFIX}${prependWhat}${prependWhat:+ }${prependWhat+$count}${prependWhat+$COUNTLINES_PREPENDED_COUNT_SUFFIX}${line}${appendWhat+$COUNTLINES_APPENDED_COUNT_PREFIX}${appendWhat}${appendWhat:+ }${appendWhat+$count}${appendWhat+$COUNTLINES_APPENDED_COUNT_SUFFIX}"
+	printf -v renderedCount "$COUNTLINES_COUNT_FORMAT" $count
+	line="${prependWhat+$COUNTLINES_PREPENDED_COUNT_PREFIX}${prependWhat}${prependWhat:+ }${prependWhat+$renderedCount}${prependWhat+$COUNTLINES_PREPENDED_COUNT_SUFFIX}${line}${appendWhat+$COUNTLINES_APPENDED_COUNT_PREFIX}${appendWhat}${appendWhat:+ }${appendWhat+$renderedCount}${appendWhat+$COUNTLINES_APPENDED_COUNT_SUFFIX}"
     fi
 
     printf "%s${suffix}" "$line"
