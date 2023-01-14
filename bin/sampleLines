@@ -301,7 +301,7 @@ isAgain=
 isFirstExpiry=t
 
 keepResetPrefix=
-while IFS=$'\n' read -r line || { [ "$summarizeWhat" ] || suffix=; [ -n "$line" ]; }
+while IFS=$'\n' read -r line || { [ -n "$summarizeWhat" ] || suffix=; [ -n "$line" ]; }
 do
     isSkipThisLine=
     [ "$matchPattern" ] && [[ ! "$line" =~ $matchPattern ]] && isSkipThisLine=t
@@ -327,7 +327,7 @@ do
     hasExpired=; isExpired && hasExpired=t
     if [ -n "$isTakeThisLine" ] || [ "$hasExpired" ]; then
 	sample="$line"
-	if [ "$summarizeWhat" ]; then
+	if [ -n "$summarizeWhat" ]; then
 	    if [ "$isSummaryOnly" ]; then
 		summarySuffix=
 	    else
@@ -377,7 +377,7 @@ do
     fi
 done
 
-if [ "$summarizeWhat" ]; then
+if [ -n "$summarizeWhat" ]; then
     if [ $total -eq 1 ]; then
 	summary="$total $summarizeWhat"
     else
