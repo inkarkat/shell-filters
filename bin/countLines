@@ -39,7 +39,7 @@ printLongUsage()
     # This is the long "man page" when launched with the help argument.
     # It is printed to stdout to allow paging with 'more'.
     cat <<HELPDESCRIPTION
-Short textual description, either passive (Wrapper for blah), imperative (Write foo into blah), or third person (Writes foo into blah).
+Prepend a (1) count before each input line [that matches a PATTERN].
 HELPDESCRIPTION
     echo
     printShortUsage "$1"
@@ -63,14 +63,15 @@ HELPDESCRIPTION
     --match|-m PATTERN	Only consider lines that match PATTERN when counting
 			(both for summary and total counts); other lines (and
 			those that also match --skip PATTERN) are ignored.
+All PATTERNs are POSIX-style unanchored extended regular expressions.
 
-RELATED COMMANDS:
-
-cla-exitstatus
+EXIT STATUS:
+    0	Complete success.
+    2	Bad invocation, wrong or missing command-line arguments.
 
 Example:
 HELPTEXT
-    printf '%q %s\n' "$(basename "$1")" '--foo bar /tmp/foobar' # TODO
+    printf "find /etc -name '*.conf' | %q %s\\n" "$(basename "$1")" '-S config --summary-only'
 }
 
 suffix='\n'
