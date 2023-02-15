@@ -1,4 +1,4 @@
-#!/bin/sed -f
+#!/bin/sed -uf
 
 ## Remove any ANSI escape sequences (not just coloring) from the output.
 ##

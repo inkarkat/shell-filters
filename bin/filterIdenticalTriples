@@ -1,4 +1,4 @@
-#!/bin/sed -f
+#!/bin/sed -uf
 
 ## Remove subsequent triples of lines that are identical, and join other triples in
 ## the form E1 != E2 == E3 (or E1 <- (two missing elements).

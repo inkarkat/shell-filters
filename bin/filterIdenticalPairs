@@ -1,4 +1,4 @@
-#!/bin/sed -f
+#!/bin/sed -uf
 
 ## Remove subsequent pairs of lines that are identical, and join other pairs in
 ## the form E1 != E2 (or E1 <- (missing element).

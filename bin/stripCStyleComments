@@ -1,4 +1,4 @@
-#!/bin/sed -f
+#!/bin/sed -uf
 # Source: http://lists.samba.org/archive/linux/2002-August/004283.html
 
 ## Remove C-style /* ... */ comments from the output.

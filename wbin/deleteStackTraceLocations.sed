@@ -1,4 +1,4 @@
-#!/bin/sed -f
+#!/bin/sed -uf
 # This is an automatically generated file.
 # Created Fri 20. Mar 09:47:04 CET 2020 from bin/deleteStackTraceLocations.
 
@@ -108,4 +108,3 @@ N;/ in \+[^ \n]*$/{
 }
 
 b begin
- 

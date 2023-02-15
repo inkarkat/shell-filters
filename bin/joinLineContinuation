@@ -1,4 +1,4 @@
-#!/bin/sed -f
+#!/bin/sed -uf
 # Source: https://unix.stackexchange.com/a/13704/18876
 
 ## Join lines that end with a backslash with the following line, removing the

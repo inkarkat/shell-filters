@@ -8,7 +8,7 @@ all: $(TARGET)
 # ~/public/tools/deleteStackTraceLocations.cmd
 wbin/deleteStackTraceLocations.sed: bin/deleteStackTraceLocations
 	mkdir -p $(@D)
-	printf '#!/bin/sed -f\n' > $@
+	printf '#!/bin/sed -uf\n' > $@
 	printf '# This is an automatically generated file.\n# Created %s from %s.\n\n' "$$(date)" "$<" >> $@
 	SED='printf %s\x20' ./$< --no-color | grep -v -e ' -e $$' >> $@
 	chmod +x -- $@

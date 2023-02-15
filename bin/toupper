@@ -1,4 +1,4 @@
-#!/bin/sed -f
+#!/bin/sed -uf
 
 ## Convert output to uppercase.
 ##

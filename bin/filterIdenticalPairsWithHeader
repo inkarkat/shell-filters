@@ -1,4 +1,4 @@
-#!/bin/sed -f
+#!/bin/sed -uf
 
 ## From triples HEADER\nE1\nE2, remove subsequent pairs of lines that are
 ## identical, and join other pairs in the form HEADER: E1 != E2

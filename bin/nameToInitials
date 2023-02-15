@@ -1,4 +1,4 @@
-#!/bin/sed -f
+#!/bin/sed -uf
 
 ## Convert names (Nkrumar Foobar, Frank N. Stein) to initials (NF, FNS).
 ##
