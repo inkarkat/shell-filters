@@ -111,7 +111,7 @@ verbosePrintf()
     [ "$isVerbose" ] && printf "$@"
 }
 
-tempfile=$(mktemp --tmpdir "$(basename -- "$0")-XXXXXX" 2>/dev/null || echo "${TEMP:-/tmp}/$(basename -- "$0").$$$RANDOM")
+tempFilespec="$(mktemp --tmpdir "$(basename -- "$0")-XXXXXX" 2>/dev/null || echo "${TMPDIR:-/tmp}/$(basename -- "$0").$$$RANDOM")"
 status=0
 typeset -a modifiedFiles=()
 let allFileCnt=0
@@ -135,7 +135,7 @@ do
     let consideredFileCnt+=1
 
     isMatched=
-    cp --force --no-preserve=all -- "$filespec" "$tempfile" 2>/dev/null
+    cp --force --no-preserve=all -- "$filespec" "$tempFilespec" 2>/dev/null
 
 	let allSedArgumentCnt=0
 	for match in "${matches[@]}"
@@ -146,7 +146,7 @@ do
 #### echo "**** match: $match"
 	    isElseMatch=; [ "$match" = "$elseMatch" ] && isElseMatch=t
 	    if [ "$isElseMatch" ]; then
-		cmp --quiet -- "$filespec" "$tempfile"
+		cmp --quiet -- "$filespec" "$tempFilespec"
 		if [ $? -eq 1 ]; then
 		    isMatched=t
 		    continue
@@ -164,7 +164,7 @@ do
 	    let allSedArgumentCnt+=$sedArgumentNum
 	done
 
-    cmp --quiet -- "$filespec" "$tempfile"; compare=$?
+    cmp --quiet -- "$filespec" "$tempFilespec"; compare=$?
     if [ $compare -eq 0 ]; then
 	if [ "$isElseDelete" ] && rm -- "$filespec"; then
 	    let deletedFileCnt+=1
@@ -184,7 +184,7 @@ do
 	    verbosePrintf '%sElse:      %s%s\n' "$COLOR_ELSE" "$filespec" "$COLOR_RESET"
 	fi
     fi
-    rm --force -- "$tempfile" 2>/dev/null
+    rm --force -- "$tempFilespec" 2>/dev/null
 done
 
 printf 'From %d files considered %d / skipped %d: matched %d, else %d, unchanged %d, deleted %d.\n' \

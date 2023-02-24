@@ -80,8 +80,8 @@ elif [ -z "$pattern" ]; then
     exit 2
 fi >&2
 
-TMPFILE1="$(mktemp --tmpdir "$(basename -- "$0")a-XXXXXX" 2>/dev/null || echo "${TEMP:-/tmp}/$(basename -- "$0")a.$$$RANDOM")"
-TMPFILE2="$(mktemp --tmpdir "$(basename -- "$0")b-XXXXXX" 2>/dev/null || echo "${TEMP:-/tmp}/$(basename -- "$0")b.$$$RANDOM")"
+TMPFILE1="$(mktemp --tmpdir "$(basename -- "$0")a-XXXXXX" 2>/dev/null || echo "${TMPDIR:-/tmp}/$(basename -- "$0")a.$$$RANDOM")"
+TMPFILE2="$(mktemp --tmpdir "$(basename -- "$0")b-XXXXXX" 2>/dev/null || echo "${TMPDIR:-/tmp}/$(basename -- "$0")b.$$$RANDOM")"
 [ "${DEBUG:-}" ] || trap 'rm -f -- "$TMPFILE1" "$TMPFILE2" 2>/dev/null' EXIT
 
 filterOther()
