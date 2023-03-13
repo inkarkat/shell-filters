@@ -4,7 +4,7 @@ printShortUsage()
 {
     # Note: short followed by long option; if the user knows the short one, she can
     # skim the long one.
-    printf 'Usage: %q %s\n' "$(basename "$1")" '[-w|--whitespace|-b|--blank-lines] [--] [FILE ...] [-?|-h|--help]'
+    printf 'Usage: %q %s\n' "$(basename "$1")" '[-w|--whitespace|-b|--blank-lines|-e|--empty-lines] [--] [FILE ...] [-?|-h|--help]'
 }
 printUsage()
 {
@@ -25,7 +25,9 @@ HELPDESCRIPTION
     cat <<HELPTEXT
     --whitespace|-w	Only remove trailing whitespace; keep empty lines at the
 			end.
-    --blank-lines|-b	Only remove (fully) empty lines at the end; keep
+    --blank-lines|-b	Only remove any lines that just contain whitespace or
+			are completely empty at the end; keep trailing whitespace.
+    --empty-lines|-e	Only remove (fully) empty lines at the end; keep
 			trailing whitespace.
 HELPTEXT
 }
@@ -35,7 +37,8 @@ typeset -a sedTrailingBlankLinesArgs=(-e :a -e '/^\n*$/{$d; N; ba' -e '}')
 case "$1" in
     --help|-h|-\?)	shift; printLongUsage "$0"; exit 0;;
     --whitespace|-w)	shift; sedTrailingBlankLinesArgs=();;
-    --blank-lines|-b)	shift; sedTrailingWhitespaceArgs=();;
+    --blank-lines|-b)	shift; sedTrailingWhitespaceArgs=(); sedTrailingBlankLinesArgs=(-e :a -e '/^[[:space:]]*$/{$d; N; ba' -e '}');;
+    --empty-lines|-e)	shift; sedTrailingWhitespaceArgs=();;
 esac
 
 
