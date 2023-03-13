@@ -1,0 +1,56 @@
+#!/bin/bash
+
+: ${TRWHITESPACE_PREFIX=[38;5;246m}
+: ${TRWHITESPACE_SUFFIX=[0m}
+
+printUsage()
+{
+    cat <<HELPTEXT
+Translate all whitespace characters (and highlight them (e.g. ${TRWHITESPACE_PREFIX}»·${TRWHITESPACE_SUFFIX}) when output
+is to the terminal unless --no-color is given).
+Equivalent to Vim's :set listchars=tab:»·,trail:¬,eol:¶,nbsp:×
+HELPTEXT
+    echo
+    printf 'Usage: %q %s\n' "$(basename "$1")" '[--color=(always|auto|never)|--no-color] [SED-OPTIONS ...] FILE [...] [-?|-h|--help]'
+    printf 'Usage: cat FILE [...] | %q %s\n' "$(basename "$1")" '...'
+}
+
+isColor=; [ -t 1 ] && isColor=t
+case "$1" in
+    --help|-h|-\?)	shift; printUsage "$0"; exit 0;;
+    --no-color|--color=never)
+			isColor=; shift;;
+    --color=always)	isColor=t; shift;;
+    --color)		case "$2" in
+			    always) isColor=t;;
+			    never)  isColor=;;
+			esac
+			shift; shift
+			;;
+esac
+if [ "$isColor" ]; then
+    P="$TRWHITESPACE_PREFIX"
+    P="${P//\\/\\\\}"
+    P="${P//&/\\&}"
+    P="${P//#/\\#}"
+    literalSuffixPattern="$(printf %s "$TRWHITESPACE_SUFFIX" | sed -e 's/[][\$*.^#]/\\&/g')"
+    S="$TRWHITESPACE_SUFFIX"
+    S="${S//\\/\\\\}"
+    S="${S//&/\\&}"
+    S="${S//#/\\#}"
+else
+    P=''
+    S=''
+fi
+
+sed -e 's# ##g' "$@" \
+    | expand \
+    | sed \
+	-e "s# \\( *\\)#${P}»\\1${S}#g" -e 's# #·#g' \
+	-e :subsequentTabsLoop -e "s#·\\{8\\}\\(\\(·\\{8\\}\\)*\\)${literalSuffixPattern}#»·······\\1${S}#" -e 't subsequentTabsLoop' \
+	-e 't next' -e :next \
+	-e :trailLoop -e "s#\\(*\\)\$#¬\\1#g" -e 't trailLoop' \
+	-e "s#¬\\+\$#${P}&${S}#g" \
+	-e "s# #${P}×${S}#g" \
+	-e "s#\$#${P}¶${S}#g" \
+	-e 's## #g'
