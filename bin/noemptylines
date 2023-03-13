@@ -1,0 +1,8 @@
+#!/bin/sed -uf
+
+## Remove any completely empty lines from the output.
+##
+## Usage: noemptylines FILE [...]
+## Usage: cat FILE [...] | noemptylines
+
+/^$/d

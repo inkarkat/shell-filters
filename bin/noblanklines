@@ -1,0 +1,9 @@
+#!/bin/sed -uf
+
+## Remove any lines that just contain whitespace or are completely empty from
+## the output.
+##
+## Usage: noblanklines FILE [...]
+## Usage: cat FILE [...] | noblanklines
+
+/^[[:space:]]*$/d
