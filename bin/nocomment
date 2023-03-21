@@ -8,11 +8,12 @@ Filter out any lines that purely consist of "# comment" or are devoid of
 printable characters.
 HELPTEXT
     echo
-    printf 'Usage: %q %s\n' "$(basename "$1")" 'FILE [...] [-?|-h|--help]'
+    printf 'Usage: %q %s\n' "$(basename "$1")" '[--] FILE [...] [-?|-h|--help]'
     printf 'Usage: cat FILE [...] | %q\n' "$(basename "$1")"
 }
 case "$1" in
     --help|-h|-\?)	shift; printUsage "$0"; exit 0;;
+    --)			shift;;
 esac
 
-exec grep -a -v -e '^[[:space:]]*#\|^[^[:print:]]*$' "$@"
+exec grep -a -v -e '^[[:space:]]*#\|^[^[:print:]]*$' -- "$@"
