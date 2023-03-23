@@ -3,16 +3,41 @@
 : ${TRCONTROLS_PREFIX=[07m}
 : ${TRCONTROLS_SUFFIX=[0m}
 
-printUsage()
+printShortUsage()
 {
-    cat <<HELPTEXT
-Translate all unprintable control characters (including ANSI escape sequences
-and colors) into printable representations; e.g. <Esc> into ^[ (highlighted ${TRCONTROLS_PREFIX}^[${TRCONTROLS_SUFFIX}
-when output is to the terminal and no --no-color is given).
-HELPTEXT
-    echo
+    # Note: short followed by long option; if the user knows the short one, she can
+    # skim the long one.
     printf 'Usage: %q %s\n' "$(basename "$1")" '[--keep-color] [--keep-terminal-control] [--color=(always|auto|never)|--no-color] [SED-OPTIONS ...] FILE [...] [-?|-h|--help]'
     printf 'Usage: cat FILE [...] | %q %s\n' "$(basename "$1")" '...'
+}
+printUsage()
+{
+    # This is the short help when launched with no or incorrect arguments.
+    # It is printed to stderr to avoid accidental processing.
+    printShortUsage "$1" >&2
+    printf >&2 '\nTry %q --help for more information.\n' "$(basename "$1")"
+}
+printLongUsage()
+{
+    # This is the long "man page" when launched with the help argument.
+    # It is printed to stdout to allow paging with 'more'.
+    cat <<HELPDESCRIPTION
+Translate all unprintable control characters (including ANSI escape sequences
+and colors) into printable representations; e.g. <Esc> into ^[ (highlighted ${TRCONTROLS_PREFIX}^[${TRCONTROLS_SUFFIX}).
+HELPDESCRIPTION
+    echo
+    printShortUsage "$1"
+    echo
+    cat <<HELPTEXT
+    --keep-color	Keep color highlighting intact.
+    --keep-terminal-control
+			Keep non-color ANSI escape sequences that control the
+			cursor and terminal intact.
+    --color=(always|auto|never)|--no-color
+			Control the highlighting of the translated control
+			characters and escape sequences. By default,
+			highlighting is on when output is to the terminal.
+HELPTEXT
 }
 
 isKeepColor=
@@ -22,7 +47,7 @@ typeset -a sedArgs=()
 while [ $# -ne 0 ]
 do
     case "$1" in
-	--help|-h|-\?)	shift; printUsage "$0"; exit 0;;
+	--help|-h|-\?)	shift; printLongUsage "$0"; exit 0;;
 	--keep-color)	shift; isKeepColor=t;;
 	--keep-terminal-control)
 			shift; isKeepTerminalControl=t;;
