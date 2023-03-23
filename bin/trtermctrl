@@ -6,9 +6,9 @@
 printUsage()
 {
     cat <<HELPTEXT
-Translate all unprintable characters (and highlight them (e.g. ${TRCONTROLS_PREFIX}^[${TRCONTROLS_SUFFIX}) when output
-is to the terminal unless --no-color is given); ANSI escape sequences for
-coloring and terminal control are kept and executed.
+Translate ANSI escape sequences for terminal control and all unprintable
+characters (and highlight them (e.g. ${TRCONTROLS_PREFIX}^[${TRCONTROLS_SUFFIX}) when output is to the terminal unless
+--no-color is given); ANSI escape sequences for coloring are kept and executed.
 HELPTEXT
     echo
     printf 'Usage: %q %s\n' "$(basename "$1")" '[--color=(always|auto|never)|--no-color] [SED-OPTIONS ...] FILE [...] [-?|-h|--help]'
@@ -19,4 +19,4 @@ case "$1" in
     --help|-h|-\?)	shift; printUsage "$0"; exit 0;;
 esac
 
-exec trcontrols --keep-color --keep-terminal-control "$@"
+exec trcontrols --keep-color "$@"
