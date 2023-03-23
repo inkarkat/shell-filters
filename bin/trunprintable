@@ -39,5 +39,5 @@ literalTrControlsSuffix="$(printf %s "$TRCONTROLS_SUFFIX" | sed -e 's/[][\$*.^#]
 
 exec trcontrols \
     "${colorArg[@]}" \
-    -e "s#${literalTrControlsPrefix}\\^\\[\\(\\[[0-9:;]*[mK]\\)${literalTrControlsSuffix}#\\1#g" \
+    -e "s#${literalTrControlsPrefix}\\^\\[\\(\\[[0-9:;?]*[[:alpha:]]\\)${literalTrControlsSuffix}#\\1#g" \
     "$@"
