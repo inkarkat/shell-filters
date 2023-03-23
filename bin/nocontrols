@@ -12,7 +12,7 @@ HELPTEXT
     printf 'Usage: cat FILE [...] | %q %s\n' "$(basename "$1")" '...'
 }
 
-typeset -a sedFilterColorPreArgs=(-e 's#\x1b\[[0-9:;]*[mK]##g')
+typeset -a sedFilterColorPreArgs=(-e 's#\x1b\[[0-9:;]*m##g')
 typeset -a sedFilterColorPostArgs=()
 case "$1" in
     --help|-h|-\?)	shift; printUsage "$0"; exit 0;;
@@ -21,7 +21,7 @@ case "$1" in
 			# (which itself already got removed from the input),
 			# then delete any other controls, finally translate ^A
 			# back to Escape.
-			sedFilterColorPreArgs=(-e 's#\x1b\(\[[0-9:;]*[mK]\)#\1#g')
+			sedFilterColorPreArgs=(-e 's#\x1b\(\[[0-9:;]*m\)#\1#g')
 			sedFilterColorPostArgs=(-e 'y///')
 			;;
 esac

@@ -5,11 +5,11 @@
 ## Usage: nocolor FILE [...]
 ## Usage: cat FILE [...] | nocolor
 
-s#\x1b\[[0-9:;]*[mK]##g
+s#\x1b\[[0-9:;]*m##g
 
-# Bash version: ${1//\[*([0-9:;])[mK]/}
-# AWK version: gensub(/\x1b\[[0-9:;]*[mK]/, "", "g", var)
+# Bash version: ${1//\[*([0-9:;])m/}
+# AWK version: gensub(/\x1b\[[0-9:;]*m/, "", "g", var)
 # nocolor()
 # {
-#     eval "$1=\"\${2//\\[*([0-9:;])[mK]/}\""
+#     eval "$1=\"\${2//\\[*([0-9:;])m/}\""
 # }
