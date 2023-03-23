@@ -1,9 +1,0 @@
-#!/bin/sed -uf
-
-## Remove ANSI escape sequences for moving / positioning the cursor from the
-## output.
-##
-## Usage: noCursorMovement FILE [...]
-## Usage: cat FILE [...] |noCursorMovement
-
-s#\x1b\[\([0-9]\+[ABCDEFGJKST]\|[0-9]\+\(;[0-9]\+\)\?[Hf]\|6n\|?7[hl]\|[su]\)##g
