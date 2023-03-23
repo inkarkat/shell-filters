@@ -6,28 +6,39 @@
 printUsage()
 {
     cat <<HELPTEXT
-Translate all unprintable control characters (including ANSI escape sequences)
-into printable representations; e.g. <Esc> into ^[ (highlighted ${TRCONTROLS_PREFIX}^[${TRCONTROLS_SUFFIX} when output
-is to the terminal and no --no-color is given).
+Translate all unprintable control characters (including ANSI escape sequences
+and colors) into printable representations; e.g. <Esc> into ^[ (highlighted ${TRCONTROLS_PREFIX}^[${TRCONTROLS_SUFFIX}
+when output is to the terminal and no --no-color is given).
 HELPTEXT
     echo
-    printf 'Usage: %q %s\n' "$(basename "$1")" '[--color=(always|auto|never)|--no-color] [SED-OPTIONS ...] FILE [...] [-?|-h|--help]'
+    printf 'Usage: %q %s\n' "$(basename "$1")" '[--keep-color] [--keep-terminal-control] [--color=(always|auto|never)|--no-color] [SED-OPTIONS ...] FILE [...] [-?|-h|--help]'
     printf 'Usage: cat FILE [...] | %q %s\n' "$(basename "$1")" '...'
 }
 
+isKeepColor=
+isKeepTerminalControl=
 isColor=; [ -t 1 ] && isColor=t
-case "$1" in
-    --help|-h|-\?)	shift; printUsage "$0"; exit 0;;
-    --no-color|--color=never)
+typeset -a sedArgs=()
+while [ $# -ne 0 ]
+do
+    case "$1" in
+	--help|-h|-\?)	shift; printUsage "$0"; exit 0;;
+	--keep-color)	shift; isKeepColor=t;;
+	--keep-terminal-control)
+			shift; isKeepTerminalControl=t;;
+	--no-color|--color=never)
 			isColor=; shift;;
-    --color=always)	isColor=t; shift;;
-    --color)		case "$2" in
+	--color=always)	isColor=t; shift;;
+	--color)	case "$2" in
 			    always) isColor=t;;
 			    never)  isColor=;;
 			esac
 			shift; shift
 			;;
-esac
+	--)		shift; break;;
+	*)		sedArgs+=("$1"); shift;;
+    esac
+done
 if [ "$isColor" ]; then
     P="$TRCONTROLS_PREFIX"
     P="${P//\\/\\\\}"
@@ -42,8 +53,36 @@ else
     S=''
 fi
 
+literalP=''
+literalS=''
+if [ "$isKeepColor" ] || [ "$isKeepTerminalControl" ]; then
+    [ -z "$P" ] || literalP="$(printf %s "$P" | sed -e 's/[][\$*.^/]/\\&/g')"
+    [ -z "$S" ] || literalS="$(printf %s "$S" | sed -e 's/[][\$*.^/]/\\&/g')"
+fi
+
+if [ "$isKeepColor" ] && [ "$isKeepTerminalControl" ]; then
+    ansiEscapeSequenceSedArgs=(
+	-e "s/[\\x1b]/${P}^[${S}/g"
+	-e "s/${literalP}\\^\\[${literalS}\\(\\[[0-9:;?]*[[:alpha:]]\\)/\\1/g"
+    )
+elif [ "$isKeepColor" ]; then
+    ansiEscapeSequenceSedArgs=(
+	-e "s/[\\x1b]/${P}^[${S}/g"
+	-e "s/${literalP}\\^\\[${literalS}\\(\\[[0-9:;]*m\\)/\\1/g"
+	-e "s/${literalP}\\^\\[${literalS}\\(\\[[0-9:;?]*[[:alpha:]]\\)/${P}^[\\1${S}/g"
+    )
+elif [ "$isKeepTerminalControl" ]; then
+    ansiEscapeSequenceSedArgs=(
+	-e "s/[\\x1b]/${P}^[${S}/g"
+	-e "s/${literalP}\\^\\[${literalS}\\(\\[[0-9:;]*m\\)/${P}^[\\1${S}/g"
+	-e "s/${literalP}\\^\\[${literalS}\\(\\[[0-9:;?]*[[:alpha:]]\\)/\\1/g"
+    )
+else
+    ansiEscapeSequenceSedArgs=(-e "s/[\\x1b]\\(\\[[0-9:;?]*[[:alpha:]]\\)\\?/${P}^[\\1${S}/g")
+fi
+
 exec sed \
-    -e "s/[\\x1b]\\(\\[[0-9:;?]*[[:alpha:]]\\)\\?/${P}^[\\1${S}/g" \
+    "${ansiEscapeSequenceSedArgs[@]}" \
     -e "s/[\\x00]/${P}^@${S}/g" \
     -e "s/[\\x01]/${P}^A${S}/g" \
     -e "s/[\\x02]/${P}^B${S}/g" \
@@ -204,4 +243,4 @@ exec sed \
     -e "s/[\\xfd]/${P}|}${S}/g" \
     -e "s/[\\xfe]/${P}|~${S}/g" \
     -e "s/[\\xff]/${P}|~${S}/g" \
-    "$@"
+    "${sedArgs[@]}" "$@"
