@@ -17,8 +17,8 @@ esac
 if ! type -t titleupdate >/dev/null; then
     echo >&2 'ERROR: titleupdate is not available.'
     exit 3
-elif [ -z "$TERMID" ]; then
-    echo >&2 'ERROR: Cannot notify via titleupdate; TERMID not defined.'
+elif [ -z "$WINDOWID" ]; then
+    echo >&2 'ERROR: Cannot notify via titleupdate; WINDOWID not defined.'
     exit 3
 fi
 
