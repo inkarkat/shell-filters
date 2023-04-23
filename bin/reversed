@@ -1,0 +1,23 @@
+#!/bin/bash
+
+printUsage()
+{
+    cat <<HELPTEXT
+Make all output reversed (via ANSI escape sequences).
+HELPTEXT
+    printf 'Usage: %q %s\n' "$(basename "$1")" '-- FILE [...] [-?|-h|--help]'
+    printf 'Usage: %q %s\n' "$(basename "$1")" 'MESSAGE [...]'
+    printf 'Usage: cat FILE [...] | %q\n' "$(basename "$1")"
+}
+case "$1" in
+    --help|-h|-\?)	shift; printUsage "$0"; exit 0;;
+esac
+
+typeset -a REVERSED=(sed -e 's/\[0m/[07m/g' -e 's/^/[07m/' -e 's/$/[0m/')
+if [ $# -eq 0 ]; then
+    exec "${REVERSED[@]}"
+elif [ $# -ge 2 -a "$1" = '--' ]; then
+    cat "$@" | "${REVERSED[@]}"
+else
+    printf '%s\n' "$*" | "${REVERSED[@]}"
+fi
