@@ -78,6 +78,11 @@ b
 #-------------------------------------------------------------------------------
 
 :deleteStackTraceLocations
+# First delete unhelpful JAR location (~[file.jar:?]; in the worst case just
+# ~[?:?]) at the end. Also because printStackTraceLocations() parsing does not
+# handle that.
+s/ ~\[[^]]*:[^]]*\]$//
+
 N;/\n'"${DELETESTACKTRACELOCATIONS_PREFIX_PATTERN}"'\tat [^\n]*$/{
     # Test framework does not count as "us".
     /\n'"${DELETESTACKTRACELOCATIONS_PREFIX_PATTERN}"'\tat '"${DELETESTACKTRACELOCATIONS_IGNORE_PATTERN//\//\\/}"'/ {
