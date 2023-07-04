@@ -139,8 +139,10 @@ function repeat(text, count,      tmp, i)
     for (i = 1; i <= count; ++i) tmp = tmp text
     return tmp
 }
-function format(duration, width, precision, isSpacePadded)
+function format(integer, width, precision, isSpacePadded,      duration)
 {
+    duration = convert(integer)
+
     if (precision != "" && length(duration) > precision) {
 	duration = reducePrecision(duration, precision)
     }
@@ -177,7 +179,7 @@ BEGIN {
 	i = 1
 	if (ARGV[1] == "--" ) ++i
 	for (; i < ARGC; ++i) {
-	    print format(convert(ARGV[i]), getWidth(ARGV[i]), precision, 0)
+	    print format(ARGV[i], getWidth(ARGV[i]), precision, 0)
 	}
 	exit 0
     }
@@ -193,7 +195,7 @@ BEGIN {
 	    if (matchPattern != "" && testJoin !~ matchPattern) continue
 	}
 
-	numbers[i] = format(convert(numbers[i]), getWidth(numbers[i]), precision, (numbers[i] ~ /^ /))
+	numbers[i] = format(numbers[i], getWidth(numbers[i]), precision, (numbers[i] ~ /^ /))
     }
 
     $0 = join(n, rest, numbers)
