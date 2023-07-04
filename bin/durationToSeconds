@@ -4,7 +4,7 @@ printShortUsage()
 {
     # Note: short followed by long option; if the user knows the short one, she can
     # skim the long one.
-    printf 'Usage: %q %s\n' "$(basename "$1")" '"[Ww ][Dd |D-][HH:]MM:SS" [...] [-?|-h|--help]'
+    printf 'Usage: %q %s\n' "$(basename "$1")" '"[Ww ][Dd |D-][HH:]MM:SS|[Ww ][Dd] [Hh] [Mm] [Ss]" [...] [-?|-h|--help]'
     printf 'Usage: cat FILE [...] | %q %s\n' "$(basename "$1")" '[-s|--skip SKIP&PATTERN [...]] [-m|--match MATCH&PATTERN [...]]'
 }
 printUsage()
@@ -73,6 +73,21 @@ function convert(duration,      calendar, n, c, cc, clock, result, hasMatch)
 	    hasMatch = 1
 	    continue
 	}
+	if (calendar[cc] ~ /^[[:digit:]]+h$/) {
+	    result += substr(calendar[cc], 1, length(calendar[cc]) - 1) * 3600
+	    hasMatch = 1
+	    continue
+	}
+	if (calendar[cc] ~ /^[[:digit:]]+m$/) {
+	    result += substr(calendar[cc], 1, length(calendar[cc]) - 1) * 60
+	    hasMatch = 1
+	    continue
+	}
+	if (calendar[cc] ~ /^[[:digit:]]+s$/) {
+	    result += substr(calendar[cc], 1, length(calendar[cc]) - 1)
+	    hasMatch = 1
+	    continue
+	}
     }
 
     if (n == 2) {
@@ -97,7 +112,7 @@ function join(n, list, seps,      i, result) {
     return result
 }
 BEGIN {
-    DURATION_PATTERN = "\\<([[:digit:]]+w )?([[:digit:]]+(d |-))?[[:digit:]]+(:[[:digit:]]{2}){1,2}\\>"
+    DURATION_PATTERN = "\\<([[:digit:]]+w )?(([[:digit:]]+(d |-))?[[:digit:]]+(:[[:digit:]]{2}){1,2}|([[:digit:]]+d )?([[:digit:]]+h )?([[:digit:]]+m )?([[:digit:]]+s)|([[:digit:]]+d )?([[:digit:]]+h )?([[:digit:]]+m)|([[:digit:]]+d )?([[:digit:]]+h)|([[:digit:]]+d))\\>|\\<([[:digit:]]+w)\\>"
 
     if (ARGC > 1) {
 	for (i = 1; i < ARGC; ++i) {
