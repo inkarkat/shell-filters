@@ -7,9 +7,9 @@ printShortUsage()
 {
     # Note: short followed by long option; if the user knows the short one, she can
     # skim the long one.
-    printf 'Usage: %q %s\n' "$(basename "$1")" '[--] SECONDS [...] [-?|-h|--help]'
+    printf 'Usage: %q %s\n' "$(basename "$1")" '[-x|--factor N] [-W|--workday] [--precision|-p WIDTH] [-w|--width [+]WIDTH] [--] SECONDS [...] [-?|-h|--help]'
     echo
-    printf 'Usage: cat FILE [...] | %q %s\n' "$(basename "$1")" '[-u|--unbuffered] [-s|--skip SKIP&PATTERN [...]] [-m|--match MATCH&PATTERN [...]] [-x|--factor N] [-W|--workday] [--precision|-p WIDTH] [-w|--width [+]WIDTH]'
+    printf 'Usage: cat FILE [...] | %q %s\n' "$(basename "$1")" '[...] [-u|--unbuffered] [-s|--skip SKIP&PATTERN [...]] [-m|--match MATCH&PATTERN [...]]'
 }
 printUsage()
 {
@@ -28,17 +28,8 @@ Treat any integer in the input as seconds and convert them into
 HELPDESCRIPTION
     echo
     printShortUsage "$1"
+    echo
     cat <<HELPTEXT
-    --unbuffered|-u	    Immediately output each read line.
-    --skip|-s SKIP&PATTERN  Do not convert if the text around the integer (with
-			    the integer itself and any preceding spaces
-			    represented by &) matches SKIP&PATTERN.
-    --match|-m MATCH&PATTERN
-			    Only convert if the text around the integer (with
-			    the integer itself and any preceding spaces
-			    represented by &) matches MATCH&PATTERN. Other
-			    occurrences (and those that also match --skip
-			    SKIP&PATTERN) are not converted.
     --factor|-x N	    Multiply the found integers with N (e.g. 60 for
 			    minutes) to obtain seconds.
     --workday|-W	    Render days and larger units as working days
@@ -56,6 +47,16 @@ HELPDESCRIPTION
     --width|-w +WIDTH	    Ensure a fixed width of the original integer and
 			    any preceding spaces + WIDTH (so that alignment is
 			    not disturbed) by adding space padding to the left.
+    --unbuffered|-u	    Immediately output each read line.
+    --skip|-s SKIP&PATTERN  Do not convert if the text around the integer (with
+			    the integer itself and any preceding spaces
+			    represented by &) matches SKIP&PATTERN.
+    --match|-m MATCH&PATTERN
+			    Only convert if the text around the integer (with
+			    the integer itself and any preceding spaces
+			    represented by &) matches MATCH&PATTERN. Other
+			    occurrences (and those that also match --skip
+			    SKIP&PATTERN) are not converted.
 PATTERN is an AWK-style extended regular expression.
 HELPTEXT
 }
