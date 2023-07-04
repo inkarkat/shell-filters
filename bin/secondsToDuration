@@ -9,7 +9,7 @@ printShortUsage()
     # skim the long one.
     printf 'Usage: %q %s\n' "$(basename "$1")" '[--] SECONDS [...] [-?|-h|--help]'
     echo
-    printf 'Usage: cat FILE [...] | %q %s\n' "$(basename "$1")" '[-s|--skip SKIP&PATTERN [...]] [-m|--match MATCH&PATTERN [...]] [-x|--factor N] [-W|--workday] [--precision|-p WIDTH] [-w|--width [+]WIDTH]'
+    printf 'Usage: cat FILE [...] | %q %s\n' "$(basename "$1")" '[-u|--unbuffered] [-s|--skip SKIP&PATTERN [...]] [-m|--match MATCH&PATTERN [...]] [-x|--factor N] [-W|--workday] [--precision|-p WIDTH] [-w|--width [+]WIDTH]'
 }
 printUsage()
 {
@@ -29,6 +29,7 @@ HELPDESCRIPTION
     echo
     printShortUsage "$1"
     cat <<HELPTEXT
+    --unbuffered|-u	    Immediately output each read line.
     --skip|-s SKIP&PATTERN  Do not convert if the text around the integer (with
 			    the integer itself and any preceding spaces
 			    represented by &) matches SKIP&PATTERN.
@@ -58,6 +59,8 @@ HELPDESCRIPTION
 PATTERN is an AWK-style extended regular expression.
 HELPTEXT
 }
+
+isBuffered=t
 skipPattern=
 matchPattern=
 width=
@@ -68,6 +71,8 @@ while [ $# -ne 0 ]
 do
     case "$1" in
 	--help|-h|-\?)	shift; printLongUsage "$0"; exit 0;;
+	--unbuffered|-u)
+			shift; isBuffered=;;
 	--skip|-s)	shift; skipPattern+="${skipPattern:+|}${1:?}"; shift;;
 	--match|-m)	shift; matchPattern+="${matchPattern:+|}${1:?}"; shift;;
 	--width|-w)	shift; width="$1"; shift;;
@@ -81,6 +86,7 @@ do
 done
 
 awk -F $'\n' \
+    -v "isBuffered=$isBuffered" \
     -v "skipPattern=${skipPattern//\\/\\\\}" \
     -v "matchPattern=${matchPattern//\\/\\\\}" \
     -v "widthArg=$width" \
@@ -201,5 +207,6 @@ BEGIN {
 
     $0 = join(n, rest, numbers)
     print
+    if (! isBuffered) fflush()
 }
 ' "$@"

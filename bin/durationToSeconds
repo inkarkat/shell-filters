@@ -8,7 +8,7 @@ printShortUsage()
     # Note: short followed by long option; if the user knows the short one, she can
     # skim the long one.
     printf 'Usage: %q %s\n' "$(basename "$1")" '"[Ww ][Dd |D-][HH:]MM:SS|[W[w]w ][D[w]d] [Hh] [Mm] [Ss]" [...] [-?|-h|--help]'
-    printf 'Usage: cat FILE [...] | %q %s\n' "$(basename "$1")" '[-s|--skip SKIP&PATTERN [...]] [-m|--match MATCH&PATTERN [...]]'
+    printf 'Usage: cat FILE [...] | %q %s\n' "$(basename "$1")" '[-u|--unbuffered] [-s|--skip SKIP&PATTERN [...]] [-m|--match MATCH&PATTERN [...]]'
 }
 printUsage()
 {
@@ -27,6 +27,7 @@ HELPDESCRIPTION
     echo
     printShortUsage "$1"
     cat <<HELPTEXT
+    --unbuffered|-u	    Immediately output each read line.
     --skip|-s SKIP&PATTERN  Do not convert if the text around the duration (with
 			    the duration itself represented by &) matches
 			    SKIP&PATTERN.
@@ -38,12 +39,16 @@ HELPDESCRIPTION
 PATTERN is an AWK-style extended regular expression.
 HELPTEXT
 }
+
+isBuffered=t
 skipPattern=
 matchPattern=
 while [ $# -ne 0 ]
 do
     case "$1" in
 	--help|-h|-\?)	shift; printLongUsage "$0"; exit 0;;
+	--unbuffered|-u)
+			shift; isBuffered=;;
 	--skip|-s)	shift; skipPattern+="${skipPattern:+|}${1:?}"; shift;;
 	--match|-m)	shift; matchPattern+="${matchPattern:+|}${1:?}"; shift;;
 	--)		shift; break;;
@@ -53,6 +58,7 @@ do
 done
 
 awk -F $'\n' \
+    -v "isBuffered=$isBuffered" \
     -v "skipPattern=${skipPattern//\\/\\\\}" \
     -v "matchPattern=${matchPattern//\\/\\\\}" \
 '
@@ -154,5 +160,6 @@ BEGIN {
 
     $0 = join(n, rest, durations)
     print
+    if (! isBuffered) fflush()
 }
 ' "$@"
