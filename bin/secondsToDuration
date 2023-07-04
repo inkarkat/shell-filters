@@ -24,7 +24,7 @@ printLongUsage()
     # It is printed to stdout to allow paging with 'more'.
     cat <<HELPDESCRIPTION
 Treat any integer in the input as seconds and convert them into
-[[[Ww ][Dd ] HH:]MM:]SS or 00:SS.
+[Ww ][Dd ] [Hh ][Mm ][Ss]|[HH:]MM:SS.
 HELPDESCRIPTION
     echo
     printShortUsage "$1"
@@ -115,12 +115,22 @@ function convert(integer,      seconds, hours, minutes, workDayPrefix)
     seconds = seconds - (60 * minutes)
 
     workDayPrefix = (isWorkDay ? "w" : "")
-    return \
-	(weeks > 0 ? weeks workDayPrefix "w " : "") \
-	(days > 0 ? days workDayPrefix "d " : "") \
-	(weeks > 0 || days > 0 || hours > 0 ? sprintf("%02d", hours) ":" : "") \
-	(weeks > 0 || days > 0 || hours > 0 || minutes > 0 ? sprintf("%02d", minutes) ":" : "") \
-	(weeks > 0 || days > 0 || hours > 0 || minutes > 0 ? sprintf("%02d", seconds) : sprintf("00:%02d", seconds))
+
+    if (minutes == 0 || seconds == 0) {
+	return gensub(\
+		/ $/, "", 1, \
+		(weeks > 0 ? weeks workDayPrefix "w " : "") \
+		    (days > 0 ? days workDayPrefix "d " : "") \
+		    (hours > 0 ? hours "h " : "") \
+		    (minutes > 0 ? minutes "m " : "") \
+		    (seconds > 0 ? seconds "s " : ""))
+    } else {
+	return (weeks > 0 ? weeks workDayPrefix "w " : "") \
+		(days > 0 ? days workDayPrefix "d " : "") \
+		(weeks > 0 || days > 0 || hours > 0 ? sprintf("%02d", hours) ":" : "") \
+		(weeks > 0 || days > 0 || hours > 0 || minutes > 0 ? sprintf("%02d", minutes) ":" : "") \
+		(weeks > 0 || days > 0 || hours > 0 || minutes > 0 ? sprintf("%02d", seconds) : sprintf("00:%02d", seconds))
+    }
 }
 function shallowclone(target, source,      e)
 {
@@ -139,10 +149,21 @@ function repeat(text, count,      tmp, i)
     for (i = 1; i <= count; ++i) tmp = tmp text
     return tmp
 }
-function format(duration, width, precision, isSpacePadded)
+function format(integer, width, precision, isSpacePadded,      duration, rounder, c)
 {
-    if (precision != "" && length(duration) > precision) {
-	duration = reducePrecision(duration, precision)
+    duration = convert(integer)
+
+    if (precision != "") {
+	rounder[1] = 60
+	rounder[2] = 3600
+	rounder[3] = DAY_IN_SECONDS
+	rounder[4] = WEEK_IN_SECONDS
+
+	for (c = 1; c <= length(rounder) + 1 && length(duration) > precision; ++c) {
+	    duration = rounder[c] \
+		    ? convert(int(integer / rounder[c] + 0.5) * rounder[c]) \
+		    : repeat("#", precision)
+	}
     }
 
     if (isSpacePadded) duration = " " duration	# Ensure that there will be at least one space in front to maintain separation of preceding text.
@@ -150,24 +171,6 @@ function format(duration, width, precision, isSpacePadded)
     if (width == "" || length(duration) == width) return duration
 
     return sprintf("%" width "s", duration)
-}
-function reducePrecision(duration, precision)
-{
-    # Convert 01:02:03 into 1h 2m 3s so that we have more pieces to play with.
-    duration = gensub(/:0*([[:digit:]]{1,2})$/, " \\1s", 1, duration)
-    duration = gensub(/(^| |:)0*([[:digit:]]{1,2}) /, " \\2m ", 1, duration)
-    duration = gensub(/(^| )0*([[:digit:]]{1,2}) /, " \\2h ", 1, duration)
-    duration = gensub(/^ +/, "", 1, duration)
-
-    # Try to remove the smallest unit(s) until it fits.
-    while (length(duration) > precision) {
-	if (duration ~ / /) {
-	    duration = gensub(/ [^ ]+$/, "", 1, duration)
-	} else {
-	    return repeat("#", precision)
-	}
-    }
-    return duration
 }
 BEGIN {
     WEEK_IN_SECONDS = (isWorkDay ? ENVIRON["WORKWEEK_SECONDS"] : 604800)
@@ -177,7 +180,7 @@ BEGIN {
 	i = 1
 	if (ARGV[1] == "--" ) ++i
 	for (; i < ARGC; ++i) {
-	    print format(convert(ARGV[i]), getWidth(ARGV[i]), precision, 0)
+	    print format(ARGV[i], getWidth(ARGV[i]), precision, 0)
 	}
 	exit 0
     }
@@ -193,7 +196,7 @@ BEGIN {
 	    if (matchPattern != "" && testJoin !~ matchPattern) continue
 	}
 
-	numbers[i] = format(convert(numbers[i]), getWidth(numbers[i]), precision, (numbers[i] ~ /^ /))
+	numbers[i] = format(numbers[i], getWidth(numbers[i]), precision, (numbers[i] ~ /^ /))
     }
 
     $0 = join(n, rest, numbers)
