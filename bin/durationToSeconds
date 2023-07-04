@@ -53,7 +53,7 @@ awk -F $'\n' \
     -v "skipPattern=${skipPattern//\\/\\\\}" \
     -v "matchPattern=${matchPattern//\\/\\\\}" \
 '
-function convert(duration,      calendar, n, clock, days, weeks, result, hasMatch)
+function convert(duration,      calendar, n, c, cc, clock, result, hasMatch)
 {
     n = split(gensub(/^.* /, "", 1, duration), clock, /:/)
     c = split(duration, calendar, / /)
@@ -62,17 +62,18 @@ function convert(duration,      calendar, n, clock, days, weeks, result, hasMatc
 	clock[1] = substr(clock[1], RSTART + RLENGTH)
     }
 
-    if (calendar[1] ~ /^[[:digit:]]+w$/) {
-	weeks = substr(calendar[1], 1, length(calendar[1]) - 1)
-	hasMatch = 1
-	if (calendar[2] ~ /^[[:digit:]]+d$/) {
-	    days = substr(calendar[2], 1, length(calendar[2]) - 1)
+    for (cc = 1; cc <= c; ++cc) {
+	if (calendar[cc] ~ /^[[:digit:]]+w$/) {
+	    result += substr(calendar[cc], 1, length(calendar[cc]) - 1) * 604800
+	    hasMatch = 1
+	    continue
 	}
-    } else if (calendar[1] ~ /^[[:digit:]]+d$/) {
-	days = substr(calendar[1], 1, length(calendar[1]) - 1)
-	hasMatch = 1
+	if (calendar[cc] ~ /^[[:digit:]]+d$/) {
+	    result += substr(calendar[cc], 1, length(calendar[cc]) - 1) * 86400
+	    hasMatch = 1
+	    continue
+	}
     }
-    result += weeks * 604800 + days * 86400
 
     if (n == 2) {
 	result += clock[n - 1] * 60 + clock[n]
