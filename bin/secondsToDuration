@@ -149,12 +149,21 @@ function repeat(text, count,      tmp, i)
     for (i = 1; i <= count; ++i) tmp = tmp text
     return tmp
 }
-function format(integer, width, precision, isSpacePadded,      duration)
+function format(integer, width, precision, isSpacePadded,      duration, rounder, c)
 {
     duration = convert(integer)
 
-    if (precision != "" && length(duration) > precision) {
-	duration = reducePrecision(duration, precision)
+    if (precision != "") {
+	rounder[1] = 60
+	rounder[2] = 3600
+	rounder[3] = DAY_IN_SECONDS
+	rounder[4] = WEEK_IN_SECONDS
+
+	for (c = 1; c <= length(rounder) + 1 && length(duration) > precision; ++c) {
+	    duration = rounder[c] \
+		    ? convert(int(integer / rounder[c] + 0.5) * rounder[c]) \
+		    : repeat("#", precision)
+	}
     }
 
     if (isSpacePadded) duration = " " duration	# Ensure that there will be at least one space in front to maintain separation of preceding text.
@@ -162,24 +171,6 @@ function format(integer, width, precision, isSpacePadded,      duration)
     if (width == "" || length(duration) == width) return duration
 
     return sprintf("%" width "s", duration)
-}
-function reducePrecision(duration, precision)
-{
-    # Convert 01:02:03 into 1h 2m 3s so that we have more pieces to play with.
-    duration = gensub(/:0*([[:digit:]]{1,2})$/, " \\1s", 1, duration)
-    duration = gensub(/(^| |:)0*([[:digit:]]{1,2}) /, " \\2m ", 1, duration)
-    duration = gensub(/(^| )0*([[:digit:]]{1,2}) /, " \\2h ", 1, duration)
-    duration = gensub(/^ +/, "", 1, duration)
-
-    # Try to remove the smallest unit(s) until it fits.
-    while (length(duration) > precision) {
-	if (duration ~ / /) {
-	    duration = gensub(/ [^ ]+$/, "", 1, duration)
-	} else {
-	    return repeat("#", precision)
-	}
-    }
-    return duration
 }
 BEGIN {
     WEEK_IN_SECONDS = (isWorkDay ? ENVIRON["WORKWEEK_SECONDS"] : 604800)
