@@ -1,10 +1,13 @@
 #!/bin/bash
 
+: ${WORKDAY_SECONDS:=28800}; export WORKDAY_SECONDS
+: ${WORKWEEK_SECONDS:=$((WORKDAY_SECONDS * 5))}; export WORKWEEK_SECONDS
+
 printShortUsage()
 {
     # Note: short followed by long option; if the user knows the short one, she can
     # skim the long one.
-    printf 'Usage: %q %s\n' "$(basename "$1")" '"[Ww ][Dd |D-][HH:]MM:SS|[Ww ][Dd] [Hh] [Mm] [Ss]" [...] [-?|-h|--help]'
+    printf 'Usage: %q %s\n' "$(basename "$1")" '"[Ww ][Dd |D-][HH:]MM:SS|[W[w]w ][D[w]d] [Hh] [Mm] [Ss]" [...] [-?|-h|--help]'
     printf 'Usage: cat FILE [...] | %q %s\n' "$(basename "$1")" '[-s|--skip SKIP&PATTERN [...]] [-m|--match MATCH&PATTERN [...]]'
 }
 printUsage()
@@ -63,6 +66,11 @@ function convert(duration,      calendar, n, c, cc, clock, result, hasMatch)
     }
 
     for (cc = 1; cc <= c; ++cc) {
+	if (calendar[cc] ~ /^[[:digit:]]+ww$/) {
+	    result += substr(calendar[cc], 1, length(calendar[cc]) - 1) * ENVIRON["WORKWEEK_SECONDS"]
+	    hasMatch = 1
+	    continue
+	}
 	if (calendar[cc] ~ /^[[:digit:]]+w$/) {
 	    result += substr(calendar[cc], 1, length(calendar[cc]) - 1) * 604800
 	    hasMatch = 1
@@ -70,6 +78,11 @@ function convert(duration,      calendar, n, c, cc, clock, result, hasMatch)
 	}
 	if (calendar[cc] ~ /^[[:digit:]]+d$/) {
 	    result += substr(calendar[cc], 1, length(calendar[cc]) - 1) * 86400
+	    hasMatch = 1
+	    continue
+	}
+	if (calendar[cc] ~ /^[[:digit:]]+wd$/) {
+	    result += substr(calendar[cc], 1, length(calendar[cc]) - 1) * ENVIRON["WORKDAY_SECONDS"]
 	    hasMatch = 1
 	    continue
 	}
@@ -112,7 +125,7 @@ function join(n, list, seps,      i, result) {
     return result
 }
 BEGIN {
-    DURATION_PATTERN = "\\<([[:digit:]]+w )?(([[:digit:]]+(d |-))?[[:digit:]]+(:[[:digit:]]{2}){1,2}|([[:digit:]]+d )?([[:digit:]]+h )?([[:digit:]]+m )?([[:digit:]]+s)|([[:digit:]]+d )?([[:digit:]]+h )?([[:digit:]]+m)|([[:digit:]]+d )?([[:digit:]]+h)|([[:digit:]]+d))\\>|\\<([[:digit:]]+w)\\>"
+    DURATION_PATTERN = "\\<([[:digit:]]+w?w )?(([[:digit:]]+(w?d |-))?[[:digit:]]+(:[[:digit:]]{2}){1,2}|([[:digit:]]+w?d )?([[:digit:]]+h )?([[:digit:]]+m )?([[:digit:]]+s)|([[:digit:]]+w?d )?([[:digit:]]+h )?([[:digit:]]+m)|([[:digit:]]+w?d )?([[:digit:]]+h)|([[:digit:]]+w?d))\\>|\\<([[:digit:]]+w?w)\\>"
 
     if (ARGC > 1) {
 	for (i = 1; i < ARGC; ++i) {
