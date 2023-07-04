@@ -7,7 +7,7 @@ printShortUsage()
 {
     # Note: short followed by long option; if the user knows the short one, she can
     # skim the long one.
-    printf 'Usage: %q %s\n' "$(basename "$1")" '[-x|--factor N] [-W|--workday] [--precision|-p WIDTH] [-w|--width [+]WIDTH] [--] SECONDS [...] [-?|-h|--help]'
+    printf 'Usage: %q %s\n' "$(basename "$1")" '[--prefer-clock] [-x|--factor N] [-W|--workday] [--precision|-p WIDTH] [-w|--width [+]WIDTH] [--] SECONDS [...] [-?|-h|--help]'
     echo
     printf 'Usage: cat FILE [...] | %q %s\n' "$(basename "$1")" '[...] [-u|--unbuffered] [-s|--skip SKIP&PATTERN [...]] [-m|--match MATCH&PATTERN [...]]'
 }
@@ -30,6 +30,9 @@ HELPDESCRIPTION
     printShortUsage "$1"
     echo
     cat <<HELPTEXT
+    --prefer-clock	    Use [HH:]MM:SS format even when minutes or seconds
+			    are zero. (This yields a more steady output when
+			    counting elapsed time.)
     --factor|-x N	    Multiply the found integers with N (e.g. 60 for
 			    minutes) to obtain seconds.
     --workday|-W	    Render days and larger units as working days
@@ -61,6 +64,7 @@ PATTERN is an AWK-style extended regular expression.
 HELPTEXT
 }
 
+isPreferClock=
 isBuffered=t
 skipPattern=
 matchPattern=
@@ -72,6 +76,7 @@ while [ $# -ne 0 ]
 do
     case "$1" in
 	--help|-h|-\?)	shift; printLongUsage "$0"; exit 0;;
+	--prefer-clock)	shift; isPreferClock=t;;
 	--unbuffered|-u)
 			shift; isBuffered=;;
 	--skip|-s)	shift; skipPattern+="${skipPattern:+|}${1:?}"; shift;;
@@ -87,6 +92,7 @@ do
 done
 
 awk -F $'\n' \
+    -v "isPreferClock=$isPreferClock" \
     -v "isBuffered=$isBuffered" \
     -v "skipPattern=${skipPattern//\\/\\\\}" \
     -v "matchPattern=${matchPattern//\\/\\\\}" \
@@ -123,7 +129,7 @@ function convert(integer,      seconds, hours, minutes, workDayPrefix)
 
     workDayPrefix = (isWorkDay ? "w" : "")
 
-    if (minutes == 0 || seconds == 0) {
+    if ((minutes == 0 || seconds == 0) && ! isPreferClock) {
 	return gensub(\
 		/ $/, "", 1, \
 		(weeks > 0 ? weeks workDayPrefix "w " : "") \
