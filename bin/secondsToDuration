@@ -7,7 +7,7 @@ printShortUsage()
 {
     # Note: short followed by long option; if the user knows the short one, she can
     # skim the long one.
-    printf 'Usage: %q %s\n' "$(basename "$1")" '[--prefer-clock] [-x|--factor N] [-W|--workday] [--precision|-p WIDTH] [-w|--width [+]WIDTH] [--] SECONDS [...] [-?|-h|--help]'
+    printf 'Usage: %q %s\n' "$(basename "$1")" '[--prefer-clock] [-x|--factor N] [-W|--workday] [--precision|-p WIDTH|[.N](w|d|h|m|s)] [-w|--width [+]WIDTH] [--] SECONDS [...] [-?|-h|--help]'
     echo
     printf 'Usage: cat FILE [...] | %q %s\n' "$(basename "$1")" '[...] [-u|--unbuffered] [-s|--skip SKIP&PATTERN [...]] [-m|--match MATCH&PATTERN [...]]'
 }
@@ -43,6 +43,9 @@ HELPDESCRIPTION
     --precision|-p WIDTH    Remove smaller units so that the result will fit
 			    WIDTH; for example "01:02:03" will be rendered as
 			    "1h 2m", with "3s" removed to fit a width of 7.
+    --precision|-p [.N](w|d|h|m|s)
+			    Render purely as the passed unit [with N digits
+			    right of the decimal point].
     --width|-w WIDTH	    Ensure a fixed width of WIDTH or the width of the
 			    original integer and preceding spaces, whatever is
 			    larger (so that alignment is not disturbed) by
@@ -162,11 +165,16 @@ function repeat(text, count,      tmp, i)
     for (i = 1; i <= count; ++i) tmp = tmp text
     return tmp
 }
-function format(integer, width, precision, isSpacePadded,      duration, rounder, c)
+function format(integer, width, precision, isSpacePadded,      precisionSigil, precisionPrecision, duration, rounder, c)
 {
     duration = convert(integer)
 
-    if (precision != "") {
+    if (precision ~ /^(\.[0-9]+)?[smhdw]$/) {
+	precisionSigil = substr(precision, length(precision))
+	precisionPrecision = substr(precision, 2, length(precision) - 1)
+	rounder = dividers[precisionSigil]
+	duration = sprintf("%." (precisionPrecision == "" ? "0" : precisionPrecision) "f%s", integer / rounder, precisionSigil)
+    } else if (precision != "") {
 	rounder[1] = 60
 	rounder[2] = 3600
 	rounder[3] = DAY_IN_SECONDS
@@ -188,6 +196,12 @@ function format(integer, width, precision, isSpacePadded,      duration, rounder
 BEGIN {
     WEEK_IN_SECONDS = (isWorkDay ? ENVIRON["WORKWEEK_SECONDS"] : 604800)
     DAY_IN_SECONDS = (isWorkDay ? ENVIRON["WORKDAY_SECONDS"] : 86400)
+
+    dividers["s"] = 1
+    dividers["m"] = 60
+    dividers["h"] = 3600
+    dividers["d"] = DAY_IN_SECONDS
+    dividers["w"] = WEEK_IN_SECONDS
 
     if (ARGC > 1) {
 	i = 1
