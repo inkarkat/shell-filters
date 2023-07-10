@@ -178,7 +178,7 @@ function format(integer, width, precision, isSpacePadded,      precisionParse, p
 	    ROUNDMODE = precisionParse[1]
 	}
 	duration = sprintf("%." precisionParse[3] "f%s", integer / dividers[precisionSigil], precisionSigil)
-    } else if (precision != "") {
+    } else if (int(precision) > 0) {
 	rounder[1] = 60
 	rounder[2] = 3600
 	rounder[3] = DAY_IN_SECONDS
@@ -189,6 +189,9 @@ function format(integer, width, precision, isSpacePadded,      precisionParse, p
 		    ? convert(int(integer / rounder[c] + 0.5) * rounder[c]) \
 		    : repeat("#", precision)
 	}
+    } else if (precision != "") {
+	printf("Invalid precision: %s\n", precision) > "/dev/stderr"
+	exit 2
     }
 
     if (isSpacePadded) duration = " " duration	# Ensure that there will be at least one space in front to maintain separation of preceding text.
