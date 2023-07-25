@@ -2,6 +2,7 @@
 
 : ${WORKDAY_SECONDS:=28800}; export WORKDAY_SECONDS
 : ${WORKWEEK_SECONDS:=$((WORKDAY_SECONDS * 5))}; export WORKWEEK_SECONDS
+: ${WORK_PREFIX:=w}; export WORK_PREFIX
 
 printShortUsage()
 {
@@ -37,9 +38,10 @@ HELPDESCRIPTION
 			    minutes) to obtain seconds.
     --workday|-W	    Render days and larger units as working days
 			    (comprised of $((WORKDAY_SECONDS / 3600)) hours, not 24) instead of calendar
-			    days, and adapt the unit (1wd, not 1d), too.
+			    days, and adapt the unit (1${WORK_PREFIX}d, not 1d), too.
 			    The exact counting can be configured via
-			    \$WORKDAY_SECONDS and \$WORKWEEK_SECONDS.
+			    \$WORKDAY_SECONDS and \$WORKWEEK_SECONDS; prefix is
+			    \$WORK_PREFIX.
     --precision|-p WIDTH    Remove smaller units so that the result will fit
 			    WIDTH; for example "01:02:03" will be rendered as
 			    "1h 2m", with "3s" removed to fit a width of 7.
@@ -121,7 +123,7 @@ function getWidth(seconds)
 	return max(widthArg, length(seconds))
     }
 }
-function convert(integer,      seconds, hours, minutes, workDayPrefix)
+function convert(integer,      seconds, hours, minutes)
 {
     seconds = factor * integer
     weeks = int(seconds / WEEK_IN_SECONDS)
@@ -201,7 +203,7 @@ function format(integer, width, precision, isSpacePadded,      precisionParse, p
 BEGIN {
     WEEK_IN_SECONDS = (isWorkDay ? ENVIRON["WORKWEEK_SECONDS"] : 604800)
     DAY_IN_SECONDS = (isWorkDay ? ENVIRON["WORKDAY_SECONDS"] : 86400)
-    workDayPrefix = (isWorkDay ? "w" : "")
+    workDayPrefix = (isWorkDay ? ENVIRON["WORK_PREFIX"] : "")
 
     dividers["s"] = 1
     dividers["m"] = 60

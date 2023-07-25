@@ -2,6 +2,7 @@
 
 : ${WORKDAY_SECONDS:=28800}; export WORKDAY_SECONDS
 : ${WORKWEEK_SECONDS:=$((WORKDAY_SECONDS * 5))}; export WORKWEEK_SECONDS
+: ${WORK_PREFIX:=w}; export WORK_PREFIX
 
 printShortUsage()
 {
@@ -72,7 +73,7 @@ function convert(duration,      calendar, n, c, cc, clock, result, hasMatch)
     }
 
     for (cc = 1; cc <= c; ++cc) {
-	if (calendar[cc] ~ /^[[:digit:]]+ww$/) {
+	if (calendar[cc] ~ "^[[:digit:]]+" ENVIRON["WORK_PREFIX"] "w$") {
 	    result += substr(calendar[cc], 1, length(calendar[cc]) - 1) * ENVIRON["WORKWEEK_SECONDS"]
 	    hasMatch = 1
 	    continue
@@ -87,7 +88,7 @@ function convert(duration,      calendar, n, c, cc, clock, result, hasMatch)
 	    hasMatch = 1
 	    continue
 	}
-	if (calendar[cc] ~ /^[[:digit:]]+wd$/) {
+	if (calendar[cc] ~ "^[[:digit:]]+" ENVIRON["WORK_PREFIX"] "d$") {
 	    result += substr(calendar[cc], 1, length(calendar[cc]) - 1) * ENVIRON["WORKDAY_SECONDS"]
 	    hasMatch = 1
 	    continue
@@ -131,7 +132,7 @@ function join(n, list, seps,      i, result) {
     return result
 }
 BEGIN {
-    DURATION_PATTERN = "\\<([[:digit:]]+w?w )?(([[:digit:]]+(w?d |-))?[[:digit:]]+(:[[:digit:]]{2}){1,2}|([[:digit:]]+w?d )?([[:digit:]]+h )?([[:digit:]]+m )?([[:digit:]]+s)|([[:digit:]]+w?d )?([[:digit:]]+h )?([[:digit:]]+m)|([[:digit:]]+w?d )?([[:digit:]]+h)|([[:digit:]]+w?d))\\>|\\<([[:digit:]]+w?w)\\>"
+    DURATION_PATTERN = "\\<([[:digit:]]+(" ENVIRON["WORK_PREFIX"] ")?w )?(([[:digit:]]+((" ENVIRON["WORK_PREFIX"] ")?d |-))?[[:digit:]]+(:[[:digit:]]{2}){1,2}|([[:digit:]]+(" ENVIRON["WORK_PREFIX"] ")?d )?([[:digit:]]+h )?([[:digit:]]+m )?([[:digit:]]+s)|([[:digit:]]+(" ENVIRON["WORK_PREFIX"] ")?d )?([[:digit:]]+h )?([[:digit:]]+m)|([[:digit:]]+(" ENVIRON["WORK_PREFIX"] ")?d )?([[:digit:]]+h)|([[:digit:]]+(" ENVIRON["WORK_PREFIX"] ")?d))\\>|\\<([[:digit:]]+(" ENVIRON["WORK_PREFIX"] ")?w)\\>"
 
     if (ARGC > 1) {
 	for (i = 1; i < ARGC; ++i) {
