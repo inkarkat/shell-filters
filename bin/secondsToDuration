@@ -133,8 +133,6 @@ function convert(integer,      seconds, hours, minutes, workDayPrefix)
     minutes = int(seconds / 60)
     seconds = seconds - (60 * minutes)
 
-    workDayPrefix = (isWorkDay ? "w" : "")
-
     if ((minutes == 0 || seconds == 0) && ! isPreferClock) {
 	return gensub(\
 		/ $/, "", 1, \
@@ -177,7 +175,7 @@ function format(integer, width, precision, isSpacePadded,      precisionParse, p
 	if (precisionParse[1] != "") {
 	    ROUNDMODE = precisionParse[1]
 	}
-	duration = sprintf("%." precisionParse[3] "f%s", integer / dividers[precisionSigil], precisionSigil)
+	duration = sprintf("%." precisionParse[3] "f%s", integer / dividers[precisionSigil], workDayPrefix precisionSigil)
     } else if (int(precision) > 0) {
 	rounder[1] = 60
 	rounder[2] = 3600
@@ -203,6 +201,7 @@ function format(integer, width, precision, isSpacePadded,      precisionParse, p
 BEGIN {
     WEEK_IN_SECONDS = (isWorkDay ? ENVIRON["WORKWEEK_SECONDS"] : 604800)
     DAY_IN_SECONDS = (isWorkDay ? ENVIRON["WORKDAY_SECONDS"] : 86400)
+    workDayPrefix = (isWorkDay ? "w" : "")
 
     dividers["s"] = 1
     dividers["m"] = 60
