@@ -1,0 +1,48 @@
+#!/bin/bash
+
+printUsage()
+{
+    cat <<HELPTEXT
+Convert passed FILE contents / each passed TEXT to a basic regular expression
+that matches the literal TEXT.
+HELPTEXT
+    printf 'Usage: %q %s\n' "$(basename "$1")" '[-E|--extended-regexp] [-x|--line-regexp] [-a|--additional-chars CHARS] [-?|-h|--help]'
+    printf 'Usage: %q %s\n' "$(basename "$1")" '[...] -- FILE [...]'
+    printf 'Usage: %q %s\n' "$(basename "$1")" '[...] TEXT [...]'
+    printf 'Usage: cat FILE [...] | %q %s\n' "$(basename "$1")" '[...]'
+}
+additionalChars=
+typeset -a additionalSedArgs=()
+while [ $# -ne 0 ]
+do
+    case "$1" in
+	--help|-h|-\?)	shift; printUsage "$0"; exit 0;;
+	--extended-regexp|-E)
+			shift; additionalChars+='+?{}.|()';;
+	--line-regexp|-x)
+			shift; additionalSedArgs+=(-e 's/.*/^&$/');;
+	--additional-chars|-a)
+			shift; additionalChars+="${1?}"; shift;;
+	--)		break;;
+	-*)		{ echo "ERROR: Unknown option \"$1\"!"; echo; printUsage "$0"; } >&2; exit 2;;
+	*)		break;;
+    esac
+done
+
+typeset -a TOLITERAL=(
+    sed -e :a -e '$!{ N; b a; }'
+	-e "\$s/[][\\\$*.^${additionalChars//\//\\/}]/\\\\&/g"
+	-e '$s/\n/\\n/g'
+	"${additionalSedArgs[@]}"
+)
+if [ $# -eq 0 ]; then
+    exec "${TOLITERAL[@]}"
+elif [ $# -ge 2 -a "$1" = '--' ]; then
+    shift
+    cat -- "$@" | "${TOLITERAL[@]}"
+else
+    for text
+    do
+	printf '%s\n' "$text" | "${TOLITERAL[@]}"
+    done
+fi
