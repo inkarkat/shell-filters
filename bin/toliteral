@@ -1,22 +1,47 @@
 #!/bin/bash
 
-printUsage()
+printShortUsage()
 {
-    cat <<HELPTEXT
-Convert passed FILE contents / each passed TEXT to a basic regular expression
-that matches the literal TEXT.
-HELPTEXT
+    # Note: short followed by long option; if the user knows the short one, she can
+    # skim the long one.
     printf 'Usage: %q %s\n' "$(basename "$1")" '[-E|--extended-regexp] [-x|--line-regexp] [-a|--additional-chars CHARS] [-?|-h|--help]'
     printf 'Usage: %q %s\n' "$(basename "$1")" '[...] -- FILE [...]'
     printf 'Usage: %q %s\n' "$(basename "$1")" '[...] TEXT [...]'
     printf 'Usage: cat FILE [...] | %q %s\n' "$(basename "$1")" '[...]'
+}
+printUsage()
+{
+    # This is the short help when launched with no or incorrect arguments.
+    # It is printed to stderr to avoid accidental processing.
+    printShortUsage "$1" >&2
+    printf >&2 '\nTry %q --help for more information.\n' "$(basename "$1")"
+}
+printLongUsage()
+{
+    # This is the long "man page" when launched with the help argument.
+    # It is printed to stdout to allow paging with 'more'.
+    cat <<HELPDESCRIPTION
+Convert passed FILE contents / each passed TEXT to a basic regular expression
+that matches the literal TEXT.
+HELPDESCRIPTION
+    echo
+    printShortUsage "$1"
+    echo
+    cat <<HELPTEXT
+    --extended-regexp|-E
+			Apply escaping for interpretation as an extended regular
+			expression.
+    --line-regexp|-x	Add ^ and $ anchors to the resulting regular expression.
+    --additional-chars|-a CHARS
+			Also escape each character in CHARS as well.
+HELPTEXT
 }
 additionalChars=
 typeset -a additionalSedArgs=()
 while [ $# -ne 0 ]
 do
     case "$1" in
-	--help|-h|-\?)	shift; printUsage "$0"; exit 0;;
+	--help|-h|-\?)	shift; printLongUsage "$0"; exit 0;;
 	--extended-regexp|-E)
 			shift; additionalChars+='+?{}.|()';;
 	--line-regexp|-x)
