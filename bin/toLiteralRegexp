@@ -59,20 +59,20 @@ do
     esac
 done
 
-typeset -a TOLITERAL=(
+typeset -a TOLITERALREGEXP=(
     sed "${joinerBeforeSedArgs[@]}" \
 	-e "s/[][\\\$*.^${additionalChars//\//\\/}]/\\\\&/g"
 	"${joinerAfterSedArgs[@]}" \
 	"${additionalSedArgs[@]}"
 )
 if [ $# -eq 0 ]; then
-    exec "${TOLITERAL[@]}"
+    exec "${TOLITERALREGEXP[@]}"
 elif [ $# -ge 2 -a "$1" = '--' ]; then
     shift
-    cat -- "$@" | "${TOLITERAL[@]}"
+    cat -- "$@" | "${TOLITERALREGEXP[@]}"
 else
     for text
     do
-	printf '%s\n' "$text" | "${TOLITERAL[@]}"
+	printf '%s\n' "$text" | "${TOLITERALREGEXP[@]}"
     done
 fi
