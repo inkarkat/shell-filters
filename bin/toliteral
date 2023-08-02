@@ -4,7 +4,7 @@ printShortUsage()
 {
     # Note: short followed by long option; if the user knows the short one, she can
     # skim the long one.
-    printf 'Usage: %q %s\n' "$(basename "$1")" '[-E|--extended-regexp] [-x|--line-regexp] [-a|--additional-chars CHARS] [-?|-h|--help]'
+    printf 'Usage: %q %s\n' "$(basename "$1")" '[-E|--extended-regexp] [-x|--line-regexp] [-m|--multiline] [-a|--additional-chars CHARS] [-?|-h|--help]'
     printf 'Usage: %q %s\n' "$(basename "$1")" '[...] -- FILE [...]'
     printf 'Usage: %q %s\n' "$(basename "$1")" '[...] TEXT [...]'
     printf 'Usage: cat FILE [...] | %q %s\n' "$(basename "$1")" '[...]'
@@ -32,12 +32,16 @@ HELPDESCRIPTION
 			Apply escaping for interpretation as an extended regular
 			expression.
     --line-regexp|-x	Add ^ and $ anchors to the resulting regular expression.
+    --multiline|-m	Convert the entire input / TEXT to a single regular
+			expression with \n atoms instead of converting each line
+			separately.
     --additional-chars|-a CHARS
 			Also escape each character in CHARS as well.
 HELPTEXT
 }
 additionalChars=
 typeset -a additionalSedArgs=()
+typeset -a joinerBeforeSedArgs=() joinerAfterSedArgs=()
 while [ $# -ne 0 ]
 do
     case "$1" in
@@ -48,6 +52,7 @@ do
 			shift; additionalSedArgs+=(-e 's/.*/^&$/');;
 	--additional-chars|-a)
 			shift; additionalChars+="${1?}"; shift;;
+	--multiline|-m)	shift; joinerBeforeSedArgs+=(-e :a -e '$!{ N; b a; }' -e '$!b'); joinerAfterSedArgs=(-e '$s/\n/\\n/g');;
 	--)		break;;
 	-*)		{ echo "ERROR: Unknown option \"$1\"!"; echo; printUsage "$0"; } >&2; exit 2;;
 	*)		break;;
@@ -55,9 +60,9 @@ do
 done
 
 typeset -a TOLITERAL=(
-    sed -e :a -e '$!{ N; b a; }'
-	-e "\$s/[][\\\$*.^${additionalChars//\//\\/}]/\\\\&/g"
-	-e '$s/\n/\\n/g'
+    sed "${joinerBeforeSedArgs[@]}" \
+	-e "s/[][\\\$*.^${additionalChars//\//\\/}]/\\\\&/g"
+	"${joinerAfterSedArgs[@]}" \
 	"${additionalSedArgs[@]}"
 )
 if [ $# -eq 0 ]; then
