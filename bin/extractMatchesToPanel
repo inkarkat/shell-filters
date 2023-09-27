@@ -22,7 +22,9 @@ elif [ -z "$WINDOWID" ]; then
     exit 3
 fi
 
+quotedPrefix=''; [ -z "$EXTRACTMATCHESTOPANEL_PREFIX" ] || printf -v quotedPrefix '%q' "$EXTRACTMATCHESTOPANEL_PREFIX"
+quotedSuffix=''; [ -z "$EXTRACTMATCHESTOPANEL_SUFFIX" ] || printf -v quotedSuffix '%q' "$EXTRACTMATCHESTOPANEL_SUFFIX"
 EXTRACTMATCHES_COMMAND_UPDATE_DELAY=${EXTRACTMATCHES_PANEL_UPDATE_DELAY:-0} \
 EXTRACTMATCHES_POST_COMMANDLINE="titleupdate --id extractMatchesToPanel --clear 2>/dev/null" \
-EXTRACTMATCHES_COMMANDLINE="titleupdate --id extractMatchesToPanel --panel {}" \
+EXTRACTMATCHES_COMMANDLINE="titleupdate --id extractMatchesToPanel --panel ${quotedPrefix}{}${quotedSuffix}" \
 exec extractMatches --to command "$@"
