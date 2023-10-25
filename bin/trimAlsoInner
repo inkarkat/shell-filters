@@ -1,0 +1,10 @@
+#!/bin/sed -uf
+
+## Remove any leading and trailing whitespace from each line and condense runs
+## of whitespace to a single space.
+##
+## Usage: trimAlsoInner FILE [...]
+## Usage: cat FILE [...] | trimAlsoInner
+
+s/^[[:space:]]\+\|[[:space:]]\+$//g
+s/[[:space:]]\+/ /g

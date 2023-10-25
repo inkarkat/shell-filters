@@ -1,0 +1,8 @@
+#!/bin/sed -uf
+
+## Remove any leading and trailing whitespace from each line.
+##
+## Usage: trim FILE [...]
+## Usage: cat FILE [...] | trim
+
+s/^[[:space:]]\+\|[[:space:]]\+$//g
