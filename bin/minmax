@@ -1,13 +1,24 @@
 #!/usr/bin/awk -f
 
 BEGIN {
-    if (ARGV[1] ~ /^(--(help|man|usage)|-[Hh?])$/) {
-	print "Print the lowest and highest number found in ARGS or the input."
-	print ""
-	print "Usage: minmax  ARG [...] [-?|-H|--man|--usage]"
-	print "Usage: cat FILE [...] | minmax"
-	isHelp = 1
-	exit
+    separator = OFS
+    ARGB = 1
+    while (1) {
+	if (ARGV[ARGB] ~ /^(--(help|man|usage)|-[Hh?])$/) {
+	    print "Print the lowest and highest number (separated by a space / SEPARATOR) found in"
+	    print "ARGS or the input."
+	    print ""
+	    print "Usage: minmax [-- -s|--separator SEPARATOR] ARG [...] [-?|-- -h|-H|--man|--usage]"
+	    print "Usage: cat FILE [...] | minmax [-- -s|--separator SEPARATOR]"
+	    isHelp = 1
+	    exit
+	} else if (ARGV[ARGB] == "--separator" || ARGV[ARGB] == "-s") {
+	    delete ARGV[ARGB++]
+	    separator = ARGV[ARGB]
+	    delete ARGV[ARGB++]
+	} else {
+	    break
+	}
     }
 }
 
@@ -19,8 +30,8 @@ function tally(value)
 BEGIN {
     min = 2^PREC
     max = -1 * min
-    if (ARGC > 1) {
-	for (i = 1; i < ARGC; ++i) {
+    if (ARGC > ARGB) {
+	for (i = ARGB; i < ARGC; ++i) {
 	    tally(ARGV[i])
 	}
 	exit 0
@@ -32,5 +43,5 @@ BEGIN {
     }
 }
 END {
-    if ( ! isHelp) printf "%d %d\n", min, max
+    if (! isHelp) printf "%d%s%d\n", min, separator, max
 }
