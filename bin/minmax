@@ -2,10 +2,11 @@
 
 BEGIN {
     if (ARGV[1] ~ /^(--(help|man|usage)|-[Hh?])$/) {
-	print "Print the lowest and highest number found in ARGS or the input."
+	print "Print the lowest and highest number (separated by a space / SEPARATOR) found in"
+	print "ARGS or the input."
 	print ""
-	print "Usage: minmax  ARG [...] [-?|-H|--man|--usage]"
-	print "Usage: cat FILE [...] | minmax"
+	print "Usage: minmax [-v OFS=SEPARATOR] ARG [...] [-?|-H|--man|--usage]"
+	print "Usage: cat FILE [...] | minmax [-v OFS=SEPARATOR]"
 	isHelp = 1
 	exit
     }
@@ -32,5 +33,5 @@ BEGIN {
     }
 }
 END {
-    if ( ! isHelp) printf "%d %d\n", min, max
+    if (! isHelp) printf "%d%s%d\n", min, OFS, max
 }
