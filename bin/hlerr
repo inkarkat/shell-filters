@@ -46,10 +46,10 @@ finally()
 }
 trap 'finally' EXIT
 
-(
+{
     if [ "$isNeedEval" ]; then
 	eval "${commands[@]}"
     else
 	"${commands[@]}"
     fi 3>&1 1>&2 2>&3 3>&- | sed -e 's/.\+/[01;31m&[0m/'
-) 3>&1 1>&2 2>&3 3>&-
+} 3>&1 1>&2 2>&3 3>&-
