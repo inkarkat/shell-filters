@@ -4,7 +4,7 @@ printShortUsage()
 {
     # Note: short followed by long option; if the user knows the short one, she can
     # skim the long one.
-    printf 'Usage: %q %s\n' "$(basename "$1")" '[-G|--basic-regexp|-E|--extended-regexp] [-x|--line-regexp] [-m|--multiline] [-a|--additional-chars CHARS] [-?|-h|--help]'
+    printf 'Usage: %q %s\n' "$(basename "$1")" '[-G|--basic-regexp|-E|--extended-regexp|-P|--perl-regexp] [-x|--line-regexp] [-m|--multiline] [-a|--additional-chars CHARS] [-?|-h|--help]'
     printf 'Usage: %q %s\n' "$(basename "$1")" '[...] -- FILE [...]'
     printf 'Usage: %q %s\n' "$(basename "$1")" '[...] TEXT [...]'
     printf 'Usage: cat FILE [...] | %q %s\n' "$(basename "$1")" '[...]'
@@ -42,6 +42,7 @@ HELPTEXT
 basicChars='][\$*.^'
 additionalChars=
 typeset -a additionalSedArgs=()
+typeset -a finalSedArgs=()
 typeset -a joinerBeforeSedArgs=() joinerAfterSedArgs=()
 while [ $# -ne 0 ]
 do
@@ -51,11 +52,13 @@ do
 			shift;;
 	--extended-regexp|-E)
 			shift; additionalChars+='+?{}.|()';;
+	--perl-regexp|-P)
+			shift; basicChars='\\'; additionalSedArgs+=(-e 's/[^\\]\+/\\Q&\\E/g');;
 	--line-regexp|-x)
-			shift; additionalSedArgs+=(-e 's/.*/^&$/');;
+			shift; finalSedArgs+=(-e 's/.*/^&$/');;
 	--additional-chars|-a)
 			shift; additionalChars+="${1?}"; shift;;
-	--multiline|-m)	shift; joinerBeforeSedArgs+=(-e :a -e '$!{ N; b a; }' -e '$!b'); joinerAfterSedArgs=(-e '$s/\n/\\n/g');;
+	--multiline|-m)	shift; joinerBeforeSedArgs+=(-e :a -e '$!{ N; b a; }' -e '$!b'); joinerAfterSedArgs+=(-e '$s/\n/\\n/g');;
 	--)		break;;
 	-*)		{ echo "ERROR: Unknown option \"$1\"!"; echo; printUsage "$0"; } >&2; exit 2;;
 	*)		break;;
@@ -64,9 +67,10 @@ done
 
 typeset -a TOLITERALREGEXP=(
     sed "${joinerBeforeSedArgs[@]}" \
-	-e "s/[${basicChars}${additionalChars//\//\\/}]/\\\\&/g"
+	-e "s/[${basicChars}${additionalChars//\//\\/}]/\\\\&/g" \
 	"${joinerAfterSedArgs[@]}" \
-	"${additionalSedArgs[@]}"
+	"${additionalSedArgs[@]}" \
+	"${finalSedArgs[@]}"
 )
 if [ $# -eq 0 ]; then
     exec "${TOLITERALREGEXP[@]}"
