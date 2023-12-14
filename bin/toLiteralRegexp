@@ -4,7 +4,7 @@ printShortUsage()
 {
     # Note: short followed by long option; if the user knows the short one, she can
     # skim the long one.
-    printf 'Usage: %q %s\n' "$(basename "$1")" '[-E|--extended-regexp] [-x|--line-regexp] [-m|--multiline] [-a|--additional-chars CHARS] [-?|-h|--help]'
+    printf 'Usage: %q %s\n' "$(basename "$1")" '[-G|--basic-regexp|-E|--extended-regexp] [-x|--line-regexp] [-m|--multiline] [-a|--additional-chars CHARS] [-?|-h|--help]'
     printf 'Usage: %q %s\n' "$(basename "$1")" '[...] -- FILE [...]'
     printf 'Usage: %q %s\n' "$(basename "$1")" '[...] TEXT [...]'
     printf 'Usage: cat FILE [...] | %q %s\n' "$(basename "$1")" '[...]'
@@ -46,6 +46,8 @@ while [ $# -ne 0 ]
 do
     case "$1" in
 	--help|-h|-\?)	shift; printLongUsage "$0"; exit 0;;
+	--basic-regexp|-G)
+			shift;;
 	--extended-regexp|-E)
 			shift; additionalChars+='+?{}.|()';;
 	--line-regexp|-x)
