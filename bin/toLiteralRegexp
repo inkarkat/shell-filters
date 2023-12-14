@@ -39,6 +39,7 @@ HELPDESCRIPTION
 			Also escape each character in CHARS as well.
 HELPTEXT
 }
+basicChars='][\$*.^'
 additionalChars=
 typeset -a additionalSedArgs=()
 typeset -a joinerBeforeSedArgs=() joinerAfterSedArgs=()
@@ -63,7 +64,7 @@ done
 
 typeset -a TOLITERALREGEXP=(
     sed "${joinerBeforeSedArgs[@]}" \
-	-e "s/[][\\\$*.^${additionalChars//\//\\/}]/\\\\&/g"
+	-e "s/[${basicChars}${additionalChars//\//\\/}]/\\\\&/g"
 	"${joinerAfterSedArgs[@]}" \
 	"${additionalSedArgs[@]}"
 )
