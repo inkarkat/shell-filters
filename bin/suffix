@@ -1,12 +1,14 @@
 #!/bin/bash
 
+: ${SUFFIX_EXEC_END=;}
+
 printShortUsage()
 {
     # Note: short followed by long option; if the user knows the short one, she can
     # skim the long one.
     printf 'Usage: %q %s\n' "$(basename "$1")" '[-k|--keep-whitespace] [-s|--skip-empty] [-f|--first-only|-l|--last-only] [--] SUFFIX FILE [...] [-?|-h|--help]'
     echo
-    printf 'Usage: %q %s\n' "$(basename "$1")" '[...] -c|--command "COMMANDLINE" [...] | --exec SIMPLECOMMAND ... ; [...] [--] SUFFIX'
+    printf 'Usage: %q %s\n' "$(basename "$1")" "[...] -c|--command \"COMMANDLINE\" [...] | --exec SIMPLECOMMAND ... $SUFFIX_EXEC_END [...] [--] SUFFIX"
     echo
     printf 'Usage: cat FILE [...] | %q %s\n' "$(basename "$1")" '[...] [--] SUFFIX'
 }
@@ -36,9 +38,9 @@ HELPDESCRIPTION
     --last-only|-l	Suffix the last line only.
     --command|-c CMD	Execute CMD as a command-line and add SUFFIX to its
 			output.
-    --exec COMMAND ;	Execute COMMAND; all following arguments are taken to be
+    --exec COMMAND $SUFFIX_EXEC_END	Execute COMMAND; all following arguments are taken to be
 			arguments to the COMMAND until an argument consisting of
-			';' is encountered. Its output has the SUFFIX added.
+			'${SUFFIX_EXEC_END}' is encountered. Its output has the SUFFIX added.
 HELPTEXT
 }
 
@@ -57,14 +59,14 @@ do
 	--command|-c)	shift; commands+=(${commands:+;} "$1"); shift;;
 	--exec)		shift
 			cmd=
-			while [ $# -gt 0 -a "$1" != ';' ]
+			while [ $# -gt 0 -a "$1" != "$SUFFIX_EXEC_END" ]
 			do
 			    printf -v quotedArg '%q' "$1"
 			    cmd+="${cmd:+ }${quotedArg}"
 			    shift
 			done
 			if [ $# -eq 0 ]; then
-			    echo 'ERROR: --exec command must be concluded with ;!'; echo; printUsage "$0"
+			    echo "ERROR: --exec command must be concluded with '${SUFFIX_EXEC_END}'"; echo; printUsage "$0"
 			    exit 2
 			fi >&2
 			shift

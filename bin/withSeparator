@@ -1,11 +1,13 @@
 #!/bin/bash
 set -o pipefail
 
+: ${WITHSEPARATOR_EXEC_END=;}
+
 printShortUsage()
 {
     # Note: short followed by long option; if the user knows the short one, she can
     # skim the long one.
-    printf 'Usage: %q %s\n' "$(basename "$1")" '[-s|--separator TEXT] [--include-errors] -c|--command "COMMANDLINE" [...] | -e|--exec SIMPLECOMMAND [...] ; [...] | [--] SIMPLECOMMAND [...] [-?|-h|--help]'
+    printf 'Usage: %q %s\n' "$(basename "$1")" "[-s|--separator TEXT] [--include-errors] -c|--command \"COMMANDLINE\" [...] | -e|--exec SIMPLECOMMAND [...] $WITHSEPARATOR_EXEC_END [...] | [--] SIMPLECOMMAND [...] [-?|-h|--help]"
 }
 printUsage()
 {
@@ -47,14 +49,14 @@ do
 	--command|-c)	shift; commands+=("$1"); shift;;
 	--exec|-e)	shift
 			cmd=
-			while [ $# -gt 0 -a "$1" != ';' ]
+			while [ $# -gt 0 -a "$1" != "$WITHSEPARATOR_EXEC_END" ]
 			do
 			    printf -v quotedArg '%q' "$1"
 			    cmd="${cmd}${cmd:+ }${quotedArg}"
 			    shift
 			done
 			if [ $# -eq 0 ]; then
-			    echo 'ERROR: --exec command must be concluded with ;!'; echo; printUsage "$0"
+			    echo "ERROR: --exec command must be concluded with '${WITHSEPARATOR_EXEC_END}'"; echo; printUsage "$0"
 			    exit 2
 			fi >&2
 			shift
@@ -72,7 +74,7 @@ if [ $# -ne 0 ]; then
     commands+=("${quotedSimpleCommand% }")
 fi
 if [ ${#commands[@]} -eq 0 ]; then
-    echo 'ERROR: No COMMAND(s) specified; need to pass -c|--command "COMMANDLINE", or --exec SIMPLECOMMAND [...] ; , or SIMPLECOMMAND.'
+    echo "ERROR: No COMMAND(s) specified; need to pass -c|--command \"COMMANDLINE\", or --exec SIMPLECOMMAND [...] $WITHSEPARATOR_EXEC_END or SIMPLECOMMAND."
     echo
     printUsage "$0"
     exit 2

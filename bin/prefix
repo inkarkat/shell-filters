@@ -1,12 +1,14 @@
 #!/bin/bash
 
+: ${PREFIX_EXEC_END=;}
+
 printShortUsage()
 {
     # Note: short followed by long option; if the user knows the short one, she can
     # skim the long one.
     printf 'Usage: %q %s\n' "$(basename "$1")" '[-k|--keep-indent] [-s|--skip-empty] [-f|--first-then-indent] [--] PREFIX FILE [...] [-?|-h|--help]'
     echo
-    printf 'Usage: %q %s\n' "$(basename "$1")" '[...] -c|--command "COMMANDLINE" [...] | --exec SIMPLECOMMAND ... ; [...] [--] PREFIX'
+    printf 'Usage: %q %s\n' "$(basename "$1")" "[...] -c|--command \"COMMANDLINE\" [...] | --exec SIMPLECOMMAND ... $PREFIX_EXEC_END [...] [--] PREFIX"
     echo
     printf 'Usage: cat FILE [...] | %q %s\n' "$(basename "$1")" '[...] [--] PREFIX'
 }
@@ -35,9 +37,9 @@ HELPDESCRIPTION
 			Prefix the first line, then indent following lines with
 			the same amount of spaces.
     --command|-c CMD	Execute CMD as a command-line and prefix its output.
-    --exec COMMAND ;	Execute COMMAND; all following arguments are taken to be
+    --exec COMMAND $PREFIX_EXEC_END	Execute COMMAND; all following arguments are taken to be
 			arguments to the COMMAND until an argument consisting of
-			';' is encountered. Its output is prefixed.
+			'${PREFIX_EXEC_END}' is encountered. Its output is prefixed.
 HELPTEXT
 }
 
@@ -55,14 +57,14 @@ do
 	--command|-c)	shift; commands+=(${commands:+;} "$1"); shift;;
 	--exec)		shift
 			cmd=
-			while [ $# -gt 0 -a "$1" != ';' ]
+			while [ $# -gt 0 -a "$1" != "$PREFIX_EXEC_END" ]
 			do
 			    printf -v quotedArg '%q' "$1"
 			    cmd+="${cmd:+ }${quotedArg}"
 			    shift
 			done
 			if [ $# -eq 0 ]; then
-			    echo 'ERROR: --exec command must be concluded with ;!'; echo; printUsage "$0"
+			    echo "ERROR: --exec command must be concluded with '${PREFIX_EXEC_END}'"; echo; printUsage "$0"
 			    exit 2
 			fi >&2
 			shift
