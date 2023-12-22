@@ -38,8 +38,9 @@ HELPDESCRIPTION
 			If no new line arrives within SECONDS, create new line.
     --wrap|-w COL	Wrap (entire input lines) before the accumulated number
 			of characters exceeds COL. No separator is printed then.
-
-See also: joinBy does simplistic joining of passed arguments or standard input.
+SEE ALSO:
+- joinBy does simplistic joining of passed arguments or standard input.
+- joinWith joins with different potentially repeating sequences of separators.
 HELPTEXT
 }
 
