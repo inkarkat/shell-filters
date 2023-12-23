@@ -7,7 +7,7 @@ printShortUsage()
 {
     # Note: short followed by long option; if the user knows the short one, she can
     # skim the long one.
-    printf 'Usage: %q %s\n' "$(basename "$1")" "[-s|--separator TEXT] [--include-errors] -c|--command \"COMMANDLINE\" [...] | -e|--exec SIMPLECOMMAND [...] $WITHSEPARATOR_EXEC_END [...] | [--] SIMPLECOMMAND [...] [-?|-h|--help]"
+    printf 'Usage: %q %s\n' "$(basename "$1")" "[-s|--separator TEXT] [--include-errors] -c|--command \"COMMANDLINE\" [-c ...] | --exec SIMPLECOMMAND [...] $WITHSEPARATOR_EXEC_END [--exec ...] | [--] SIMPLECOMMAND [...] [-?|-h|--help]"
 }
 printUsage()
 {
@@ -47,7 +47,7 @@ do
 	--include-errors)
 			shift; redirection='2>&1';;
 	--command|-c)	shift; commands+=("$1"); shift;;
-	--exec|-e)	shift
+	--exec)		shift
 			cmd=
 			while [ $# -gt 0 -a "$1" != "$WITHSEPARATOR_EXEC_END" ]
 			do

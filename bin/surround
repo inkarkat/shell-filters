@@ -8,7 +8,7 @@ printShortUsage()
     # skim the long one.
     printf 'Usage: %q %s\n' "$(basename "$1")" '[-k|--keep-whitespace] [-s|--skip-empty] [-j|--join-by TEXT] [-f|--first-then-indent] [-l|--last-only] [--] PREFIX SUFFIX FILE [...] [-?|-h|--help]'
     echo
-    printf 'Usage: %q %s\n' "$(basename "$1")" "[...] -c|--command \"COMMANDLINE\" [...] | --exec SIMPLECOMMAND ... $SURROUND_EXEC_END [...] [--] PREFIX SUFFIX"
+    printf 'Usage: %q %s\n' "$(basename "$1")" "[...] -c|--command \"COMMANDLINE\" [-c ...] | --exec SIMPLECOMMAND ... $SURROUND_EXEC_END [--exec ...] [--] PREFIX SUFFIX"
     echo
     printf 'Usage: cat FILE [...] | %q %s\n' "$(basename "$1")" '[...] [--] PREFIX SUFFIX'
 }
