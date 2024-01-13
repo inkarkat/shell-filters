@@ -68,7 +68,6 @@ resetPattern=
 triggerPattern=
 skipPattern=
 isSkipEmptyContext=
-isNeedEval=
 typeset -a commands=()
 while [ $# -ne 0 ]
 do
@@ -91,25 +90,21 @@ do
 	--reset|-x)	shift; resetPattern+="${resetPattern:+|}${1:?}"; shift;;
 	--skip-empty-context)
 			shift; isSkipEmptyContext=t;;
-	--command|-c)	shift; commands+=(${commands:+;} "$1"); isNeedEval=t; shift;;
+	--command|-c)	shift; commands+=(${commands:+;} "$1"); shift;;
 	--)		shift; break;;
 	-*)		{ echo "ERROR: Unknown option \"$1\"!"; echo; printUsage "$0"; } >&2; exit 2;;
 	*)		break;;
     esac
 done
 if [ $# -ne 0 ]; then
-    if [ "$isNeedEval" ]; then
-	# Combine --command and SIMPLECOMMAND; need to quote SIMPLECOMMAND to
-	# undo the effects of eval.
-	printf -v quotedSimpleCommand '%q ' "$@"
-	printf -v escapedContextMarker %q "$contextMarker"
-	printf -v escapedLineMarker %q "$lineMarker"
-	quotedSimpleCommand="${quotedSimpleCommand//"$escapedContextMarker"/$contextMarker}"
-	quotedSimpleCommand="${quotedSimpleCommand//"$escapedLineMarker"/$lineMarker}"
-	commands+=(${commands:+;} "$quotedSimpleCommand")	# %q escapes {} and {?}, we don't want that to have it interpolated later.
-    else
-	commands=("$@")
-    fi
+    # Combine --command and SIMPLECOMMAND; need to quote SIMPLECOMMAND to
+    # undo the effects of eval.
+    printf -v quotedSimpleCommand '%q ' "$@"
+    printf -v escapedContextMarker %q "$contextMarker"
+    printf -v escapedLineMarker %q "$lineMarker"
+    quotedSimpleCommand="${quotedSimpleCommand//"$escapedContextMarker"/$contextMarker}"
+    quotedSimpleCommand="${quotedSimpleCommand//"$escapedLineMarker"/$lineMarker}"
+    commands+=(${commands:+;} "$quotedSimpleCommand")	# %q escapes {} and {?}, we don't want that to have it interpolated later.
 fi
 if [ ${#patterns[@]} -eq 0 -a -z "$triggerPattern" ]; then
     echo 'ERROR: No context specified; need to pass -m|--match PATTERN or pass -t|--trigger TRIGGER-PATTERN.'
@@ -129,11 +124,7 @@ trigger()
 
     typeset -a interpolatedCommands=("${commands[@]//"$lineMarker"/$line}")
     typeset -a interpolatedCommands=("${interpolatedCommands[@]//"$contextMarker"/$context}")
-    if [ "$isNeedEval" ]; then
-	eval "${interpolatedCommands[@]}"
-    else
-	"${interpolatedCommands[@]}"
-    fi && : ${status:=0} || status=$?
+    eval "${interpolatedCommands[@]}" && : ${status:=0} || status=$?
 }
 
 status=
