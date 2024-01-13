@@ -1,5 +1,6 @@
 #!/bin/bash
 
+: ${SUFFIX_COMMAND_JOINER=;}
 : ${SUFFIX_EXEC_END=;}
 
 printShortUsage()
@@ -44,7 +45,7 @@ HELPDESCRIPTION
 HELPTEXT
 }
 
-typeset -a commands=()
+commands=
 isKeepWhitespace=
 address=
 additionalSedProcessing=()
@@ -56,7 +57,7 @@ do
 	--skip-empty|-s)	shift; additionalSedProcessing+=(-e '/^[[:space:]]*\r\?$/b');;
 	--first-only|-f)	shift; address=1;;
 	--last-only|-l)		shift; address='$';;
-	--command|-c)	shift; commands+=(${commands:+;} "$1"); shift;;
+	--command|-c)	shift; commands+="${commands:+ $SUFFIX_COMMAND_JOINER }$1"; shift;;
 	--exec)		shift
 			cmd=
 			while [ $# -gt 0 -a "$1" != "$SUFFIX_EXEC_END" ]
@@ -70,14 +71,14 @@ do
 			    exit 2
 			fi >&2
 			shift
-			commands+=(${commands:+;} "$cmd")
+			commands+="${commands:+ $SUFFIX_COMMAND_JOINER }${cmd}"
 			;;
 	--)		shift; break;;
 	-*)		{ echo "ERROR: Unknown option \"$1\"!"; echo; printUsage "$0"; } >&2; exit 2;;
 	*)		break;;
     esac
 done
-if [ $# -eq 0 ] || [ ${#commands[@]} -gt 0 -a $# -ne 1 ]; then
+if [ $# -eq 0 ] || [ -n "$commands" -a $# -ne 1 ]; then
     printUsage "$0" >&2
     exit 2
 fi
@@ -86,5 +87,5 @@ literalSuffix="$1"; shift
 literalSuffix="${literalSuffix//\\/\\\\}"
 literalSuffix="${literalSuffix//&/\\&}"
 literalSuffix="${literalSuffix//$'\n'/\\n}"
-eval "${commands:+{ }" "${commands[@]:-exec}" "${commands:+" ; } |"}" \
+eval "${commands:+{ }" "${commands:-exec}" "${commands:+" ; } |"}" \
     'sed "${additionalSedProcessing[@]}" -e "${address}s#\\(${isKeepWhitespace:+[[:space:]]*}\\r\\?\$\\)#${literalSuffix//#/\\#}\\1#" "$@"'

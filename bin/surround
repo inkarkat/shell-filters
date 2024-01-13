@@ -1,5 +1,6 @@
 #!/bin/bash
 
+: ${SURROUND_COMMAND_JOINER=;}
 : ${SURROUND_EXEC_END=;}
 
 printShortUsage()
@@ -50,7 +51,7 @@ HELPDESCRIPTION
 HELPTEXT
 }
 
-typeset -a commands=()
+commands=
 isKeepWhitespace=
 skipEmptyPattern=
 unset literalJoiner
@@ -70,7 +71,7 @@ do
 			;;
 	--first-then-indent|-f)	shift; isOnlyFirst=t;;
 	--last-only|-l)		shift; isOnlyLast=t;;
-	--command|-c)	shift; commands+=(${commands:+;} "$1"); shift;;
+	--command|-c)	shift; commands+="${commands:+ $SURROUND_COMMAND_JOINER }$1"; shift;;
 	--exec)		shift
 			cmd=
 			while [ $# -gt 0 -a "$1" != "$SURROUND_EXEC_END" ]
@@ -84,14 +85,14 @@ do
 			    exit 2
 			fi >&2
 			shift
-			commands+=(${commands:+;} "$cmd")
+			commands+="${commands:+ $SURROUND_COMMAND_JOINER }${cmd}"
 			;;
 	--)		shift; break;;
 	-*)		{ echo "ERROR: Unknown option \"$1\"!"; echo; printUsage "$0"; } >&2; exit 2;;
 	*)		break;;
     esac
 done
-if [ $# -le 1 ] || [ ${#commands[@]} -gt 0 -a $# -ne 2 ]; then
+if [ $# -le 1 ] || [ -n "$commands" -a $# -ne 2 ]; then
     printUsage "$0" >&2
     exit 2
 fi
@@ -130,5 +131,5 @@ if [ "$isOnlyFirst" ]; then
     indentSedProcessing=(-e "${prefixAddress}!s#\\(^\\|\\n\\)\\(${isKeepWhitespace:+[ \t\v\f\r]*}\\)\\([^\\n]*[^${isKeepWhitespace:+ \t\v\f}\\n\\r]\\|\\)\\([${isKeepWhitespace:+ \t\v\f}\r]*\$\\)#\\1\2${indent}\\3${literalSuffix//#/\\#}\\4#")
 fi
 
-eval "${commands:+{ }" "${commands[@]:-exec}" "${commands:+" ; } |"}" \
+eval "${commands:+{ }" "${commands:-exec}" "${commands:+" ; } |"}" \
     'sed -e :restart "${additionalSedPreProcessing[@]}" -e "${prefixAddress}s#\\(^\\|\\n\\)\\(${isKeepWhitespace:+[ \t\v\f\r]*}\\)\\([^\\n]*[^${isKeepWhitespace:+ \t\v\f}\\n\\r]\\|\\)\\([${isKeepWhitespace:+ \t\v\f}\r]*\$\\)#\\1\2${literalPrefix//#/\\#}\\3${literalSuffix//#/\\#}\\4#" "${indentSedProcessing[@]}" "${lastOnlySuffixSedProcessing[@]}" "${additionalSedPostProcessing[@]}" "$@"'

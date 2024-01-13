@@ -1,5 +1,7 @@
 #!/bin/bash
 
+: ${SUMERR_COMMAND_JOINER=;}
+
 printUsage()
 {
     cat <<HELPTEXT
@@ -11,7 +13,7 @@ printf 'Usage: %q %s\n' "$(basename "$1")" '[--no-header] [-Y|--summary-only] -c
 
 isHeader=t
 isSummaryOnly=
-typeset -a commands=()
+commands=
 while [ $# -ne 0 ]
 do
     case "$1" in
@@ -19,7 +21,7 @@ do
 	--no-header)	shift; isHeader=;;
 	--summary-only|-Y)
 			shift; isSummaryOnly=t;;
-	--command|-c)	shift; commands+=(${commands:+;} "$1"); shift;;
+	--command|-c)	shift; commands+="${commands:+ $SUMERR_COMMAND_JOINER }$1"; shift;;
 	--)		shift; break;;
 	-*)		{ echo "ERROR: Unknown option \"$1\"!"; echo; printUsage "$0"; } >&2; exit 2;;
 	*)		break;;
@@ -29,9 +31,9 @@ if [ $# -ne 0 ]; then
     # Combine --command and SIMPLECOMMAND; need to quote SIMPLECOMMAND to
     # undo the effects of eval.
     printf -v quotedSimpleCommand '%q ' "$@"
-    commands+=(${commands:+;} "${quotedSimpleCommand% }")
+    commands+="${commands:+ $SUMERR_COMMAND_JOINER }${quotedSimpleCommand% }"
 fi
-if [ ${#commands[@]} -eq 0 ]; then
+if [ -z "$commands" ]; then
     echo >&2 'ERROR: No COMMAND(s) specified; need to pass -c|--command "COMMANDLINE", or SIMPLECOMMAND.'
     exit 2
 fi
@@ -55,7 +57,7 @@ trap 'finally' EXIT
 
 execute()
 {
-    eval "${commands[@]}"
+    eval "$commands"
 }
 
 if [ "$isSummaryOnly" ]; then

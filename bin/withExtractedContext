@@ -1,5 +1,6 @@
 #!/bin/bash
 
+: ${WITHEXTRACTEDCONTEXT_COMMAND_JOINER=;}
 : ${WITHEXTRACTEDCONTEXT_CONTEXT_MARKER='{?}'}
 : ${WITHEXTRACTEDCONTEXT_LINE_MARKER='{}'}
 contextMarker="$WITHEXTRACTEDCONTEXT_CONTEXT_MARKER"; unset WITHEXTRACTEDCONTEXT_CONTEXT_MARKER
@@ -68,7 +69,7 @@ resetPattern=
 triggerPattern=
 skipPattern=
 isSkipEmptyContext=
-typeset -a commands=()
+commands=
 while [ $# -ne 0 ]
 do
     case "$1" in
@@ -90,7 +91,7 @@ do
 	--reset|-x)	shift; resetPattern+="${resetPattern:+|}${1:?}"; shift;;
 	--skip-empty-context)
 			shift; isSkipEmptyContext=t;;
-	--command|-c)	shift; commands+=(${commands:+;} "$1"); shift;;
+	--command|-c)	shift; commands+="${commands:+ $WITHEXTRACTEDCONTEXT_COMMAND_JOINER }$1"; shift;;
 	--)		shift; break;;
 	-*)		{ echo "ERROR: Unknown option \"$1\"!"; echo; printUsage "$0"; } >&2; exit 2;;
 	*)		break;;
@@ -104,14 +105,14 @@ if [ $# -ne 0 ]; then
     printf -v escapedLineMarker %q "$lineMarker"
     quotedSimpleCommand="${quotedSimpleCommand//"$escapedContextMarker"/$contextMarker}"
     quotedSimpleCommand="${quotedSimpleCommand//"$escapedLineMarker"/$lineMarker}"
-    commands+=(${commands:+;} "$quotedSimpleCommand")	# %q escapes {} and {?}, we don't want that to have it interpolated later.
+    commands+="${commands:+ $WITHEXTRACTEDCONTEXT_COMMAND_JOINER }$quotedSimpleCommand"	# %q escapes {} and {?}, we don't want that to have it interpolated later.
 fi
 if [ ${#patterns[@]} -eq 0 -a -z "$triggerPattern" ]; then
     echo 'ERROR: No context specified; need to pass -m|--match PATTERN or pass -t|--trigger TRIGGER-PATTERN.'
     echo
     printUsage "$0"
     exit 2
-elif [ ${#commands[@]} -eq 0 ]; then
+elif [ -z "$commands" ]; then
     echo 'ERROR: No COMMAND(s) specified; need to pass -c|--command "COMMANDLINE", or SIMPLECOMMAND.'
     echo
     printUsage "$0"
@@ -122,9 +123,9 @@ trigger()
 {
     [ "$isSkipEmptyContext" ] && [ -z "$context" ] && return
 
-    typeset -a interpolatedCommands=("${commands[@]//"$lineMarker"/$line}")
-    typeset -a interpolatedCommands=("${interpolatedCommands[@]//"$contextMarker"/$context}")
-    eval "${interpolatedCommands[@]}" && : ${status:=0} || status=$?
+    local interpolatedCommands="${commands//"$lineMarker"/$line}"
+    interpolatedCommands="${interpolatedCommands//"$contextMarker"/$context}"
+    eval "$interpolatedCommands" && : ${status:=0} || status=$?
 }
 
 status=

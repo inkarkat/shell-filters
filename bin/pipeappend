@@ -1,5 +1,7 @@
 #!/bin/bash
 
+: ${PIPEAPPEND_COMMAND_JOINER=;}
+
 printUsage()
 {
     cat <<HELPTEXT
@@ -10,12 +12,12 @@ printf 'Usage: cat FILE [...] | %q %s\n' "$(basename "$1")" '-c|--command "COMMA
 printf 'Example: diff -u orig new | %q diffstat -C\n' "$(basename -- "$1")"
 }
 
-typeset -a commands=()
+commands=
 while [ $# -ne 0 ]
 do
     case "$1" in
 	--help|-h|-\?)	shift; printUsage "$0"; exit 0;;
-	--command|-c)	shift; commands+=(${commands:+;} "$1"); shift;;
+	--command|-c)	shift; commands+="${commands:+ $PIPEAPPEND_COMMAND_JOINER }$1"; shift;;
 	--)		shift; break;;
 	-*)		{ echo "ERROR: Unknown option \"$1\"!"; echo; printUsage "$0"; } >&2; exit 2;;
 	*)		break;;
@@ -25,9 +27,9 @@ if [ $# -ne 0 ]; then
     # Combine --command and SIMPLECOMMAND; need to quote SIMPLECOMMAND to
     # undo the effects of eval.
     printf -v quotedSimpleCommand '%q ' "$@"
-    commands+=(${commands:+;} "${quotedSimpleCommand% }")
+    commands+="${commands:+ $PIPEAPPEND_COMMAND_JOINER }${quotedSimpleCommand% }"
 fi
-if [ ${#commands[@]} -eq 0 ]; then
+if [ -z "$commands" ]; then
     echo >&2 'ERROR: No COMMAND(s) specified; need to pass -c|--command "COMMANDLINE", or SIMPLECOMMAND.'
     exit 2
 fi
@@ -39,7 +41,7 @@ finally()
     status=0
     if [ -s "$TMPFILE" ]; then
 	cat -- "$TMPFILE" \
-	    | eval "${commands[@]}"; status=$?
+	    | eval "$commands"; status=$?
     fi
     rm -f -- "$TMPFILE" 2>/dev/null
     exit $status

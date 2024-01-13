@@ -1,5 +1,6 @@
 #!/bin/bash
 
+: ${PREFIX_COMMAND_JOINER=;}
 : ${PREFIX_EXEC_END=;}
 
 printShortUsage()
@@ -43,7 +44,7 @@ HELPDESCRIPTION
 HELPTEXT
 }
 
-typeset -a commands=()
+commands=
 isKeepIndent=
 isOnlyFirst=
 additionalSedProcessing=()
@@ -54,7 +55,7 @@ do
 	--keep-indent|-k)	shift; isKeepIndent=t;;
 	--skip-empty|-s)	shift; additionalSedProcessing+=(-e '/^[[:space:]]*\r\?$/b');;
 	--first-then-indent|-f)	shift; isOnlyFirst=t;;
-	--command|-c)	shift; commands+=(${commands:+;} "$1"); shift;;
+	--command|-c)	shift; commands+="${commands:+ $PREFIX_COMMAND_JOINER }$1"; shift;;
 	--exec)		shift
 			cmd=
 			while [ $# -gt 0 -a "$1" != "$PREFIX_EXEC_END" ]
@@ -68,14 +69,14 @@ do
 			    exit 2
 			fi >&2
 			shift
-			commands+=(${commands:+;} "$cmd")
+			commands+="${commands:+ $PREFIX_COMMAND_JOINER }${cmd}"
 			;;
 	--)		shift; break;;
 	-*)		{ echo "ERROR: Unknown option \"$1\"!"; echo; printUsage "$0"; } >&2; exit 2;;
 	*)		break;;
     esac
 done
-if [ $# -eq 0 ] || [ ${#commands[@]} -gt 0 -a $# -ne 1 ]; then
+if [ $# -eq 0 ] || [ -n "$commands" -a $# -ne 1 ]; then
     printUsage "$0" >&2
     exit 2
 fi
@@ -94,5 +95,5 @@ if [ "$isOnlyFirst" ]; then
     indentSedProcessing=(-e "${address}!s#\\(^${isKeepIndent:+[[:space:]]*}\\)#\\1${indent}#")
 fi
 
-eval "${commands:+{ }" "${commands[@]:-exec}" "${commands:+" ; } |"}" \
+eval "${commands:+{ }" "${commands:-exec}" "${commands:+" ; } |"}" \
     'sed "${additionalSedProcessing[@]}" -e "${address}s#\\(^${isKeepIndent:+[[:space:]]*}\\)#\\1${literalPrefix//#/\\#}#" "${indentSedProcessing[@]}" "$@"'
