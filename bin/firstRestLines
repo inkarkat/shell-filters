@@ -8,7 +8,7 @@ printShortUsage()
 {
     # Note: short followed by long option; if the user knows the short one, they can
     # skim the long one.
-    printf 'Usage: %q %s\n' "$(basename "$1")" "[-n|--count N] [-f|--first-command \"COMMANDLINE\" [...] | --first-exec SIMPLECOMMAND [...] ${FIRSTRESTLINES_EXEC_END} [--first-exec ...]] [-r|--rest-command \"COMMANDLINE\" [...] | --rest-exec SIMPLECOMMAND [...] ${FIRSTRESTLINES_EXEC_END} [--rest-exec ...]] [-?|-h|--help]"
+    printf 'Usage: %q %s\n' "$(basename "$1")" "[-n|--count N] [-f|--first-command \"COMMANDLINE\" [...] | --first-exec SIMPLECOMMAND [...] ${FIRSTRESTLINES_EXEC_END} [--first-exec ...] [--abort-on-failure]] [-r|--rest-command \"COMMANDLINE\" [...] | --rest-exec SIMPLECOMMAND [...] ${FIRSTRESTLINES_EXEC_END} [--rest-exec ...]] [-?|-h|--help]"
 }
 printUsage()
 {
@@ -37,6 +37,9 @@ HELPDESCRIPTION
 				following arguments are taken to be arguments to
 				the CMD until an argument consisting of
 				'${FIRSTRESTLINES_EXEC_END}' is encountered.
+    --abort-on-failure		Do not consume remaining lines if the first
+				command fails. The command for remaining lines
+				is not executed.
     --rest-command|-r CMD	Pipe the remaining line's contents into CMD as a
 				command-line.
     --rest-exec CMD [...] ${FIRSTRESTLINES_EXEC_END}	Pipe the remaining line's contents into CMD; all
@@ -46,7 +49,7 @@ HELPDESCRIPTION
 EXIT STATUS:
     0	Complete success.
     2	Bad invocation, wrong or missing command-line arguments.
-    *   any exit status from COMMAND(s)
+    *   any exit status from the first failing COMMAND(s)
 
 Example:
 HELPTEXT
@@ -54,6 +57,7 @@ HELPTEXT
 }
 
 let count=1
+isAbortOnFailure=
 firstCommands=
 restCommands=
 while [ $# -ne 0 ]
@@ -61,6 +65,8 @@ do
     case "$1" in
 	--help|-h|-\?)	shift; printLongUsage "$0"; exit 0;;
 	--count|-n)	shift; count="${1:?}"; shift;;
+	--abort-on-failure)
+			shift; isAbortOnFailure=t;;
 	--first-command|-f)
 			shift; firstCommands+="${firstCommands:+ $FIRSTRESTLINES_COMMAND_JOINER }$1"; shift;;
 	--first-exec)	shift
@@ -121,6 +127,9 @@ status=
 [ $count -le 0 ] || \
     eval "obtainFirstLines" \
 	"${firstCommands:+|} $firstCommands" \
-	|| status=$?
+	|| {
+	    status=$?
+	    [ "$isAbortOnFailure" ] && exit $status
+	}
 eval "${restCommands:-cat}" || : ${status:=$?}
 exit ${status:-0}
