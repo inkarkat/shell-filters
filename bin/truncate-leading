@@ -19,18 +19,19 @@ printLongUsage()
     # This is the long "man page" when launched with the help argument.
     # It is printed to stdout to allow paging with 'more'.
     cat <<HELPDESCRIPTION
-Suppress any trailing whitespace and empty lines at the end of the input.
+Suppress any leading whitespace and empty lines at the beginning of the input.
 HELPDESCRIPTION
     echo
     printShortUsage "$1"
     echo
     cat <<HELPTEXT
-    --whitespace|-w	Only remove trailing whitespace; keep empty lines at the
-			end.
+    --whitespace|-w	Only remove leading whitespace; keep empty lines at the
+			beginning.
     --blank-lines|-b	Only remove any lines that just contain whitespace or
-			are completely empty at the end; keep trailing whitespace.
-    --empty-lines|-e	Only remove (fully) empty lines at the end; keep
-			trailing whitespace.
+			are completely empty at the beginning; keep leading
+			whitespace.
+    --empty-lines|-e	Only remove (fully) empty lines at the beginning; keep
+			leading whitespace.
 HELPTEXT
 }
 
@@ -38,4 +39,4 @@ case "$1" in
     --help|-h|-\?)	shift; printLongUsage "$0"; exit 0;;
 esac
 
-exec truncate-whitespace --trailing "$@"
+exec truncate-whitespace --leading "$@"
