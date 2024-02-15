@@ -8,7 +8,7 @@ inputWrapper()
     printf EOF	# " Use "${output%EOF}" in assertions.
     return $status
 }
-runWithInput()
+runWithInputEOF()
 {
     run inputWrapper "$@"
 }
@@ -19,23 +19,23 @@ defineCommands()
     restCommand=(--rest-exec sed -e 's/^/R:/' \;)
 }
 
-runFirstCommandWithInput()
+runFirstCommandWithInputEOF()
 {
     defineCommands
     local input="$1"; shift
-    runWithInput "$input" firstRestLines "${firstCommand[@]}" "$@"
+    runWithInputEOF "$input" firstRestLines "${firstCommand[@]}" "$@"
 }
 
-runRestCommandWithInput()
+runRestCommandWithInputEOF()
 {
     defineCommands
     local input="$1"; shift
-    runWithInput "$input" firstRestLines "${restCommand[@]}" "$@"
+    runWithInputEOF "$input" firstRestLines "${restCommand[@]}" "$@"
 }
 
-runBothCommandsWithInput()
+runBothCommandsWithInputEOF()
 {
     defineCommands
     local input="$1"; shift
-    runWithInput "$input" firstRestLines "${firstCommand[@]}" "${restCommand[@]}" "$@"
+    runWithInputEOF "$input" firstRestLines "${firstCommand[@]}" "${restCommand[@]}" "$@"
 }

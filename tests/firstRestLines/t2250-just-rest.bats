@@ -3,27 +3,27 @@
 load fixture
 
 @test "no input through rest" {
-    runRestCommandWithInput ''
+    runRestCommandWithInputEOF ''
     [ $status -eq 0 ]
     [ "${output%EOF}" = "" ]
 }
 
 @test "single empty line through rest" {
-    runRestCommandWithInput $'\n'
+    runRestCommandWithInputEOF $'\n'
     [ $status -eq 0 ]
     [ "${output%EOF}" = "
 " ]
 }
 
 @test "single line through rest" {
-    runRestCommandWithInput $'one\n'
+    runRestCommandWithInputEOF $'one\n'
     [ $status -eq 0 ]
     [ "${output%EOF}" = "one
 " ]
 }
 
 @test "two lines through rest" {
-    runRestCommandWithInput $'one\ntwo\n'
+    runRestCommandWithInputEOF $'one\ntwo\n'
     [ $status -eq 0 ]
     [ "${output%EOF}" = "one
 R:two
@@ -31,7 +31,7 @@ R:two
 }
 
 @test "three lines through rest" {
-    runRestCommandWithInput $'one\ntwo\nthree\n'
+    runRestCommandWithInputEOF $'one\ntwo\nthree\n'
     [ $status -eq 0 ]
     [ "${output%EOF}" = "one
 R:two

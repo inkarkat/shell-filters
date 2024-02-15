@@ -3,27 +3,27 @@
 load fixture
 
 @test "no input without commands" {
-    runWithInput '' firstRestLines
+    runWithInputEOF '' firstRestLines
     [ $status -eq 0 ]
     [ "${output%EOF}" = "" ]
 }
 
 @test "single empty line without commands just passes through" {
-    runWithInput $'\n' firstRestLines
+    runWithInputEOF $'\n' firstRestLines
     [ $status -eq 0 ]
     [ "${output%EOF}" = "
 " ]
 }
 
 @test "single line without commands just passes through" {
-    runWithInput $'one\n' firstRestLines
+    runWithInputEOF $'one\n' firstRestLines
     [ $status -eq 0 ]
     [ "${output%EOF}" = "one
 " ]
 }
 
 @test "two lines without commands just passes through" {
-    runWithInput $'one\ntwo\n' firstRestLines
+    runWithInputEOF $'one\ntwo\n' firstRestLines
     [ $status -eq 0 ]
     [ "${output%EOF}" = "one
 two
@@ -31,7 +31,7 @@ two
 }
 
 @test "three lines without commands just passes through" {
-    runWithInput $'one\ntwo\nthree\n' firstRestLines
+    runWithInputEOF $'one\ntwo\nthree\n' firstRestLines
     [ $status -eq 0 ]
     [ "${output%EOF}" = "one
 two

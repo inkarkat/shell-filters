@@ -3,27 +3,27 @@
 load fixture
 
 @test "no input through first" {
-    runFirstCommandWithInput ''
+    runFirstCommandWithInputEOF ''
     [ $status -eq 0 ]
     [ "${output%EOF}" = "" ]
 }
 
 @test "single empty line through first" {
-    runFirstCommandWithInput $'\n'
+    runFirstCommandWithInputEOF $'\n'
     [ $status -eq 0 ]
     [ "${output%EOF}" = "F:
 " ]
 }
 
 @test "single line through first" {
-    runFirstCommandWithInput $'one\n'
+    runFirstCommandWithInputEOF $'one\n'
     [ $status -eq 0 ]
     [ "${output%EOF}" = "F:one
 " ]
 }
 
 @test "two lines through first" {
-    runFirstCommandWithInput $'one\ntwo\n'
+    runFirstCommandWithInputEOF $'one\ntwo\n'
     [ $status -eq 0 ]
     [ "${output%EOF}" = "F:one
 two
@@ -31,7 +31,7 @@ two
 }
 
 @test "three lines through first" {
-    runFirstCommandWithInput $'one\ntwo\nthree\n'
+    runFirstCommandWithInputEOF $'one\ntwo\nthree\n'
     [ $status -eq 0 ]
     [ "${output%EOF}" = "F:one
 two

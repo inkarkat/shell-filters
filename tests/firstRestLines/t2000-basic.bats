@@ -3,27 +3,27 @@
 load fixture
 
 @test "no input" {
-    runBothCommandsWithInput ''
+    runBothCommandsWithInputEOF ''
     [ $status -eq 0 ]
     [ "${output%EOF}" = "" ]
 }
 
 @test "single empty line" {
-    runBothCommandsWithInput $'\n'
+    runBothCommandsWithInputEOF $'\n'
     [ $status -eq 0 ]
     [ "${output%EOF}" = "F:
 " ]
 }
 
 @test "single line" {
-    runBothCommandsWithInput $'one\n'
+    runBothCommandsWithInputEOF $'one\n'
     [ $status -eq 0 ]
     [ "${output%EOF}" = "F:one
 " ]
 }
 
 @test "two lines" {
-    runBothCommandsWithInput $'one\ntwo\n'
+    runBothCommandsWithInputEOF $'one\ntwo\n'
     [ $status -eq 0 ]
     [ "${output%EOF}" = "F:one
 R:two
@@ -31,7 +31,7 @@ R:two
 }
 
 @test "three lines" {
-    runBothCommandsWithInput $'one\ntwo\nthree\n'
+    runBothCommandsWithInputEOF $'one\ntwo\nthree\n'
     [ $status -eq 0 ]
     [ "${output%EOF}" = "F:one
 R:two
