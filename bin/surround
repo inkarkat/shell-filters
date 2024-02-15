@@ -34,7 +34,7 @@ HELPDESCRIPTION
     --keep-whitespace|-k
 			Put leading whitespace before PREFIX and trailing
 			whitespace after SUFFIX.
-    --skip-empty|-s	Do not prefix lines that are empty or just contain
+    --skip-empty|-s	Do not surround lines that are empty or just contain
 			whitespace; print them as-is.
     --join-by|-j TEXT	Join surrounded lines with TEXT instead of printing them
 			on separate lines. TEXT will only be put in between
@@ -44,10 +44,10 @@ HELPDESCRIPTION
 			Prefix the first line, then indent following lines with
 			the same amount of spaces.
     --last-only|-l	Suffix the last line only.
-    --command|-c CMD	Execute CMD as a command-line and prefix its output.
+    --command|-c CMD	Execute CMD as a command-line and surround its output.
     --exec COMMAND $SURROUND_EXEC_END	Execute COMMAND; all following arguments are taken to be
 			arguments to the COMMAND until an argument consisting of
-			'${SURROUND_EXEC_END}' is encountered. Its output is prefixed.
+			'${SURROUND_EXEC_END}' is encountered. Its output is surrounded.
 HELPTEXT
 }
 
