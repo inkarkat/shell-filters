@@ -1,27 +1,74 @@
 #!/bin/bash
 
+printShortUsage()
+{
+    # Note: short followed by long option; if the user knows the short one, she can
+    # skim the long one.
+    printf 'Usage: %q %s\n' "$(basename "$1")" '[-s|--separator TEXT] [--noeol] [--] [FILE ...] [-?|-h|--help]'
+}
 printUsage()
 {
-    cat <<HELPTEXT
-Add a separator line containing TEXT (default: empty line) in between each
-(non-empty) FILE.
-HELPTEXT
-    echo
-    printf 'Usage: %q %s\n' "$(basename "$1")" '[-s|--separator TEXT] [--] [FILE ...] [-?|-h|--help]'
+    # This is the short help when launched with no or incorrect arguments.
+    # It is printed to stderr to avoid accidental processing.
+    printShortUsage "$1" >&2
+    printf >&2 '\nTry %q --help for more information.\n' "$(basename "$1")"
 }
-separator=''
-case "$1" in
-    --help|-h|-\?)	shift; printUsage "$0"; exit 0;;
-    --separator|-s)	shift; separator="$1"; shift;;
-esac
+printLongUsage()
+{
+    # This is the long "man page" when launched with the help argument.
+    # It is printed to stdout to allow paging with 'more'.
+    cat <<HELPDESCRIPTION
+Add a separator containing TEXT (default: empty line) in between each
+(non-empty) FILE.
+HELPDESCRIPTION
+    echo
+    printShortUsage "$1"
+    echo
+    cat <<HELPTEXT
+    --separator|-s TEXT	Print TEXT in between FILEs. You need to end TEXT with a
+			newline if you want a full line in between.
+    --noeol		Remove trailing newlines from each FILE except the last
+			one. This allows in-line joining of the files without
+			having to process them.
+HELPTEXT
+}
+
+linePrinter='
+{
+    printf("%s%s", $0, RT)
+}
+'
+separator=$'\n'
+while [ $# -ne 0 ]
+do
+    case "$1" in
+	--help|-h|-\?)	shift; printLongUsage "$0"; exit 0;;
+	--separator|-s)	shift; separator="$1"; shift;;
+	--noeol)	shift
+			linePrinter='
+{
+    if (FNR > 1) {
+	print line;
+    }
+    line = $0;
+}
+ENDFILE {
+    printf line;
+}
+END {
+    printf("\n")
+}'
+			;;
+	--)		break;;
+	-*)		{ echo "ERROR: Unknown option \"$1\"!"; echo; printUsage "$0"; } >&2; exit 2;;
+	*)		break;;
+    esac
+done
 
 awk \
     -v "separator=${separator//\\/\\\\}" \
 '
-FNR==1 && NR != FNR {
-    print separator
+FNR == 1 && NR != FNR {
+    printf("%s", separator)
 }
-{
-    print
-}
-' "$@"
+'"$linePrinter" "$@"
