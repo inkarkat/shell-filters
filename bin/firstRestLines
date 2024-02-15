@@ -1,0 +1,123 @@
+#!/bin/bash
+set -o pipefail
+
+: ${FIRSTRESTLINES_COMMAND_JOINER=|}
+: ${FIRSTRESTLINES_EXEC_END=;}
+
+printShortUsage()
+{
+    # Note: short followed by long option; if the user knows the short one, they can
+    # skim the long one.
+    printf 'Usage: %q %s\n' "$(basename "$1")" "[-n|--count N] [-f|--first-command \"COMMANDLINE\" [...] | --first-exec SIMPLECOMMAND [...] ${FIRSTRESTLINES_EXEC_END} [--first-exec ...]] [-r|--rest-command \"COMMANDLINE\" [...] | --rest-exec SIMPLECOMMAND [...] ${FIRSTRESTLINES_EXEC_END} [--rest-exec ...]] [-?|-h|--help]"
+}
+printUsage()
+{
+    # This is the short help when launched with no or incorrect arguments.
+    # It is printed to stderr to avoid accidental processing.
+    printShortUsage "$1" >&2
+    printf >&2 '\nTry %q --help for more information.\n' "$(basename "$1")"
+}
+printLongUsage()
+{
+    # This is the long "man page" when launched with the help argument.
+    # It is printed to stdout to allow paging with 'more'.
+    cat <<HELPDESCRIPTION
+Split the first [N] line(s) off the input and pass both first and remaining
+lines to different commands (or just print the input if omitted).
+HELPDESCRIPTION
+    echo
+    printShortUsage "$1"
+    echo
+    cat <<HELPTEXT
+    --count|-n N		Use the first N lines of the input for the first
+				command instead of just the first one.
+    --first-command|-f CMD	Pipe the first line's contents into CMD as a
+				command-line.
+    --first-exec CMD [...] ${FIRSTRESTLINES_EXEC_END}	Pipe the first line's contents into CMD; all
+				following arguments are taken to be arguments to
+				the CMD until an argument consisting of
+				'${FIRSTRESTLINES_EXEC_END}' is encountered.
+    --rest-command|-r CMD	Pipe the remaining line's contents into CMD as a
+				command-line.
+    --rest-exec CMD [...] ${FIRSTRESTLINES_EXEC_END}	Pipe the remaining line's contents into CMD; all
+				following arguments are taken to be arguments to
+				the CMD until an argument consisting of
+				'${FIRSTRESTLINES_EXEC_END}' is encountered.
+EXIT STATUS:
+    0	Complete success.
+    2	Bad invocation, wrong or missing command-line arguments.
+    *   any exit status from COMMAND(s)
+
+Example:
+HELPTEXT
+    printf 'git log -1 | %q %s\n' "$(basename "$1")" '-f bold'
+}
+
+let count=1
+firstCommands=
+restCommands=
+while [ $# -ne 0 ]
+do
+    case "$1" in
+	--help|-h|-\?)	shift; printLongUsage "$0"; exit 0;;
+	--count|-n)	shift; count="${1:?}"; shift;;
+	--first-command|-f)
+			shift; firstCommands+="${firstCommands:+ $FIRSTRESTLINES_COMMAND_JOINER }$1"; shift;;
+	--first-exec)	shift
+			cmd=
+			while [ $# -gt 0 -a "$1" != "$FIRSTRESTLINES_EXEC_END" ]
+			do
+			    printf -v quotedArg '%q' "$1"
+			    cmd+="${cmd:+ }${quotedArg}"
+			    shift
+			done
+			if [ $# -eq 0 ]; then
+			    echo "ERROR: --exec command must be concluded with '${FIRSTRESTLINES_EXEC_END}'"; echo; printUsage "$0"
+			    exit 2
+			fi >&2
+			shift
+			firstCommands+="${firstCommands:+ $FIRSTRESTLINES_COMMAND_JOINER }${cmd}"
+			;;
+	--rest-command|-r)
+			shift; restCommands+="${restCommands:+ $FIRSTRESTLINES_COMMAND_JOINER }$1"; shift;;
+	--rest-exec)	shift
+			cmd=
+			while [ $# -gt 0 -a "$1" != "$FIRSTRESTLINES_EXEC_END" ]
+			do
+			    printf -v quotedArg '%q' "$1"
+			    cmd+="${cmd:+ }${quotedArg}"
+			    shift
+			done
+			if [ $# -eq 0 ]; then
+			    echo "ERROR: --exec command must be concluded with '${FIRSTRESTLINES_EXEC_END}'"; echo; printUsage "$0"
+			    exit 2
+			fi >&2
+			shift
+			restCommands+="${restCommands:+ $FIRSTRESTLINES_COMMAND_JOINER }${cmd}"
+			;;
+	--)		shift; break;;
+	-*)		{ echo "ERROR: Unknown option \"$1\"!"; echo; printUsage "$0"; } >&2; exit 2;;
+	*)		break;;
+    esac
+done
+if [ $# -ne 0 ]; then
+    printUsage "$0" >&2
+    exit 2
+elif [ -z "$firstCommands" -a -z "$restCommands" ]; then
+    # No-op without any commands.
+    exec cat
+fi
+
+obtainFirstLines()
+{
+    isEOL=t
+    while ((count-- > 0)) && { IFS=$'\n' read -r line || { isEOL=; [ -n "$line" ]; }; }
+    do
+	printf "%s${isEOL:+\n}" "$line"
+    done
+}
+
+[ $count -le 0 ] || \
+    eval "obtainFirstLines" \
+	"${firstCommands:+|} $firstCommands"
+eval "${restCommands:-cat}"
