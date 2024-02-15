@@ -21,8 +21,8 @@ printLongUsage()
     # This is the long "man page" when launched with the help argument.
     # It is printed to stdout to allow paging with 'more'.
     cat <<HELPDESCRIPTION
-Execute COMMAND(s) and add a separator line containing TEXT (default: empty
-line) in between each (non-empty) output.
+Execute COMMAND(s) and add a separator containing TEXT (default: empty line) in
+between each (non-empty) output.
 HELPDESCRIPTION
     echo
     printShortUsage "$1"
@@ -36,7 +36,7 @@ HELPDESCRIPTION
 HELPTEXT
 }
 
-separator=''
+separator=$'\n'
 redirection=
 typeset -a commands=()
 while [ $# -ne 0 ]
@@ -96,7 +96,7 @@ do
 	    [ $thisStatus -eq 0 ] || status=$thisStatus
 	done
     else
-	eval "${redirection:+{}" "${c}" "${redirection:+; \} }${redirection}" | { outputAndPrintf '%s\n' "$separator" || :; }
+	eval "${redirection:+{}" "${c}" "${redirection:+; \} }${redirection}" | { outputAndPrintf '%s' "$separator" || :; }
     fi
 done
 exit $status
