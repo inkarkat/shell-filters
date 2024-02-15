@@ -1,0 +1,86 @@
+#!/bin/bash
+
+printShortUsage()
+{
+    # Note: short followed by long option; if the user knows the short one, she can
+    # skim the long one.
+    printf 'Usage: %q %s\n' "$(basename "$1")" '[-a|--all|-l|--leading|-t|--trailing] [-w|--whitespace|-b|--blank-lines|-e|--empty-lines] [--] [FILE ...] [-?|-h|--help]'
+    printf 'Usage: cat FILE [...] | %q %s\n' "$(basename "$1")" '...'
+}
+printUsage()
+{
+    # This is the short help when launched with no or incorrect arguments.
+    # It is printed to stderr to avoid accidental processing.
+    printShortUsage "$1" >&2
+    printf >&2 '\nTry %q --help for more information.\n' "$(basename "$1")"
+}
+printLongUsage()
+{
+    # This is the long "man page" when launched with the help argument.
+    # It is printed to stdout to allow paging with 'more'.
+    cat <<HELPDESCRIPTION
+Suppress any leading / trailing whitespace and/or empty lines at the beginning /
+end of the input.
+HELPDESCRIPTION
+    echo
+    printShortUsage "$1"
+    echo
+    cat <<HELPTEXT
+    --all|-a		Remove both leading and trailing whitespace and empty
+			lines at both beginning and end. (This is the default.)
+    --leading|-l	Only remove leading whitespace / empty lines at the
+			beginning; keep trailing whitespace / empty lines at the
+			end.
+    --trailing|-t	Only remove trailing whitespace / empty lines at the
+			end; keep leading whitespace / empty lines at the
+			beginning.
+    --whitespace|-w	Only remove leading / trailing whitespace; keep empty
+			lines at the beginning and end.
+    --blank-lines|-b	Only remove any lines that just contain whitespace or
+			are completely empty at the beginning / end; keep
+			trailing whitespace.
+    --empty-lines|-e	Only remove (fully) empty lines at the beginning / end;
+			keep trailing whitespace.
+HELPTEXT
+}
+
+typeset -a sedLeadingWhitespaceArgs=(-e 's/\(^\|\n\)[ \t]*/\1/')
+typeset -a sedLeadingBlankLinesArgs=(-e '/./,$!d')
+typeset -a sedTrailingWhitespaceArgs=(-e 's/[ \t]*$//')
+typeset -a sedTrailingBlankLinesArgs=(-e '/^\n*$/{$d; N; b begin' -e '}')
+isLeading=t
+isTrailing=t
+while [ $# -ne 0 ]
+do
+    case "$1" in
+	--help|-h|-\?)	shift; printLongUsage "$0"; exit 0;;
+	--all|-a)		shift;;
+	--leading|-l)	shift; isTrailing=;;
+	--trailing|-t)	shift; isLeading=;;
+	--whitespace|-w)	shift
+			sedLeadingBlankLinesArgs=()
+			sedTrailingBlankLinesArgs=()
+			;;
+	--blank-lines|-b)	shift
+			sedLeadingWhitespaceArgs=()
+			sedLeadingBlankLinesArgs=(-e '/[^[:space:]]/,$!d')
+			sedTrailingWhitespaceArgs=()
+			sedTrailingBlankLinesArgs=(-e '/^[[:space:]]*$/{$d; N; b begin' -e '}')
+			;;
+	--empty-lines|-e)	shift
+			sedLeadingWhitespaceArgs=()
+			sedTrailingWhitespaceArgs=()
+			;;
+	--)		break;;
+	-*)		{ echo "ERROR: Unknown option \"$1\"!"; echo; printUsage "$0"; } >&2; exit 2;;
+	*)		break;;
+    esac
+done
+
+typeset -a sedArgs=(-e ':begin')
+[ "$isLeading" ] && sedArgs+=("${sedLeadingWhitespaceArgs[@]}")
+[ "$isTrailing" ] && sedArgs+=("${sedTrailingWhitespaceArgs[@]}")
+[ "$isLeading" ] && sedArgs+=("${sedLeadingBlankLinesArgs[@]}")
+[ "$isTrailing" ] && sedArgs+=("${sedTrailingBlankLinesArgs[@]}")
+
+exec sed "${sedArgs[@]}" "$@"
