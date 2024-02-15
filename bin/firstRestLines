@@ -8,7 +8,7 @@ printShortUsage()
 {
     # Note: short followed by long option; if the user knows the short one, they can
     # skim the long one.
-    printf 'Usage: %q %s\n' "$(basename "$1")" "[-n|--count N] [-f|--first-command \"COMMANDLINE\" [...] | --first-exec SIMPLECOMMAND [...] ${FIRSTRESTLINES_EXEC_END} [--first-exec ...] [--abort-on-failure]] [-r|--rest-command \"COMMANDLINE\" [...] | --rest-exec SIMPLECOMMAND [...] ${FIRSTRESTLINES_EXEC_END} [--rest-exec ...]] [-?|-h|--help]"
+    printf 'Usage: %q %s\n' "$(basename "$1")" "[-n|--count N] [-f|--first-command \"COMMANDLINE\" [...] | --first-exec SIMPLECOMMAND [...] ${FIRSTRESTLINES_EXEC_END} [--first-exec ...] [--abort-on-failure|-x|--fail-command \"COMMANDLINE\" [...] | --fail-exec SIMPLECOMMAND [...] ${FIRSTRESTLINES_EXEC_END} [--fail-exec ...]]] [-r|--rest-command \"COMMANDLINE\" [...] | --rest-exec SIMPLECOMMAND [...] ${FIRSTRESTLINES_EXEC_END} [--rest-exec ...]] [-?|-h|--help]"
 }
 printUsage()
 {
@@ -40,6 +40,13 @@ HELPDESCRIPTION
     --abort-on-failure		Do not consume remaining lines if the first
 				command fails. The command for remaining lines
 				is not executed.
+    --fail-command|-x CMD	Pipe the remaining line's contents into CMD as a
+				command-line if the first command fails (instead
+				of using --rest-command).
+    --fail-exec CMD [...] ${FIRSTRESTLINES_EXEC_END}	Pipe the remaining line's contents into CMD if
+				the first command fails; all following arguments
+				are taken to be arguments to the CMD until an
+				argument consisting of '${FIRSTRESTLINES_EXEC_END}' is encountered.
     --rest-command|-r CMD	Pipe the remaining line's contents into CMD as a
 				command-line.
     --rest-exec CMD [...] ${FIRSTRESTLINES_EXEC_END}	Pipe the remaining line's contents into CMD; all
@@ -59,6 +66,7 @@ HELPTEXT
 let count=1
 isAbortOnFailure=
 firstCommands=
+failCommands=
 restCommands=
 while [ $# -ne 0 ]
 do
@@ -83,6 +91,23 @@ do
 			fi >&2
 			shift
 			firstCommands+="${firstCommands:+ $FIRSTRESTLINES_COMMAND_JOINER }${cmd}"
+			;;
+	--fail-command|-x)
+			shift; failCommands+="${failCommands:+ $FIRSTRESTLINES_COMMAND_JOINER }$1"; shift;;
+	--fail-exec)	shift
+			cmd=
+			while [ $# -gt 0 -a "$1" != "$FIRSTRESTLINES_EXEC_END" ]
+			do
+			    printf -v quotedArg '%q' "$1"
+			    cmd+="${cmd:+ }${quotedArg}"
+			    shift
+			done
+			if [ $# -eq 0 ]; then
+			    echo "ERROR: --exec command must be concluded with '${FIRSTRESTLINES_EXEC_END}'"; echo; printUsage "$0"
+			    exit 2
+			fi >&2
+			shift
+			failCommands+="${failCommands:+ $FIRSTRESTLINES_COMMAND_JOINER }${cmd}"
 			;;
 	--rest-command|-r)
 			shift; restCommands+="${restCommands:+ $FIRSTRESTLINES_COMMAND_JOINER }$1"; shift;;
@@ -109,6 +134,11 @@ done
 if [ $# -ne 0 ]; then
     printUsage "$0" >&2
     exit 2
+elif [ "$isAbortOnFailure" ] && [ -n "$failCommands" ]; then
+    echo >&2 'ERROR: --abort-on-failure and -x|--fail-command|--fail-exec are mutually exclusive.'
+    echo >&2
+    printUsage "$0" >&2
+    exit 2
 elif [ -z "$firstCommands" -a -z "$restCommands" ]; then
     # No-op without any commands.
     exec cat
@@ -129,7 +159,11 @@ status=
 	"${firstCommands:+|} $firstCommands" \
 	|| {
 	    status=$?
-	    [ "$isAbortOnFailure" ] && exit $status
+	    if [ "$isAbortOnFailure" ]; then
+		exit $status
+	    elif [ -n "$failCommands" ]; then
+		eval "$failCommands"; exit $status
+	    fi
 	}
 eval "${restCommands:-cat}" || : ${status:=$?}
 exit ${status:-0}
