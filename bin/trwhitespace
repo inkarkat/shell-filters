@@ -39,8 +39,9 @@ if [ "$isColor" ]; then
     S="${S//&/\\&}"
     S="${S//#/\\#}"
 else
+    literalSuffixPattern='\n'	# Cannot be empty, new a newline as a marker that's removed at the end.
     P=''
-    S=''
+    S='\n'
 fi
 
 sed -e 's# ##g' "$@" \
@@ -53,4 +54,5 @@ sed -e 's# ##g' "$@" \
 	-e "s#¬\\+\$#${P}&${S}#g" \
 	-e "s# #${P}×${S}#g" \
 	-e "s#\$#${P}¶${S}#g" \
-	-e 's## #g'
+	-e 's## #g' \
+	-e 's#\n##g' # Remove the "empty suffix" marker again.
