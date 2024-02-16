@@ -1,0 +1,104 @@
+#!/bin/bash
+
+: ${UNPREFIX_COMMAND_JOINER=;}
+: ${UNPREFIX_EXEC_END=;}
+
+printShortUsage()
+{
+    # Note: short followed by long option; if the user knows the short one, she can
+    # skim the long one.
+    printf 'Usage: %q %s\n' "$(basename "$1")" '[-w|--enforce-whitespace|-W|--remove-whitespace] [-i|--ignore-indent|-R|--remove-indent] [-f|--first-only|-l|--last-only] [--] PREFIX FILE [...] [-?|-h|--help]'
+    echo
+    printf 'Usage: %q %s\n' "$(basename "$1")" "[...] -c|--command \"COMMANDLINE\" [-c ...] | --exec SIMPLECOMMAND ... $UNPREFIX_EXEC_END [--exec ...] [--] PREFIX"
+    echo
+    printf 'Usage: cat FILE [...] | %q %s\n' "$(basename "$1")" '[...] [--] PREFIX'
+}
+printUsage()
+{
+    # This is the short help when launched with no or incorrect arguments.
+    # It is printed to stderr to avoid accidental processing.
+    printShortUsage "$1" >&2
+    printf >&2 '\nTry %q --help for more information.\n' "$(basename "$1")"
+}
+printLongUsage()
+{
+    # This is the long "man page" when launched with the help argument.
+    # It is printed to stdout to allow paging with 'more'.
+    cat <<HELPDESCRIPTION
+Remove PREFIX from each individual line.
+HELPDESCRIPTION
+    echo
+    printShortUsage "$1"
+    echo
+    cat <<HELPTEXT
+    --enforce-whitespace|-w
+			There must be whitespace after the PREFIX to recognize
+			it (but it's not removed together with the PREFIX).
+    --remove-whitespace|-W
+			Also remove whitespace after the PREFIX.
+    --ignore-indent|-i	Also recognize a PREFIX if it's preceded by whitespace.
+    --remove-indent|-R	Recognize a PREFIX if it's preceded by whitespace, and
+			remove that, too.
+    --first-only|-f	Unprefix the first line only.
+    --last-only|-l	Unprefix the last line only.
+    --command|-c CMD	Execute CMD as a command-line and remove PREFIX from its
+			output.
+    --exec COMMAND $UNPREFIX_EXEC_END	Execute COMMAND; all following arguments are taken to be
+			arguments to the COMMAND until an argument consisting of
+			'${UNPREFIX_EXEC_END}' is encountered. Its output has the PREFIX removed.
+HELPTEXT
+}
+
+innerWhitespaceExpr='\(\)'
+leadingWhitespaceExpr='\(\)'
+commands=
+address=
+while [ $# -ne 0 ]
+do
+    case "$1" in
+	--help|-h|-\?)	shift; printLongUsage "$0"; exit 0;;
+
+	--enforce-whitespace|-w)
+			shift; innerWhitespaceExpr='\([[:space:]]\+\)';;
+	--remove-whitespace|-W)
+			shift; innerWhitespaceExpr='\(\)[[:space:]]*';;
+	--ignore-indent|-i)
+			shift; leadingWhitespaceExpr='\([[:space:]]*\)';;
+	--remove-indent|-R)
+			shift; leadingWhitespaceExpr='\(\)[[:space:]]*';;
+
+	--first-only|-f)	shift; address=1;;
+	--last-only|-l)		shift; address='$';;
+	--command|-c)	shift; commands+="${commands:+ $UNPREFIX_COMMAND_JOINER }$1"; shift;;
+	--exec)		shift
+			cmd=
+			while [ $# -gt 0 -a "$1" != "$UNPREFIX_EXEC_END" ]
+			do
+			    printf -v quotedArg '%q' "$1"
+			    cmd+="${cmd:+ }${quotedArg}"
+			    shift
+			done
+			if [ $# -eq 0 ]; then
+			    echo "ERROR: --exec command must be concluded with '${UNPREFIX_EXEC_END}'"; echo; printUsage "$0"
+			    exit 2
+			fi >&2
+			shift
+			commands+="${commands:+ $UNPREFIX_COMMAND_JOINER }${cmd}"
+			;;
+	--)		shift; break;;
+	-*)		{ echo "ERROR: Unknown option \"$1\"!"; echo; printUsage "$0"; } >&2; exit 2;;
+	*)		break;;
+    esac
+done
+if [ $# -eq 0 ] || [ -n "$commands" -a $# -ne 1 ]; then
+    printUsage "$0" >&2
+    exit 2
+fi
+
+literalPrefix="$1"; shift
+literalPrefix="${literalPrefix//\\/\\\\}"
+literalPrefix="${literalPrefix//&/\\&}"
+literalPrefix="${literalPrefix//$'\n'/\\n}"
+
+eval "${commands:+{ }" "${commands:-exec}" "${commands:+" ; } |"}" \
+    'sed -e "${address}s#^${leadingWhitespaceExpr}${literalPrefix//#/\\#}${innerWhitespaceExpr}#\\1\\2#" "$@"'

@@ -1,0 +1,118 @@
+#!/bin/bash
+
+: ${UNSURROUND_COMMAND_JOINER=;}
+: ${UNSURROUND_EXEC_END=;}
+
+printShortUsage()
+{
+    # Note: short followed by long option; if the user knows the short one, she can
+    # skim the long one.
+    printf 'Usage: %q %s\n' "$(basename "$1")" '[-w|--enforce-whitespace|-W|--remove-whitespace] [-i|--ignore-indent-and-trailing-whitespace|-R|--remove-indent-and-trailing-whitespace] [-f|--first-only|-l|--last-only] [--] PREFIX SUFFIX FILE [...] [-?|-h|--help]'
+    echo
+    printf 'Usage: %q %s\n' "$(basename "$1")" "[...] -c|--command \"COMMANDLINE\" [-c ...] | --exec SIMPLECOMMAND ... $UNSURROUND_EXEC_END [--exec ...] [--] PREFIX SUFFIX"
+    echo
+    printf 'Usage: cat FILE [...] | %q %s\n' "$(basename "$1")" '[...] [--] PREFIX SUFFIX'
+}
+printUsage()
+{
+    # This is the short help when launched with no or incorrect arguments.
+    # It is printed to stderr to avoid accidental processing.
+    printShortUsage "$1" >&2
+    printf >&2 '\nTry %q --help for more information.\n' "$(basename "$1")"
+}
+printLongUsage()
+{
+    # This is the long "man page" when launched with the help argument.
+    # It is printed to stdout to allow paging with 'more'.
+    cat <<HELPDESCRIPTION
+Remove PREFIX and SUFFIX from each individual line.
+HELPDESCRIPTION
+    echo
+    printShortUsage "$1"
+    echo
+    cat <<HELPTEXT
+    --enforce-whitespace|-w
+			There must be whitespace before the PREFIX / SUFFIX to
+			recognize it (but it's not removed).
+    --remove-whitespace|-W
+			Also remove whitespace after the PREFIX / before the
+			SUFFIX.
+    --ignore-indent-and-trailing-whitespace|-i
+			Also recognize PREFIX / SUFFIX if it's preceded /
+			followed by whitespace.
+    --remove-indent-and-trailing-whitespace|-R
+			Recognize PREFIX / SUFFIX if it's preceded / followed by
+			whitespace, and remove that, too.
+    --first-only|-f	Unsurround the first line only.
+    --last-only|-l	Unsurround the last line only.
+    --command|-c CMD	Execute CMD as a command-line and remove SUFFIX from its
+			output.
+    --exec COMMAND $UNSURROUND_EXEC_END	Execute COMMAND; all following arguments are taken to be
+			arguments to the COMMAND until an argument consisting of
+			'${UNSURROUND_EXEC_END}' is encountered. Its output has the SUFFIX removed.
+HELPTEXT
+}
+
+innerWhitespaceExpr='\(\)'
+leadingTrailingWhitespaceExpr='\(\)'
+commands=
+address=
+while [ $# -ne 0 ]
+do
+    case "$1" in
+	--help|-h|-\?)	shift; printLongUsage "$0"; exit 0;;
+
+	--enforce-whitespace|-w)
+			shift; innerWhitespaceExpr='\([[:space:]]\+\)';;
+	--remove-whitespace|-W)
+			shift; innerWhitespaceExpr='\(\)[[:space:]]*';;
+	--ignore-trailing-whitespace|-i)
+			shift; leadingTrailingWhitespaceExpr='\([[:space:]]*\)';;
+	--remove-trailing-whitespace|-R)
+			shift; leadingTrailingWhitespaceExpr='\(\)[[:space:]]*';;
+
+	--first-only|-f)	shift; address=1;;
+	--last-only|-l)		shift; address='$';;
+	--command|-c)	shift; commands+="${commands:+ $UNSURROUND_COMMAND_JOINER }$1"; shift;;
+	--exec)		shift
+			cmd=
+			while [ $# -gt 0 -a "$1" != "$UNSURROUND_EXEC_END" ]
+			do
+			    printf -v quotedArg '%q' "$1"
+			    cmd+="${cmd:+ }${quotedArg}"
+			    shift
+			done
+			if [ $# -eq 0 ]; then
+			    echo "ERROR: --exec command must be concluded with '${UNSURROUND_EXEC_END}'"; echo; printUsage "$0"
+			    exit 2
+			fi >&2
+			shift
+			commands+="${commands:+ $UNSURROUND_COMMAND_JOINER }${cmd}"
+			;;
+	--)		shift; break;;
+	-*)		{ echo "ERROR: Unknown option \"$1\"!"; echo; printUsage "$0"; } >&2; exit 2;;
+	*)		break;;
+    esac
+done
+if [ $# -eq 0 ] || [ -n "$commands" -a $# -ne 1 ]; then
+    printUsage "$0" >&2
+    exit 2
+fi
+
+prefix="$1"; shift
+literalPrefix="$prefix"
+literalPrefix="${literalPrefix//\\/\\\\}"
+literalPrefix="${literalPrefix//&/\\&}"
+literalPrefix="${literalPrefix//$'\n'/\\n}"
+
+literalSuffix="$1"; shift
+literalSuffix="${literalSuffix//\\/\\\\}"
+literalSuffix="${literalSuffix//&/\\&}"
+literalSuffix="${literalSuffix//$'\n'/\\n}"
+
+eval "${commands:+{ }" "${commands:-exec}" "${commands:+" ; } |"}" \
+    'sed \
+	-e "${address}s#^${leadingTrailingWhitespaceExpr}${literalPrefix//#/\\#}${innerWhitespaceExpr}#\\1\\2#" \
+	-e "${address}s#${innerWhitespaceExpr}${literalSuffix//#/\\#}${leadingTrailingWhitespaceExpr}\$#\\1\\2#" \
+	"$@"
+    '
