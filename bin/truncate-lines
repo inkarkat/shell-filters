@@ -52,7 +52,7 @@ HELPTEXT
 : ${COLOR_RESET:='[0m'}
 
 readonly elseMatch=$'\r'
-isVerbose=
+verbosePrintf() { :; }
 consider=
 currentMatch=
 isElseDelete=
@@ -65,8 +65,9 @@ while [ $# -ne 0 ]
 do
     case "$1" in
 	--help|-h|-\?)	shift; printLongUsage "$0"; exit 0;;
-	--verbose|-v)	shift; isVerbose=t; COLOR_SKIP= COLOR_DELETED= COLOR_UNCHANGED= COLOR_MATCHED= COLOR_ELSE= COLOR_RESET=;;
-	--verbose-color)	shift; isVerbose=t;;
+	--verbose|-v)	shift; COLOR_SKIP='' COLOR_DELETED='' COLOR_UNCHANGED='' COLOR_MATCHED='' COLOR_ELSE='' COLOR_RESET='';&
+	--verbose-color)
+			shift; verbosePrintf() { printf "$@"; };;
 	--consider)	shift; consider="$1"; shift;;
 	--match)	shift; matches+=("$1");         currentMatch="${1//\\/}";  matchSedArgumentNum["$currentMatch"]=0; shift;;  # XXX: Somehow need to remove backslashes from associative array keys.
 	--else)		shift; matches+=("$elseMatch"); currentMatch="$elseMatch"; matchSedArgumentNum["$elseMatch"]=0;;
@@ -105,10 +106,6 @@ sedMatch()
     local address=$1; shift
     local filespec=$1; shift
     [ "$(sedWrapper -n "${address}{p; q}" "$filespec")" ]
-}
-verbosePrintf()
-{
-    [ "$isVerbose" ] && printf "$@"
 }
 
 tempFilespec="$(mktemp --tmpdir "$(basename -- "$0")-XXXXXX" 2>/dev/null || echo "${TMPDIR:-/tmp}/$(basename -- "$0").$$$RANDOM")"
