@@ -1,0 +1,24 @@
+#!/bin/sed -uf
+
+## Reverse the order of characters that comprise ANSI escape sequences (not just
+## coloring) in the output.
+##
+## Usage: reverseAnsi FILE [...]
+## Usage: cat FILE [...] | reverseAnsi
+
+tb
+:b
+# Reverse an ANSI escape sequence. Begin embedding one ANSI between two newlines.
+s#\x1b\[[0-9:;?]*[[:alpha:]]#\n&\n#
+T # No more ANSIs; done.
+
+# Move first character at the end. The regexp matches until there are zero or
+# one characters between the markers.
+tx
+:x
+s#\(\n.\)\(.*\)\(.\n\)#\3\2\1#
+tx
+
+# Remove the newline markers.
+s/\n//g
+tb  # Rinse and repeat.
