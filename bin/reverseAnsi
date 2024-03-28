@@ -8,17 +8,23 @@
 
 tb
 :b
-# Reverse an ANSI escape sequence. Begin embedding one ANSI between two newlines.
-s#\x1b\[[0-9:;?]*[[:alpha:]]#\n&\n#
-T # No more ANSIs; done.
+# Reverse an ANSI escape sequence. Begin embedding the first unprocessed (i.e.
+# no following newline characters) ANSI between two newlines. This avoids that
+# phantom ANSI that are created by reversing a previous ANSI are processed as
+# well. For example, ^[[1m[^[0m is turned into m1[^[[m0[^[, and the ^[[m would
+# be erroneously reversed as well.
+s#\(\x1b\[[0-9:;?]*[[:alpha:]]\)\([^\n]*\)$#\n\1\n\2#
+T end # No more ANSIs; done.
 
 # Move first character at the end. The regexp matches until there are zero or
-# one characters between the markers.
+# one characters between the markers. The end assertion ensures that only the
+# last, active ANSI is reversed.
 tx
 :x
-s#\(\n.\)\(.*\)\(.\n\)#\3\2\1#
+s#\(\n[^\n]\)\([^\n]*\)\([^\n]\n\)\([^\n]*\)$#\3\2\1\4#
 tx
+b b  # Rinse and repeat.
 
-# Remove the newline markers.
+:end
+# Remove all newline markers.
 s/\n//g
-tb  # Rinse and repeat.
