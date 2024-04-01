@@ -8,12 +8,18 @@
 
 tb
 :b
-# Reverse an ANSI escape sequence. Begin embedding the first unprocessed (i.e.
-# no following newline characters) ANSI between two newlines. This avoids that
-# phantom ANSI that are created by reversing a previous ANSI are processed as
-# well. For example, ^[[1m[^[0m is turned into m1[^[[m0[^[, and the ^[[m would
-# be erroneously reversed as well.
-s#\(\x1b\[[0-9:;?]*[[:alpha:]]\)\([^\n]*\)$#\n\1\n\2#
+# Reverse an ANSI escape sequence.
+# Begin by embedding the first unprocessed (i.e. no following newline
+# characters) ANSI between two newlines. This avoids that phantom ANSI that are
+# created by reversing a previous ANSI are processed as well. For example,
+# ^[[1m[^[0m is turned into m1[^[[m0[^[, and the ^[[m would be erroneously
+# reversed as well.
+# Add a third newline to mark the end of the processing; the first two newlines
+# move inwards as the ANSI is reversed, but we need a static marker as well so
+# that the continuation will pick it up from there. Without that, following text
+# like [r is combined with the previous reversed ANSI (which now ends with ^[)
+# and interpreted (and reversed) as an ANSI ^[[r itself!
+s#\(\x1b\[[0-9:;?]*[[:alpha:]]\)\([^\n]*\)$#\n\1\n\n\2#
 T end # No more ANSIs; done.
 
 # Move first character at the end. The regexp matches until there are zero or
@@ -21,7 +27,7 @@ T end # No more ANSIs; done.
 # last, active ANSI is reversed.
 tx
 :x
-s#\(\n[^\n]\)\([^\n]*\)\([^\n]\n\)\([^\n]*\)$#\3\2\1\4#
+s#\(\n[^\n]\)\([^\n]*\)\([^\n]\n\)\([^\n]*\)\n\([^\n]*\)$#\3\2\1\4\n\5#
 tx
 b b  # Rinse and repeat.
 
