@@ -6,8 +6,8 @@
 ## Usage: reverseAnsi FILE [...]
 ## Usage: cat FILE [...] | reverseAnsi
 
-tb
-:b
+t continue
+:continue
 # Reverse an ANSI escape sequence.
 # Begin by embedding the first unprocessed (i.e. no following newline
 # characters) ANSI between two newlines. This avoids that phantom ANSI that are
@@ -25,11 +25,11 @@ T end # No more ANSIs; done.
 # Move first character at the end. The regexp matches until there are zero or
 # one characters between the markers. The end assertion ensures that only the
 # last, active ANSI is reversed.
-tx
-:x
+t reverse
+:reverse
 s#\(\n[^\n]\)\([^\n]*\)\([^\n]\n\)\([^\n]*\)\n\([^\n]*\)$#\3\2\1\4\n\5#
-tx
-b b  # Rinse and repeat.
+t reverse
+b continue  # Rinse and repeat.
 
 :end
 # Remove all newline markers.
