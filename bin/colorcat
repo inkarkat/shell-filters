@@ -18,5 +18,5 @@ interpretColorEscapeSequences()
     sed -e 's/\([^m]\+m\)/\1^[\1[0m/g' -e 's/\\\{0,1\}\\033\([^m]\+m\)/\1^[\1[0m/g' -- "$@"
 }
 
-typeset -a pager=("${PAGER:-less}" --quit-if-one-screen --RAW-CONTROL-CHARS); [ -t 1 ] || pager=()
+typeset -a pager=("${PAGER:-less}" --RAW-CONTROL-CHARS); [ -t 1 ] || pager=()
 eval 'interpretColorEscapeSequences "$@"' "${pager:+|}" '"${pager[@]}"'
