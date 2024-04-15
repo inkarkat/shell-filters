@@ -62,7 +62,7 @@ exec $SED --unbuffered \
 ' \
     -e '
 # Only show a single line of stack traces.
-/^'"${DELETESTACKTRACELOCATIONS_PREFIX_PATTERN}"'\t\+at /b deleteStackTraceLocations
+/^'"${DELETESTACKTRACELOCATIONS_PREFIX_PATTERN}"'[[:space:]]\+at /b deleteStackTraceLocations
 
 # Delete the header line that sometimes occurs before a Groovy stack trace.
 /^'"${DELETESTACKTRACELOCATIONS_PREFIX_PATTERN}"'    Line | Method$/D
@@ -84,18 +84,18 @@ b
 # handle that.
 s/ ~\[[^]]*:[^]]*\]$//
 
-N;/\n'"${DELETESTACKTRACELOCATIONS_PREFIX_PATTERN}"'\t\+at [^\n]*$/{
+N;/\n'"${DELETESTACKTRACELOCATIONS_PREFIX_PATTERN}"'[[:space:]]\+at [^\n]*$/{
     # Test framework does not count as "us".
-    /\n'"${DELETESTACKTRACELOCATIONS_PREFIX_PATTERN}"'\t\+at '"${DELETESTACKTRACELOCATIONS_IGNORE_PATTERN//\//\\/}"'/ {
+    /\n'"${DELETESTACKTRACELOCATIONS_PREFIX_PATTERN}"'[[:space:]]\+at '"${DELETESTACKTRACELOCATIONS_IGNORE_PATTERN//\//\\/}"'/ {
 	s/\n[^\n]*$//
 	b deleteStackTraceLocations
     }
     # When a following location is from us ...
-    /\n'"${DELETESTACKTRACELOCATIONS_PREFIX_PATTERN}"'\t\+at '"${DELETESTACKTRACELOCATIONS_OUR_PATTERN//\//\\/}"'[^\n]*$/ {
+    /\n'"${DELETESTACKTRACELOCATIONS_PREFIX_PATTERN}"'[[:space:]]\+at '"${DELETESTACKTRACELOCATIONS_OUR_PATTERN//\//\\/}"'[^\n]*$/ {
 	# ... and we have two more from us already ...
-	/\(^\|\n\)'"${DELETESTACKTRACELOCATIONS_PREFIX_PATTERN}"'\t\+at '"${DELETESTACKTRACELOCATIONS_OUR_PATTERN//\//\\/}"'[^\n]*\n\t\+at '"${DELETESTACKTRACELOCATIONS_OUR_PATTERN//\//\\/}"'[^\n]*\n/ {
+	/\(^\|\n\)'"${DELETESTACKTRACELOCATIONS_PREFIX_PATTERN}"'[[:space:]]\+at '"${DELETESTACKTRACELOCATIONS_OUR_PATTERN//\//\\/}"'[^\n]*\n[[:space:]]\+at '"${DELETESTACKTRACELOCATIONS_OUR_PATTERN//\//\\/}"'[^\n]*\n/ {
 	    # Drop the middle one, so that only the first and last will be kept.
-	    s/\(^\|\n\)'"${DELETESTACKTRACELOCATIONS_PREFIX_PATTERN}"'\(\t\+at '"${DELETESTACKTRACELOCATIONS_OUR_PATTERN//\//\\/}"'[^\n]*\n\)\t\+at '"${DELETESTACKTRACELOCATIONS_OUR_PATTERN//\//\\/}"'[^\n]*\n/\1\3/
+	    s/\(^\|\n\)'"${DELETESTACKTRACELOCATIONS_PREFIX_PATTERN}"'\([[:space:]]\+at '"${DELETESTACKTRACELOCATIONS_OUR_PATTERN//\//\\/}"'[^\n]*\n\)[[:space:]]\+at '"${DELETESTACKTRACELOCATIONS_OUR_PATTERN//\//\\/}"'[^\n]*\n/\1\3/
 	    b deleteStackTraceLocations
 	}
 	# Else we only have one already, so keep the second one.
@@ -106,13 +106,13 @@ N;/\n'"${DELETESTACKTRACELOCATIONS_PREFIX_PATTERN}"'\t\+at [^\n]*$/{
     b deleteStackTraceLocations
 }
 :printStackTraceLocations
-/^'"${DELETESTACKTRACELOCATIONS_PREFIX_PATTERN}"'\t\+at /{
+/^'"${DELETESTACKTRACELOCATIONS_PREFIX_PATTERN}"'[[:space:]]\+at /{
     s/(\([^)]\+:[0-9]\+\))\(\n\|$\)/('"${DELETESTACKTRACELOCATIONS_FILELOCATION_PREFIX//\//\\/}"'\1'"${DELETESTACKTRACELOCATIONS_FILELOCATION_SUFFIX//\//\\/}"')\2/
     s/\.lambda\$\([a-zA-Z0-9_]\+\)\$\([a-zA-Z0-9_]\+\)(/.'"${DELETESTACKTRACELOCATIONS_FUNCTIONNAME_PREFIX//\//\\/}"'\1λ\2'"${DELETESTACKTRACELOCATIONS_FUNCTIONNAME_SUFFIX//\//\\/}"'(/
     /λ/!{
 	/'"${literalDeleteStacktraceLocationsFunctionNameSuffix//\//\\/}"'(/!{s/\([a-zA-Z0-9_]\+\)(/'"${DELETESTACKTRACELOCATIONS_FUNCTIONNAME_PREFIX//\//\\/}"'\1'"${DELETESTACKTRACELOCATIONS_FUNCTIONNAME_SUFFIX//\//\\/}"'(/}
     }
-    s/\(\t\+\)at /\1'"${DELETESTACKTRACELOCATIONS_INTRO_PREFIX//\//\\/}"'at'"${DELETESTACKTRACELOCATIONS_INTRO_SUFFIX//\//\\/}"' /
+    s/\([[:space:]]\+\)at /\1'"${DELETESTACKTRACELOCATIONS_INTRO_PREFIX//\//\\/}"'at'"${DELETESTACKTRACELOCATIONS_INTRO_SUFFIX//\//\\/}"' /
 
     P
     s/^[^\n]*\n//
@@ -120,7 +120,7 @@ N;/\n'"${DELETESTACKTRACELOCATIONS_PREFIX_PATTERN}"'\t\+at [^\n]*$/{
 }
 
 # Remove any following summary of omitted frames; due to our deletions, the number is wrong, anyway.
-/\(^\|\n\)'"${DELETESTACKTRACELOCATIONS_PREFIX_PATTERN}"'\t\.\.\. [0-9]\+ common frames omitted$/D
+/\(^\|\n\)'"${DELETESTACKTRACELOCATIONS_PREFIX_PATTERN}"'[[:space:]]\.\.\. [0-9]\+ common frames omitted$/D
 
 b begin
 #-------------------------------------------------------------------------------
