@@ -1,73 +1,23 @@
-#!/bin/sed -uf
+#!/usr/bin/awk -f
 
-## Condense subsequent #'s at the end of a line or if a $ sigil is following
-## (###$) into a count of those hashes.
-##
-## Usage: countHashes FILE [...]
-## Usage: cat FILE [...] | countHashes
-
-# To make the following replacements easier, replace the literal $ / eol match
-# with another unique marker.
-s/#\(\$\|$\)/#/g
-
-:tens
-s/#\{10\}\(#*\)/\1/g
-t tens
-:hundreds
-s/\{10\}\(*#*\)/\1/g
-t hundreds
-:thousands
-s/\{10\}\(**#*\)/\1/g
-t thousands
-
-s/#\{9\}/9/g
-s/#\{8\}/8/g
-s/#\{7\}/7/g
-s/#\{6\}/6/g
-s/#\{5\}/5/g
-s/#\{4\}/4/g
-s/#\{3\}/3/g
-s/#\{2\}/2/g
-s/#\{1\}/1/g
-
-s//0/g
-s/\{9\}\([0-9]*\)/9\1/g
-s/\{8\}\([0-9]*\)/8\1/g
-s/\{7\}\([0-9]*\)/7\1/g
-s/\{6\}\([0-9]*\)/6\1/g
-s/\{5\}\([0-9]*\)/5\1/g
-s/\{4\}\([0-9]*\)/4\1/g
-s/\{3\}\([0-9]*\)/3\1/g
-s/\{2\}\([0-9]*\)/2\1/g
-s/\{1\}\([0-9]*\)/1\1/g
-
-s//00/g
-s/\([0-9]\)/0\1/g
-s/\{9\}\([0-9]*\)/9\1/g
-s/\{8\}\([0-9]*\)/8\1/g
-s/\{7\}\([0-9]*\)/7\1/g
-s/\{6\}\([0-9]*\)/6\1/g
-s/\{5\}\([0-9]*\)/5\1/g
-s/\{4\}\([0-9]*\)/4\1/g
-s/\{3\}\([0-9]*\)/3\1/g
-s/\{2\}\([0-9]*\)/2\1/g
-s/\{1\}\([0-9]*\)/1\1/g
-
-# Handle overflow, i.e. larger than 9999.
-s/\{10,\}[0-9]*/10000+/g
-
-s//000/g
-s/\([0-9]\)/00\1/g
-s/\([0-9][0-9]\)/0\1/g
-s/\{9\}\([0-9]*\)/9\1/g
-s/\{8\}\([0-9]*\)/8\1/g
-s/\{7\}\([0-9]*\)/7\1/g
-s/\{6\}\([0-9]*\)/6\1/g
-s/\{5\}\([0-9]*\)/5\1/g
-s/\{4\}\([0-9]*\)/4\1/g
-s/\{3\}\([0-9]*\)/3\1/g
-s/\{2\}\([0-9]*\)/2\1/g
-s/\{1\}\([0-9]*\)/1\1/g
-
-# Finally remove the unique marker.
-s/\([0-9]\+\)/\1/g
+BEGIN {
+    if (ARGV[1] ~ /^(--(help|man|usage)|-[Hh?])$/) {
+	print "Condense subsequent #'s at the end of a line or if a $ sigil is following (###$)"
+	print "into a count of those hashes."
+	print ""
+	print "Usage: countHashes FILE [...] [-?|-- -h|-H|--man|--usage]"
+	print "Usage: cat FILE [...] | countHashes "
+	isHelp = 1
+	exit
+    }
+}
+{
+    while (match($0, /#+(\$|$)/)) {
+	hashes = substr($0, RSTART, RLENGTH)
+	if (substr(hashes, length(hashes)) == "$") {
+	    hashes = substr(hashes, 1, length(hashes) - 1)
+	}
+	$0 = substr($0, 1, RSTART - 1) length(hashes) substr($0, RSTART + RLENGTH)
+    }
+    print
+}
