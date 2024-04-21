@@ -14,13 +14,15 @@ HELPTEXT
     printf 'Usage: cat FILE [...] | %q %s\n' "$(basename "$1")" '[...]'
 }
 match=
-replacement='\2'
+frontReplacement='\3'
+prefixReplacement='\1\2'
+innerReplacement='\3'
 typeset -a sedArgs=()
 while [ $# -ne 0 ]
 do
     case "$1" in
 	--help|-h|-\?)	    shift; printUsage "$0"; exit 0;;
-	--delete-date|-d)   shift; match='\(.*\)'; replacement='\3';;
+	--delete-date|-d)   shift; match='\(.*\)'; frontReplacement='\6'; prefixReplacement=''; innerReplacement='\2\6';;
 	--palette|-p)	    shift
 			    case "$1" in
 				dashboard)  HIGHLIGHTRELATIVEAGE_COLORS="[38;2;255;255;255m [38;2;238;238;238m $HIGHLIGHTRELATIVEAGE_RESET [38;2;72;72;72m [38;2;175;21;26m [38;2;79;9;10m";;
@@ -40,12 +42,33 @@ done
 typeset -a COLOR=()
 IFS='' read -r -a COLOR <<<"${HIGHLIGHTRELATIVEAGE_COLORS// /}"
 
-prefixPattern='^\(\x1b\[[0-9:;]*m\)\?'
-sed "${sedArgs[@]}" \
-    -e "s/${prefixPattern}\\(.*minutes\\? ago[[:space:]]\\+\\)${match}/${COLOR[0]}${replacement}${HIGHLIGHTRELATIVEAGE_RESET}\\1/; t" \
-    -e "s/${prefixPattern}\\(.*hours\\? ago[[:space:]]\\+\\)${match}/${COLOR[1]}${replacement}${HIGHLIGHTRELATIVEAGE_RESET}\\1/; t" \
-    -e "s/${prefixPattern}\\(.*[1-9][0-9]\\+ days ago[[:space:]]\\+\\)${match}/${COLOR[3]}${replacement}${HIGHLIGHTRELATIVEAGE_RESET}\\1/; t" \
-    -e "s/${prefixPattern}\\(.*[1-9] days\\? ago[[:space:]]\\+\\)${match}/${COLOR[2]}${replacement}${HIGHLIGHTRELATIVEAGE_RESET}\\1/; t" \
-    -e "s/${prefixPattern}\\(.*months\\? ago[[:space:]]\\+\\)${match}/${COLOR[4]}${replacement}${HIGHLIGHTRELATIVEAGE_RESET}\\1/; t" \
-    -e "s/${prefixPattern}\\(.*years\\? ago[[:space:]]\\+\\)${match}/${COLOR[5]}${replacement}${HIGHLIGHTRELATIVEAGE_RESET}\\1/; t" \
-    "$@"
+typeset -a ageConverterPattern=()
+addPattern()
+{
+    ageConverterPattern+=(
+	    -e "s/${lineColorPattern}${beforePattern}\\(${prefixPattern}[0-9]\\+ minutes\\? ago${suffixPattern}\\)${match}/${prefixReplacement}${COLOR[0]}${innerReplacement}${HIGHLIGHTRELATIVEAGE_RESET}\\1/; t" \
+	    -e "s/${lineColorPattern}${beforePattern}\\(${prefixPattern}[0-9]\\+ hours\\? ago${suffixPattern}\\)${match}/${prefixReplacement}${COLOR[1]}${innerReplacement}${HIGHLIGHTRELATIVEAGE_RESET}\\1/; t" \
+	    -e "s/${lineColorPattern}${beforePattern}\\(${prefixPattern}[1-9][0-9]\\+ days ago${suffixPattern}\\)${match}/${prefixReplacement}${COLOR[3]}${innerReplacement}${HIGHLIGHTRELATIVEAGE_RESET}\\1/; t" \
+	    -e "s/${lineColorPattern}${beforePattern}\\(${prefixPattern}[1-9] days\\? ago${suffixPattern}\\)${match}/${prefixReplacement}${COLOR[2]}${innerReplacement}${HIGHLIGHTRELATIVEAGE_RESET}\\1/; t" \
+	    -e "s/${lineColorPattern}${beforePattern}\\(${prefixPattern}[0-9]\\+ months\\? ago${suffixPattern}\\)${match}/${prefixReplacement}${COLOR[4]}${innerReplacement}${HIGHLIGHTRELATIVEAGE_RESET}\\1/; t" \
+	    -e "s/${lineColorPattern}${beforePattern}\\(${prefixPattern}[0-9]\\+ years\\? ago${suffixPattern}\\)${match}/${prefixReplacement}${COLOR[5]}${innerReplacement}${HIGHLIGHTRELATIVEAGE_RESET}\\1/; t" \
+    )
+}
+
+# [LINE-COLOR] PREFIX (AGE) SUFFIX
+lineColorPattern='^\(\x1b\[[0-9:;]*m\)\?'
+beforePattern='\(.*\)'
+prefixPattern='\([[:space:]]\+(\)'
+suffixPattern='\()\)'
+addPattern
+
+# [LINE-COLOR] AGE SUFFIX
+lineColorPattern='^\(\x1b\[[0-9:;]*m\)\?'
+beforePattern='\(\)'
+prefixPattern='\(\)'
+suffixPattern='\([[:space:]]\+\)'
+prefixReplacement=''
+innerReplacement="$frontReplacement"
+addPattern
+
+exec sed "${sedArgs[@]}" "${ageConverterPattern[@]}" "$@"
