@@ -40,11 +40,12 @@ done
 typeset -a COLOR=()
 IFS='' read -r -a COLOR <<<"${HIGHLIGHTRELATIVEAGE_COLORS// /}"
 
+prefixPattern='^\(\x1b\[[0-9:;]*m\)\?'
 sed "${sedArgs[@]}" \
-    -e "s/^\\(\x1b\[[0-9:;]*m\\)\\?\\(.*minutes\\? ago[[:space:]]\\+\\)${match}/${COLOR[0]}${replacement}${HIGHLIGHTRELATIVEAGE_RESET}\\1/; t" \
-    -e "s/^\\(\x1b\[[0-9:;]*m\\)\\?\\(.*hours\\? ago[[:space:]]\\+\\)${match}/${COLOR[1]}${replacement}${HIGHLIGHTRELATIVEAGE_RESET}\\1/; t" \
-    -e "s/^\\(\x1b\[[0-9:;]*m\\)\\?\\(.*[1-9][0-9]\\+ days ago[[:space:]]\\+\\)${match}/${COLOR[3]}${replacement}${HIGHLIGHTRELATIVEAGE_RESET}\\1/; t" \
-    -e "s/^\\(\x1b\[[0-9:;]*m\\)\\?\\(.*[1-9] days\\? ago[[:space:]]\\+\\)${match}/${COLOR[2]}${replacement}${HIGHLIGHTRELATIVEAGE_RESET}\\1/; t" \
-    -e "s/^\\(\x1b\[[0-9:;]*m\\)\\?\\(.*months\\? ago[[:space:]]\\+\\)${match}/${COLOR[4]}${replacement}${HIGHLIGHTRELATIVEAGE_RESET}\\1/; t" \
-    -e "s/^\\(\x1b\[[0-9:;]*m\\)\\?\\(.*years\\? ago[[:space:]]\\+\\)${match}/${COLOR[5]}${replacement}${HIGHLIGHTRELATIVEAGE_RESET}\\1/; t" \
+    -e "s/${prefixPattern}\\(.*minutes\\? ago[[:space:]]\\+\\)${match}/${COLOR[0]}${replacement}${HIGHLIGHTRELATIVEAGE_RESET}\\1/; t" \
+    -e "s/${prefixPattern}\\(.*hours\\? ago[[:space:]]\\+\\)${match}/${COLOR[1]}${replacement}${HIGHLIGHTRELATIVEAGE_RESET}\\1/; t" \
+    -e "s/${prefixPattern}\\(.*[1-9][0-9]\\+ days ago[[:space:]]\\+\\)${match}/${COLOR[3]}${replacement}${HIGHLIGHTRELATIVEAGE_RESET}\\1/; t" \
+    -e "s/${prefixPattern}\\(.*[1-9] days\\? ago[[:space:]]\\+\\)${match}/${COLOR[2]}${replacement}${HIGHLIGHTRELATIVEAGE_RESET}\\1/; t" \
+    -e "s/${prefixPattern}\\(.*months\\? ago[[:space:]]\\+\\)${match}/${COLOR[4]}${replacement}${HIGHLIGHTRELATIVEAGE_RESET}\\1/; t" \
+    -e "s/${prefixPattern}\\(.*years\\? ago[[:space:]]\\+\\)${match}/${COLOR[5]}${replacement}${HIGHLIGHTRELATIVEAGE_RESET}\\1/; t" \
     "$@"
