@@ -1,20 +1,34 @@
 #!/bin/bash
 # Source: https://unix.stackexchange.com/a/31955/18876
 # Source: https://stackoverflow.com/a/16198793/813602
+shopt -qs extglob
 
 printUsage()
 {
     cat <<HELPTEXT
-Add a final newline (<EOL>) at the end of the input / passed FILE(s) if it's missing.
+Add a final newline (<EOL>) at the end of the input / passed FILE(s) (just in
+the output, persistently if -i|--in-place is passed) if it's missing.
 Empty input / FILE(s) will stay empty.
 HELPTEXT
-    printf 'Usage: %q %s\n' "$(basename "$1")" 'FILE [...] [-?|-h|--help]'
+    echo
+    printf 'Usage: %q %s\n' "$(basename "$1")" '[-i[SUFFIX]|--in-place[=SUFFIX]] FILE [...] [-?|-h|--help]'
     printf 'Usage: cat FILE [...] %q %s\n' "$(basename "$1")" '[...] [-?|-h|--help]'
 }
-typeset -a sedArgs=(-i)
-case "$1" in
-    --help|-h|-\?)	shift; printUsage "$0"; exit 0;;
-    --)			shift;;
-esac
-[ $# -eq 0 ] && sedArgs=()
+typeset -a sedArgs=()
+while [ $# -ne 0 ]
+do
+    case "$1" in
+	--help|-h|-\?)	shift; printUsage "$0"; exit 0;;
+	-i*|--in-place?(=*))
+			sedArgs+=("$1"); shift;;
+	--)		shift; break;;
+	-*)		{ echo "ERROR: Unknown option \"$1\"!"; echo; printUsage "$0"; } >&2; exit 2;;
+	*)		break;;
+    esac
+done
+if [ ${#sedArgs[@]} -gt 0 -a $# -eq 0 ]; then
+    printUsage "$0" >&2
+    exit 2
+fi
+
 exec sed "${sedArgs[@]}" -e '$a\' -- "$@"
