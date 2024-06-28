@@ -37,7 +37,7 @@ convertToHumanUnits()
     # newlines into space (to maintain the whitespace necessary for numfmt to
     # accept it) + ^G (numfmt doesn't pass through ASCI 00 = NUL), and
     # retranslate afterwards.
-    sed -e 's/$/ \d007/' -e 's/\([^[:alnum:][:space:]][[:space:]]\|[[:space:]]\)\([[:space:]]*[0-9]\+\)/\1\n\2/g' | \
+    sed -e 's/$/ \d007/' -e 's/\([^[:alnum:][:space:]][[:space:]]\?\|[[:space:]]\)\([[:space:]]*[0-9]\+\)/\1\n\2/g' | \
 	numfmt --invalid=ignore "${toArg[@]}" | \
 	sed -e ':begin' -e 's/ \d007$//' -e t -e '$!N; s/\n//g; t begin'
 }
