@@ -4,7 +4,7 @@ export EXTRACTMATCHES_HIGHLIGHT_PREFIX='['
 export EXTRACTMATCHES_HIGHLIGHT_SUFFIX=']'
 
 @test "matches skipped in whole lines" {
-    run extractMatches --regexp fo+ --skip '[[:upper:]]{3,}' --skip '!$' <<-'EOF'
+    run extractMatches --regexp fo+ --skip-lines '[[:upper:]]{3,}' --skip-lines '!$' <<-'EOF'
 This has foo in it.
 foo is SKIPPED everywhere here foo.
 Some foo.
@@ -20,7 +20,7 @@ More [foo] here." ]
 }
 
 @test "counting skipped in whole lines" {
-    run extractMatches --count fo+ --skip '[[:upper:]]{3,}' --skip '!$' <<-'EOF'
+    run extractMatches --count fo+ --skip-lines '[[:upper:]]{3,}' --skip-lines '!$' <<-'EOF'
 This has foo in it.
 foo is SKIPPED everywhere here foo.
 Some foo.
@@ -36,7 +36,7 @@ More [foo (3)] here." ]
 }
 
 @test "match-counting skipped in whole lines" {
-    run extractMatches --match-count fo+ --skip '[[:upper:]]{3,}' --skip '!$' <<-'EOF'
+    run extractMatches --match-count fo+ --skip-lines '[[:upper:]]{3,}' --skip-lines '!$' <<-'EOF'
 This has foo in it.
 foooo is SKIPPED everywhere here foo.
 Some foooo.
@@ -52,7 +52,7 @@ More [foooo (2)] here." ]
 }
 
 @test "resetting skipped in whole lines" {
-    run extractMatches --reset-name X --name FOO --count fo+ --global --name FOO --skip '[[:upper:]]{3,}' --skip '!$' <<-'EOF'
+    run extractMatches --reset-name X --name FOO --count fo+ --global --name FOO --skip-lines '[[:upper:]]{3,}' --skip-lines '!$' <<-'EOF'
 This has foo and foo, X, foo in it.
 foo is SKIPPED everywhere here foo.
 Some X foo.

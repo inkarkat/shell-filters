@@ -12,7 +12,7 @@ printShortUsage()
 {
     # Note: short followed by long option; if the user knows the short one, she can
     # skim the long one.
-    printf 'Usage: %q %s\n' "$(basename "$1")" '[-u|--unbuffered] [-q|--quiet] [-y|--summary|-Y|--summary-only] [[--name-percentage-threshold N] -%|--name-percentages NAME|/NAME-PATTERN/ [...]] [-t|--to overlay [--clear]|title|stderr|concatenated|command|notify|highlight|flash|FILE|--grep-only-matching|--grep-count] [-s|--skip PATTERN [...]] [-o|--report-order by-arg|count-desc|recent-match|first-match] [-O|--report-limit N] (-e|--regexp [-r|--replacement REPLACEMENT] [-g|--global] [-p|--priority N] [-n|--name NAME] [-k|--reset-other NAME|/NAME-PATTERN/] [-x|--reset RESET-PATTERN [-k|--reset-other NAME|/NAME-PATTERN/]])(-c|--count|-M|--match-count [-r|--replacement REPLACEMENT] [-g|--global] [-p|--priority N] [-n|--name NAME] [-k|--reset-other NAME|/NAME-PATTERN/] [-x|--reset RESET-PATTERN [-k|--reset-other NAME|/NAME-PATTERN/]])(--reset-name PATTERN [-g|--global] -n|--name NAME|/NAME-PATTERN/) [...] [--] FILE [...][-?|-h|--help]'
+    printf 'Usage: %q %s\n' "$(basename "$1")" '[-u|--unbuffered] [-q|--quiet] [-y|--summary|-Y|--summary-only] [[--name-percentage-threshold N] -%|--name-percentages NAME|/NAME-PATTERN/ [...]] [-t|--to overlay [--clear]|title|stderr|concatenated|command|notify|highlight|flash|FILE|--grep-only-matching|--grep-count] [-S|--skip-lines PATTERN [-S ...]] [-o|--report-order by-arg|count-desc|recent-match|first-match] [-O|--report-limit N] (-s|--skip-regexp PATTERN [-s ...] [-g|--global])|(-e|--regexp [-r|--replacement REPLACEMENT] [-g|--global] [-p|--priority N] [-n|--name NAME] [-k|--reset-other NAME|/NAME-PATTERN/] [-x|--reset RESET-PATTERN [-k|--reset-other NAME|/NAME-PATTERN/]])|(-c|--count|-M|--match-count [-r|--replacement REPLACEMENT] [-g|--global] [-p|--priority N] [-n|--name NAME] [-k|--reset-other NAME|/NAME-PATTERN/] [-x|--reset RESET-PATTERN [-k|--reset-other NAME|/NAME-PATTERN/]])|(--reset-name PATTERN [-g|--global] -n|--name NAME|/NAME-PATTERN/) [...] [--] FILE [...][-?|-h|--help]'
 }
 printUsage()
 {
@@ -120,9 +120,14 @@ HELPDESCRIPTION
 			    the same or lower priority. (Default priority is 0.)
 			    A --reset[-name] lowers the baseline priority to 1
 			    below the associated priority.
-    --skip|-s PATTERN	    Ignore (but still print) lines that match PATTERN,
+    --skip-lines|-S PATTERN Ignore (but still print) lines that match PATTERN,
 			    so that these don't disrupt the processing of
 			    surrounding lines.
+    --skip-regexp|-s PATTERN
+			    Match (and print) matches of PATTERN without
+			    affecting reporting. This can be used to anchor
+			    another PATTERN with a ^ directly to the end of the
+			    match of this PATTERN.
     --report-order|-o by-arg
 			    In case the reporting happens only periodically,
 			    sort the number of matches first by order of the
@@ -161,6 +166,9 @@ HELPDESCRIPTION
 			    applies to all following --name-percentages
 			    arguments.
 All PATTERNs are AWK-style extended regular expressions.
+Due to the continuous parsing and reporting, anchoring to the beginning via ^
+does not just match the beginning of the line, but the position after each end
+of a previous match as well (when --global is given).
 
 EXIT STATUS:
     0	At least 1 match has been found
@@ -280,7 +288,7 @@ EXEC=exec
 : ${EXTRACTMATCHES_NAME_PERCENTAGES_SINGLE_DIGIT_PRECISION:=1}
 : ${EXTRACTMATCHES_NAME_PERCENTAGES_MULTI_DIGIT_PRECISION:=0}
 render=
-skipPattern=
+skipLinesPattern=
 typeset -a types=()
 typeset -a patterns=()
 typeset -a replacements=()
@@ -303,7 +311,8 @@ do
 	--to|-t)	shift; singleRenderCheck "$0"; render="$1"; shift;;
 	--grep-only-matching)	shift; singleRenderCheck "$0"; render='/dev/stdout'; isQuiet=t; EXTRACTMATCHES_FILE_UPDATE_MATCH_DELAY=0; EXTRACTMATCHES_FILE_UPDATE_COUNT_DELAY=0;;
 	--grep-count)		shift; singleRenderCheck "$0"; render='/dev/stdout'; isQuiet=t; setInfiniteDelays; EXTRACTMATCHES_FILE_UPDATE_MATCH_DELAY=0;;
-	--skip|-s)		shift; skipPattern+="${skipPattern:+|}${1:?}"; shift;;
+	--skip-lines|-S)	shift; skipLinesPattern+="${skipLinesPattern:+|}${1:?}"; shift;;
+	--skip-regexp|-s)	shift; types+=(skip); patterns+=("${1:?}"); replacements+=('&'); globals+=(0); others+=(''); names+=('') priorities+=(0); shift;;
 	--regexp|-e)		shift; types+=(regexp); patterns+=("${1:?}"); replacements+=('&'); globals+=(0); others+=(''); names+=('') priorities+=(0); shift;;
 	--count|-c)		shift; types+=(count); patterns+=("${1:?}"); replacements+=('&'); globals+=(0); others+=(''); names+=('') priorities+=(0); shift;;
 	--match-count|-M)	shift; types+=(match-count); patterns+=("${1:?}"); replacements+=('&'); globals+=(0); others+=(''); names+=('') priorities+=(0); shift;;
@@ -519,7 +528,7 @@ $EXEC awk \
     -v "namePercentageTemplate=${EXTRACTMATCHES_NAME_PERCENTAGES_TEMPLATE//\\/\\\\}" \
     -v "namePercentageSingleDigitPrecision=$EXTRACTMATCHES_NAME_PERCENTAGES_SINGLE_DIGIT_PRECISION" \
     -v "namePercentageMultiDigitPrecision=$EXTRACTMATCHES_NAME_PERCENTAGES_MULTI_DIGIT_PRECISION" \
-    -v "skipPattern=${skipPattern//\\/\\\\}" \
+    -v "skipLinesPattern=${skipLinesPattern//\\/\\\\}" \
     -v "reportOrder=${reportOrder//\\/\\\\}" \
     -v "reportLimit=$reportLimit" \
     -v "overlayPrefix=${extractmatchesOverlayJump//\\/\\\\}${extractmatchesOverlayPrefix//\\/\\\\}" \
@@ -1021,7 +1030,9 @@ function renderReset(key, previousCounts, type,      tmp) {
 	case "flash":
 	    break
 	case "file":
-	    if (type != "regexp") {
+	    if (type == "skip") {
+		# No-op.
+	    } else if (type != "regexp") {
 		tmp = (type == "count" ? lastCountText[key] : getKeyMatch(key))
 		if (fileUpdateCountDelay != 0) {
 		    delayedCounts[key]["i"] = lowestI
@@ -1118,6 +1129,8 @@ function addPercentage(key, count,      n, np, npPattern, tmp, sum, percentage, 
 }
 function process(type, start, len, pattern, replacement, other, name, priority,      key, tmp) {
     switch (type) {
+	case "skip":
+	    break
 	case "regexp":
 	case "count":
 	case "match-count":
@@ -1133,6 +1146,8 @@ function process(type, start, len, pattern, replacement, other, name, priority, 
 	    exit 3
     }
     switch (type) {
+	case "skip":
+	    break
 	case "regexp":
 	    tmp = replace(substr($0, start, len), pattern, replacement)
 	    lastMatchText = tmp
@@ -1169,7 +1184,7 @@ function process(type, start, len, pattern, replacement, other, name, priority, 
 {
     preRenderLine()
 
-    if (skipPattern == "" || $0 !~ skipPattern) {
+    if (skipLinesPattern == "" || $0 !~ skipLinesPattern) {
 	delete seen
 	startOffset = 0
 	do {
