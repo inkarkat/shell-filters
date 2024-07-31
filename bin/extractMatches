@@ -12,7 +12,7 @@ printShortUsage()
 {
     # Note: short followed by long option; if the user knows the short one, she can
     # skim the long one.
-    printf 'Usage: %q %s\n' "$(basename "$1")" '[-u|--unbuffered] [-q|--quiet] [-y|--summary|-Y|--summary-only] [[--name-percentage-threshold N] -%|--name-percentages NAME|/NAME-PATTERN/ [...]] [-t|--to overlay [--clear]|title|stderr|concatenated|command|notify|highlight|flash|FILE|--grep-only-matching|--grep-count] [-s|--skip-lines PATTERN [...]] [-o|--report-order by-arg|count-desc|recent-match|first-match] [-O|--report-limit N] (-e|--regexp [-r|--replacement REPLACEMENT] [-g|--global] [-p|--priority N] [-n|--name NAME] [-k|--reset-other NAME|/NAME-PATTERN/] [-x|--reset RESET-PATTERN [-k|--reset-other NAME|/NAME-PATTERN/]])|(-c|--count|-M|--match-count [-r|--replacement REPLACEMENT] [-g|--global] [-p|--priority N] [-n|--name NAME] [-k|--reset-other NAME|/NAME-PATTERN/] [-x|--reset RESET-PATTERN [-k|--reset-other NAME|/NAME-PATTERN/]])|(--reset-name PATTERN [-g|--global] -n|--name NAME|/NAME-PATTERN/) [...] [--] FILE [...][-?|-h|--help]'
+    printf 'Usage: %q %s\n' "$(basename "$1")" '[-u|--unbuffered] [-q|--quiet] [-y|--summary|-Y|--summary-only] [[--name-percentage-threshold N] -%|--name-percentages NAME|/NAME-PATTERN/ [...]] [-t|--to overlay [--clear]|title|stderr|concatenated|command|notify|highlight|flash|FILE|--grep-only-matching|--grep-count] [-S|--skip-lines PATTERN [-S ...]] [-o|--report-order by-arg|count-desc|recent-match|first-match] [-O|--report-limit N] (-e|--regexp [-r|--replacement REPLACEMENT] [-g|--global] [-p|--priority N] [-n|--name NAME] [-k|--reset-other NAME|/NAME-PATTERN/] [-x|--reset RESET-PATTERN [-k|--reset-other NAME|/NAME-PATTERN/]])|(-c|--count|-M|--match-count [-r|--replacement REPLACEMENT] [-g|--global] [-p|--priority N] [-n|--name NAME] [-k|--reset-other NAME|/NAME-PATTERN/] [-x|--reset RESET-PATTERN [-k|--reset-other NAME|/NAME-PATTERN/]])|(--reset-name PATTERN [-g|--global] -n|--name NAME|/NAME-PATTERN/) [...] [--] FILE [...][-?|-h|--help]'
 }
 printUsage()
 {
@@ -120,7 +120,7 @@ HELPDESCRIPTION
 			    the same or lower priority. (Default priority is 0.)
 			    A --reset[-name] lowers the baseline priority to 1
 			    below the associated priority.
-    --skip-lines|-s PATTERN Ignore (but still print) lines that match PATTERN,
+    --skip-lines|-S PATTERN Ignore (but still print) lines that match PATTERN,
 			    so that these don't disrupt the processing of
 			    surrounding lines.
     --report-order|-o by-arg
@@ -303,7 +303,7 @@ do
 	--to|-t)	shift; singleRenderCheck "$0"; render="$1"; shift;;
 	--grep-only-matching)	shift; singleRenderCheck "$0"; render='/dev/stdout'; isQuiet=t; EXTRACTMATCHES_FILE_UPDATE_MATCH_DELAY=0; EXTRACTMATCHES_FILE_UPDATE_COUNT_DELAY=0;;
 	--grep-count)		shift; singleRenderCheck "$0"; render='/dev/stdout'; isQuiet=t; setInfiniteDelays; EXTRACTMATCHES_FILE_UPDATE_MATCH_DELAY=0;;
-	--skip-lines|-s)	shift; skipLinesPattern+="${skipLinesPattern:+|}${1:?}"; shift;;
+	--skip-lines|-S)	shift; skipLinesPattern+="${skipLinesPattern:+|}${1:?}"; shift;;
 	--regexp|-e)		shift; types+=(regexp); patterns+=("${1:?}"); replacements+=('&'); globals+=(0); others+=(''); names+=('') priorities+=(0); shift;;
 	--count|-c)		shift; types+=(count); patterns+=("${1:?}"); replacements+=('&'); globals+=(0); others+=(''); names+=('') priorities+=(0); shift;;
 	--match-count|-M)	shift; types+=(match-count); patterns+=("${1:?}"); replacements+=('&'); globals+=(0); others+=(''); names+=('') priorities+=(0); shift;;
