@@ -161,6 +161,9 @@ HELPDESCRIPTION
 			    applies to all following --name-percentages
 			    arguments.
 All PATTERNs are AWK-style extended regular expressions.
+Due to the continuous parsing and reporting, anchoring to the beginning via ^
+does not just match the beginning of the line, but the position after each end
+of a previous match as well (when --global is given).
 
 EXIT STATUS:
     0	At least 1 match has been found
