@@ -12,7 +12,7 @@ printShortUsage()
 {
     # Note: short followed by long option; if the user knows the short one, she can
     # skim the long one.
-    printf 'Usage: %q %s\n' "$(basename "$1")" '[-u|--unbuffered] [-q|--quiet] [-y|--summary|-Y|--summary-only] [[--name-percentage-threshold N] -%|--name-percentages NAME|/NAME-PATTERN/ [...]] [-t|--to overlay [--clear]|title|stderr|concatenated|command|notify|highlight|flash|FILE|--grep-only-matching|--grep-count] [-S|--skip-lines PATTERN [-S ...]] [-o|--report-order by-arg|count-desc|recent-match|first-match] [-O|--report-limit N] (-s|--skip-regexp PATTERN [-s ...] [-g|--global])|(-e|--regexp [-r|--replacement REPLACEMENT] [-g|--global] [-p|--priority N] [-n|--name NAME] [-k|--reset-other NAME|/NAME-PATTERN/] [-x|--reset RESET-PATTERN [-k|--reset-other NAME|/NAME-PATTERN/]])|(-c|--count|-m|--matches|-M|--match-count [-r|--replacement REPLACEMENT] [-g|--global] [-p|--priority N] [-n|--name NAME] [-k|--reset-other NAME|/NAME-PATTERN/] [-x|--reset RESET-PATTERN [-k|--reset-other NAME|/NAME-PATTERN/]])|(--reset-name PATTERN [-g|--global] -n|--name NAME|/NAME-PATTERN/) [...] [--] FILE [...][-?|-h|--help]'
+    printf 'Usage: %q %s\n' "$(basename "$1")" '[-u|--unbuffered] [-q|--quiet] [-y|--summary|-Y|--summary-only] [[--name-percentage-threshold N] -%|--name-percentages NAME|/NAME-PATTERN/ [...]] [-t|--to overlay [--clear]|title|stderr|concatenated|command|notify|highlight|flash|FILE|--grep-only-matching|--grep-count] [-S|--skip-lines PATTERN [-S ...]] [-o|--report-order by-arg|count-desc|first-match|match-asc|recent-match] [-O|--report-limit N] (-s|--skip-regexp PATTERN [-s ...] [-g|--global])|(-e|--regexp [-r|--replacement REPLACEMENT] [-g|--global] [-p|--priority N] [-n|--name NAME] [-k|--reset-other NAME|/NAME-PATTERN/] [-x|--reset RESET-PATTERN [-k|--reset-other NAME|/NAME-PATTERN/]])|(-c|--count|-m|--matches|-M|--match-count [-r|--replacement REPLACEMENT] [-g|--global] [-p|--priority N] [-n|--name NAME] [-k|--reset-other NAME|/NAME-PATTERN/] [-x|--reset RESET-PATTERN [-k|--reset-other NAME|/NAME-PATTERN/]])|(--reset-name PATTERN [-g|--global] -n|--name NAME|/NAME-PATTERN/) [...] [--] FILE [...][-?|-h|--help]'
 }
 printUsage()
 {
@@ -136,21 +136,25 @@ HELPDESCRIPTION
 			    match of this PATTERN.
     --report-order|-o by-arg
 			    In case the reporting happens only periodically,
-			    sort the number of matches first by order of the
+			    sort the matches first by order of the
 			    --count / --match-count arguments as given on the
 			    command-line, then by the count report itself, with
-			    matches sorted alphanumerically.
+			    matches sorted alphabetically.
+			    This is the default.
     --report-order|-o count-desc
 			    In case the reporting happens only periodically,
-			    sort the number of matches from highest to lowest.
-    --report-order|-o recent-match
+			    sort from highest to lowest number of matches.
+    --report-order|-o match-asc
 			    In case the reporting happens only periodically,
-			    sort the number of matches from last matched to
-			    least recently matched.
+			    sort the matches alphabetically.
     --report-order|-o first-match
 			    In case the reporting happens only periodically,
-			    sort the number of matches from first matched to
-			    recently matched.
+			    sort the matches from first matched to recently
+			    matched.
+    --report-order|-o recent-match
+			    In case the reporting happens only periodically,
+			    sort the matches from last matched to least recently
+			    matched.
     --report-limit|-O N	    In case the reporting happens only periodically,
 			    only report the first N matches.
     --unbuffered|-u	    Immediately output each read line.
@@ -405,8 +409,9 @@ do
 				case "$1" in
 				    by-arg)	    reportOrder='compareByKeyArgumentOrder';;
 				    count-desc)	    reportOrder='compareByCount';;
-				    recent-match)   reportOrder='compareByRecentMatchOrder';;
 				    first-match)    reportOrder='compareByFirstMatchOrder';;
+				    match-asc)	    reportOrder='compareByKey';;
+				    recent-match)   reportOrder='compareByRecentMatchOrder';;
 				    *)		echo >&2 "ERROR: Invalid report order."
 						echo >&2
 						printUsage "$0" >&2
@@ -616,6 +621,14 @@ BEGIN {
 function getKeyMatch(key)
 {
     return gensub(/^.*-/, "", 1, key)   # XXX: For match-count, both PATTERN and TEXT could contain the dash separator, so the extraction is not perfect here.
+}
+function compareByKey(i1, v1, i2, v2,      index1, index2, text1, text2)
+{
+    # Sort by the count text ascending (attribute "text").
+    text1 = v1["text"]
+    text2 = v2["text"]
+    return (text1 == text2 ? 0 : text1 > text2 ? 1 : -1)
+
 }
 function compareByKeyArgumentOrder(i1, v1, i2, v2,      index1, index2, text1, text2)
 {

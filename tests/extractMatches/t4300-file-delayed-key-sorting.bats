@@ -102,3 +102,20 @@ bar11: 6
 This: 3
 y: 4"
 }
+
+@test "counts are written every 10 lines with sorting by match" {
+    run extractMatches --to "$LOG" --report-order match-asc --count 'foo[0-9]+' --match-count '\<[[:upper:]]\w{3}\>' --count 'bar[0-9]+' --count 'y' --global <<<"$SORT_INPUT"
+    [ "$output" = "$SORT_INPUT" ]
+    assert_log "Gone: 1
+Just: 2
+Last: 1
+More: 1
+That: 1
+This: 1
+Your: 1
+bar11: 6
+foo9: 8
+y: 1
+This: 3
+y: 4"
+}
