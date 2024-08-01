@@ -12,7 +12,7 @@ printShortUsage()
 {
     # Note: short followed by long option; if the user knows the short one, she can
     # skim the long one.
-    printf 'Usage: %q %s\n' "$(basename "$1")" '[-u|--unbuffered] [-q|--quiet] [-y|--summary|-Y|--summary-only] [[--name-percentage-threshold N] -%|--name-percentages NAME|/NAME-PATTERN/ [...]] [-t|--to overlay [--clear]|title|stderr|concatenated|command|notify|highlight|flash|FILE|--grep-only-matching|--grep-count] [-S|--skip-lines PATTERN [-S ...]] [-o|--report-order by-arg|count-desc|recent-match|first-match] [-O|--report-limit N] (-s|--skip-regexp PATTERN [-s ...] [-g|--global])|(-e|--regexp [-r|--replacement REPLACEMENT] [-g|--global] [-p|--priority N] [-n|--name NAME] [-k|--reset-other NAME|/NAME-PATTERN/] [-x|--reset RESET-PATTERN [-k|--reset-other NAME|/NAME-PATTERN/]])|(-c|--count|-M|--match-count [-r|--replacement REPLACEMENT] [-g|--global] [-p|--priority N] [-n|--name NAME] [-k|--reset-other NAME|/NAME-PATTERN/] [-x|--reset RESET-PATTERN [-k|--reset-other NAME|/NAME-PATTERN/]])|(--reset-name PATTERN [-g|--global] -n|--name NAME|/NAME-PATTERN/) [...] [--] FILE [...][-?|-h|--help]'
+    printf 'Usage: %q %s\n' "$(basename "$1")" '[-u|--unbuffered] [-q|--quiet] [-y|--summary|-Y|--summary-only] [[--name-percentage-threshold N] -%|--name-percentages NAME|/NAME-PATTERN/ [...]] [-t|--to overlay [--clear]|title|stderr|concatenated|command|notify|highlight|flash|FILE|--grep-only-matching|--grep-count] [-S|--skip-lines PATTERN [-S ...]] [-o|--report-order by-arg|count-desc|recent-match|first-match] [-O|--report-limit N] (-s|--skip-regexp PATTERN [-s ...] [-g|--global])|(-e|--regexp [-r|--replacement REPLACEMENT] [-g|--global] [-p|--priority N] [-n|--name NAME] [-k|--reset-other NAME|/NAME-PATTERN/] [-x|--reset RESET-PATTERN [-k|--reset-other NAME|/NAME-PATTERN/]])|(-c|--count|-m|--matches|-M|--match-count [-r|--replacement REPLACEMENT] [-g|--global] [-p|--priority N] [-n|--name NAME] [-k|--reset-other NAME|/NAME-PATTERN/] [-x|--reset RESET-PATTERN [-k|--reset-other NAME|/NAME-PATTERN/]])|(--reset-name PATTERN [-g|--global] -n|--name NAME|/NAME-PATTERN/) [...] [--] FILE [...][-?|-h|--help]'
 }
 printUsage()
 {
@@ -84,6 +84,12 @@ HELPDESCRIPTION
 			    Shortcut for --to /dev/stdout --summary-only.
     --regexp|-e PATTERN	    Report matches of PATTERN in a line.
     --count|-c PATTERN	    Report the number of matches of PATTERN in a line.
+    --matches|-m PATTERN
+			    Report identical matches of PATTERN. With immediate
+			    reporting this behaves just like --regexp, but with
+			    periodic reporting this reports all encountered
+			    matches, not just the last one. There, it works like
+			    --match-count, but without including the counts.
     --match-count|-M PATTERN
 			    Report the number of identical matches of PATTERN.
     --reset-name PATTERN    Clear the reporting / count of matches for NAME or
@@ -315,6 +321,7 @@ do
 	--skip-regexp|-s)	shift; types+=(skip); patterns+=("${1:?}"); replacements+=('&'); globals+=(0); others+=(''); names+=('') priorities+=(0); shift;;
 	--regexp|-e)		shift; types+=(regexp); patterns+=("${1:?}"); replacements+=('&'); globals+=(0); others+=(''); names+=('') priorities+=(0); shift;;
 	--count|-c)		shift; types+=(count); patterns+=("${1:?}"); replacements+=('&'); globals+=(0); others+=(''); names+=('') priorities+=(0); shift;;
+	--matches|-m)		shift; types+=(matches); patterns+=("${1:?}"); replacements+=('&'); globals+=(0); others+=(''); names+=('') priorities+=(0); shift;;
 	--match-count|-M)	shift; types+=(match-count); patterns+=("${1:?}"); replacements+=('&'); globals+=(0); others+=(''); names+=('') priorities+=(0); shift;;
 	--reset-name)		shift; types+=(reset-name); patterns+=("${1:?}"); replacements+=('&'); globals+=(0); others+=(''); names+=('') priorities+=(0); shift;;
 	--reset|-x)		shift
@@ -839,7 +846,7 @@ function renderIt(theMatchReset, theMatch, theCounts, resultList,      resultCnt
 		PROCINFO["sorted_in"] = save_sorted_in
 		    countAndPercentage = addPercentage(key, theCounts[key]["count"])
 		    if (countAndPercentage != "" && (reportLimit == "" || resultCnt < reportLimit))
-			resultList[++resultCnt] = theCounts[key]["text"] countPrefix countAndPercentage countSuffix
+			resultList[++resultCnt] = theCounts[key]["text"] (theCounts[key]["isIncludeCount"] ? countPrefix countAndPercentage countSuffix : "")
 		PROCINFO["sorted_in"] = reportOrder
 	    }
 	PROCINFO["sorted_in"] = save_sorted_in
@@ -959,7 +966,7 @@ function renderMatch(before, text, after)
 	    exit 3
     }
 }
-function renderCount(key, before, text, count, after,      tmp, countAndPercentage)
+function renderCount(key, isIncludeCount, before, text, count, after,      tmp, countAndPercentage)
 {
     switch (render) {
 	case "overlay":
@@ -971,15 +978,16 @@ function renderCount(key, before, text, count, after,      tmp, countAndPercenta
 	    delayedCounts[key]["lnum"] = NR
 	    delayedCounts[key]["col"] = startOffset
 	    delayedCounts[key]["text"] = text
+	    delayedCounts[key]["isIncludeCount"] = isIncludeCount
 	    break
 	case "highlight":
 	    countAndPercentage = addPercentage(key, count)
 	    if (countAndPercentage != "")
-		$0 = before highlightPrefix text countPrefix countAndPercentage countSuffix highlightSuffix after
+		$0 = before highlightPrefix text (isIncludeCount ? countPrefix countAndPercentage countSuffix : "") highlightSuffix after
 	    break
 	case "flash":
 	    countAndPercentage = addPercentage(key, count)
-	    if (countAndPercentage != "")
+	    if (countAndPercentage != "" && isIncludeCount)
 		tmp = countPrefix countAndPercentage countSuffix
 	    # Appending the count during the highlighting adds more characters
 	    # to the line. At the end, one instance of those trailing characters
@@ -1003,10 +1011,11 @@ function renderCount(key, before, text, count, after,      tmp, countAndPercenta
 		delayedCounts[key]["lnum"] = NR
 		delayedCounts[key]["col"] = startOffset
 		delayedCounts[key]["text"] = text
+		delayedCounts[key]["isIncludeCount"] = isIncludeCount
 	    } else {
 		countAndPercentage = addPercentage(key, count)
 		if (countAndPercentage != "")
-		    writeToFile(text countPrefix countAndPercentage countSuffix)
+		    writeToFile(text (isIncludeCount ? countPrefix countAndPercentage countSuffix : ""))
 	    }
 	    break
 	default:
@@ -1014,7 +1023,7 @@ function renderCount(key, before, text, count, after,      tmp, countAndPercenta
 	    exit 3
     }
 }
-function renderReset(key, previousCounts, type,      tmp) {
+function renderReset(key, previousCounts, type,      tmp, isIncludeCount) {
     if (previousCounts == 0) return
 
     switch (render) {
@@ -1034,12 +1043,14 @@ function renderReset(key, previousCounts, type,      tmp) {
 		# No-op.
 	    } else if (type != "regexp") {
 		tmp = (type == "count" ? lastCountText[key] : getKeyMatch(key))
+		isIncludeCount = (type != "matches")
 		if (fileUpdateCountDelay != 0) {
 		    delayedCounts[key]["i"] = lowestI
 		    delayedCounts[key]["count"] = 0
 		    delayedCounts[key]["text"] = tmp
+		    delayedCounts[key]["isIncludeCount"] = isIncludeCount
 		} else {
-		    writeToFile(tmp countPrefix "0" countSuffix)
+		    writeToFile(tmp (isIncludeCount ? countPrefix "0" countSuffix : ""))
 		}
 	    } else if (fileClearMatchTemplate != "") {
 		tmp = gensub(/.*/, fileClearMatchTemplate, 1, lastMatchText)
@@ -1133,6 +1144,7 @@ function process(type, start, len, pattern, replacement, other, name, priority, 
 	    break
 	case "regexp":
 	case "count":
+	case "matches":
 	case "match-count":
 	    if (lastPriority != "" && lastPriority > priority) return
 		lastPriority = priority
@@ -1159,12 +1171,13 @@ function process(type, start, len, pattern, replacement, other, name, priority, 
 	    tmp = replace(substr($0, start, len), pattern, replacement)
 	    key = name pad(name, "-") pattern
 	    lastCountText[key] = tmp
-	    renderCount(key, substr($0, 1, start - 1), tmp, ++counts[key], substr($0, start + len))
+	    renderCount(key, 1, substr($0, 1, start - 1), tmp, ++counts[key], substr($0, start + len))
 	    break
+	case "matches":
 	case "match-count":
 	    tmp = replace(substr($0, start, len), pattern, replacement)
 	    key = name pad(name, "-") tmp
-	    renderCount(key, substr($0, 1, start - 1), replace(substr($0, start, len), pattern, replacement), ++matchCounts[key], substr($0, start + len))
+	    renderCount(key, type != "matches", substr($0, 1, start - 1), replace(substr($0, start, len), pattern, replacement), ++matchCounts[key], substr($0, start + len))
 	    break
 	case "reset":
 	    resetMatch(name)
