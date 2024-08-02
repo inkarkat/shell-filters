@@ -12,7 +12,7 @@ printShortUsage()
 {
     # Note: short followed by long option; if the user knows the short one, she can
     # skim the long one.
-    printf 'Usage: %q %s\n' "$(basename "$1")" '[-u|--unbuffered] [-q|--quiet] [-y|--summary|-Y|--summary-only] [[--name-percentage-threshold N] -%|--name-percentages NAME|/NAME-PATTERN/ [...]] [-t|--to overlay [--clear]|title|stderr|concatenated|command|notify|highlight|flash|FILE|--grep-only-matching|--grep-count] [-S|--skip-lines PATTERN [-S ...]] [-o|--report-order by-arg|count-desc|first-match|match-asc|recent-match] [-O|--report-limit N] (-s|--skip-regexp PATTERN [-s ...] [-g|--global])|(-e|--regexp [-r|--replacement REPLACEMENT] [-g|--global] [-p|--priority N] [-n|--name NAME] [-k|--reset-other NAME|/NAME-PATTERN/] [-x|--reset RESET-PATTERN [-k|--reset-other NAME|/NAME-PATTERN/]])|(-c|--count|-m|--matches|-M|--match-count [-r|--replacement REPLACEMENT] [-g|--global] [-p|--priority N] [-n|--name NAME] [-k|--reset-other NAME|/NAME-PATTERN/] [-x|--reset RESET-PATTERN [-k|--reset-other NAME|/NAME-PATTERN/]])|(--reset-name PATTERN [-g|--global] -n|--name NAME|/NAME-PATTERN/) [...] [--] FILE [...][-?|-h|--help]'
+    printf 'Usage: %q %s\n' "$(basename "$1")" '[-u|--unbuffered] [-q|--quiet] [-y|--summary|-Y|--summary-only] [[--name-percentage-threshold N] -%|--name-percentages NAME|/NAME-PATTERN/|-#|--percentage-total NAME|/NAME-PATTERN/ TOTAL [...]] [-t|--to overlay [--clear]|title|stderr|concatenated|command|notify|highlight|flash|FILE|--grep-only-matching|--grep-count] [-S|--skip-lines PATTERN [-S ...]] [-o|--report-order by-arg|count-desc|first-match|match-asc|recent-match] [-O|--report-limit N] (-s|--skip-regexp PATTERN [-s ...] [-g|--global])|(-e|--regexp [-r|--replacement REPLACEMENT] [-g|--global] [-p|--priority N] [-n|--name NAME] [-k|--reset-other NAME|/NAME-PATTERN/] [-x|--reset RESET-PATTERN [-k|--reset-other NAME|/NAME-PATTERN/]])|(-c|--count|-m|--matches|-M|--match-count [-r|--replacement REPLACEMENT] [-g|--global] [-p|--priority N] [-n|--name NAME] [-k|--reset-other NAME|/NAME-PATTERN/] [-x|--reset RESET-PATTERN [-k|--reset-other NAME|/NAME-PATTERN/]])|(--reset-name PATTERN [-g|--global] -n|--name NAME|/NAME-PATTERN/) [...] [--] FILE [...][-?|-h|--help]'
 }
 printUsage()
 {
@@ -170,11 +170,18 @@ HELPDESCRIPTION
 			    percentage that a count for something starting with
 			    NAME or matching /NAME-PATTERN/ represents (from
 			    that group of named counts).
+    --percentage-total|-# NAME|/NAME-PATTERN/ TOTAL
+			    After the reported count for something starting with
+			    NAME or matching /NAME-PATTERN/, also include the
+			    ratio of that count to the passed TOTAL value. So
+			    this compares against a canned fixed value, whereas
+			    --name-percentages compares against the sum of named
+			    counts.
     --name-percentage-threshold N
 			    Only report counts and percentages if the percentage
 			    is at least N%; i.e. omit infrequent NAMEs. This
-			    applies to all following --name-percentages
-			    arguments.
+			    applies to all following --name-percentages and
+			    --percentage-total arguments.
 All PATTERNs are AWK-style extended regular expressions.
 Due to the continuous parsing and reporting, anchoring to the beginning via ^
 does not just match the beginning of the line, but the position after each end
@@ -314,6 +321,8 @@ isClear=
 isQuiet=
 reportOrder='compareByKeyArgumentOrder'
 reportLimit=
+typeset -A percentageTotals=()
+typeset -A percentageTotalThresholds=()
 while [ $# -ne 0 ]
 do
     case "$1" in
@@ -424,6 +433,7 @@ do
 	--name-percentage-threshold)
 				shift; currentNamePercentageThreshold="$1"; shift;;
 	--name-percentages|-%)	shift; namePercentages+=("$1"); namePercentageThresholds+=($currentNamePercentageThreshold); shift;;
+	--percentage-total|-\#) shift; percentageTotals["${1:?}"]="${2:?}"; percentageTotalThresholds["${1:?}"]="$currentNamePercentageThreshold"; shift; shift;;   # Assumption: Dicts with same keys iterate values in the same order (seems to hold for Bash 5.0.17(1)-release).
 	--)		shift; break;;
 	-*)		{ echo "ERROR: Unknown option \"$1\"!"; echo; printUsage "$0"; } >&2; exit 2;;
 	*)		break;;
@@ -569,6 +579,9 @@ $EXEC awk \
     -v "countSuffix=${EXTRACTMATCHES_COUNT_SUFFIX//\\/\\\\}" \
     -v "isMatchBeforeCounts=${EXTRACTMATCHES_MATCH_BEFORE_COUNTS}" \
     -v "isCountBeforeText=${EXTRACTMATCHES_COUNT_BEFORE_TEXT}" \
+    -v "percentageTotalKeyList=${!percentageTotals[*]}" \
+    -v "percentageTotalValueList=${percentageTotals[*]//\\/\\\\}" \
+    -v "percentageTotalThresholdList=${percentageTotalThresholds[*]}" \
 '
 BEGIN {
     FS = "\n"
@@ -604,6 +617,22 @@ BEGIN {
     if (split(namePercentageThresholdList, namePercentageThresholds) != namePercentagesNum) {
 	print "Assert: Mismatch in number of named percentages and their thresholds." > "/dev/stderr"
 	exit 3
+    }
+
+    percentageTotalNum = split(percentageTotalKeyList, percentageTotalKeys, "\n")
+    if (split(percentageTotalValueList, percentageTotalValues, "\n") != percentageTotalNum) {
+	print "Assert: Mismatch in number of percentageTotals keys and values." > "/dev/stderr"
+	exit 3
+    }
+    if (split(percentageTotalThresholdList, percentageTotalTemp) != percentageTotalNum) {
+	print "Assert: Mismatch in number of percentageTotals and their thresholds." > "/dev/stderr"
+	exit 3
+    }
+    delete percentageTotals
+    delete percentageTotalThresholds
+    for (i = 1; i <= percentageTotalNum; ++i) {
+	percentageTotals[percentageTotalKeys[i]] = percentageTotalValues[i]
+	percentageTotalThresholds[percentageTotalKeys[i]] = percentageTotalTemp[i]
     }
 
     PROCINFO["sorted_in"] = "@ind_str_asc"
@@ -1122,8 +1151,21 @@ function resetByName(name,      namePattern, tmp)
 	resetMatchCounts(name)
     }
 }
-function addPercentage(key, count,      n, np, npPattern, tmp, sum, percentage, renderedPercentage)
+function addPercentage(key, count,      n, pt, ptPattern, np, npPattern, tmp, sum, percentage, renderedPercentage)
 {
+    for (pt in percentageTotals) {
+	if (pt ~ /^\/.*\/$/) {
+	    ptPattern = substr(pt, 2, length(np) - 2)
+	    if (key !~ ptPattern) continue
+	    sum = percentageTotals[pt]
+	} else {
+	    if (substr(key, 1, length(pt)) != pt) continue
+	    sum = percentageTotals[pt]
+	}
+
+	return renderPercentage(count, sum, percentageTotalThresholds[pt])
+    }
+
     for (n = 1; n <= namePercentagesNum; ++n) {
 	np = namePercentages[n]
 	if (np ~ /^\/.*\/$/) {
@@ -1155,18 +1197,22 @@ function addPercentage(key, count,      n, np, npPattern, tmp, sum, percentage, 
 	    }
 	}
 
-	if (sum > 0) {
-	    percentage = 100 * count / sum
-
-	    if (percentage < namePercentageThresholds[n])
-		return ""
-
-	    renderedPercentage = sprintf("%d %." (percentage < 10 ? namePercentageSingleDigitPrecision : namePercentageMultiDigitPrecision) "f", count, percentage)
-	    return gensub(/^(.*) (.*)$/, namePercentageTemplate, 1, renderedPercentage)
-	}
+	return renderPercentage(count, sum, namePercentageThresholds[n])
     }
 
     return count
+}
+function renderPercentage(count, sum, threshold,      renderedPercentage)
+{
+    if (sum == 0) return count
+
+    percentage = 100 * count / sum
+
+    if (percentage < threshold)
+	return ""
+
+    renderedPercentage = sprintf("%d %." (percentage < 10 ? namePercentageSingleDigitPrecision : namePercentageMultiDigitPrecision) "f", count, percentage)
+    return gensub(/^(.*) (.*)$/, namePercentageTemplate, 1, renderedPercentage)
 }
 function process(type, start, len, pattern, replacement, other, name, priority,      key, tmp) {
     switch (type) {
