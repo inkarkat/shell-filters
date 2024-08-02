@@ -1155,18 +1155,22 @@ function addPercentage(key, count,      n, np, npPattern, tmp, sum, percentage, 
 	    }
 	}
 
-	if (sum > 0) {
-	    percentage = 100 * count / sum
-
-	    if (percentage < namePercentageThresholds[n])
-		return ""
-
-	    renderedPercentage = sprintf("%d %." (percentage < 10 ? namePercentageSingleDigitPrecision : namePercentageMultiDigitPrecision) "f", count, percentage)
-	    return gensub(/^(.*) (.*)$/, namePercentageTemplate, 1, renderedPercentage)
-	}
+	return renderPercentage(count, sum, namePercentageThresholds[n])
     }
 
     return count
+}
+function renderPercentage(count, sum, threshold,      renderedPercentage)
+{
+    if (sum == 0) return count
+
+    percentage = 100 * count / sum
+
+    if (percentage < threshold)
+	return ""
+
+    renderedPercentage = sprintf("%d %." (percentage < 10 ? namePercentageSingleDigitPrecision : namePercentageMultiDigitPrecision) "f", count, percentage)
+    return gensub(/^(.*) (.*)$/, namePercentageTemplate, 1, renderedPercentage)
 }
 function process(type, start, len, pattern, replacement, other, name, priority,      key, tmp) {
     switch (type) {
