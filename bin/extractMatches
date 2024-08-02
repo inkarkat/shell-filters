@@ -170,11 +170,6 @@ HELPDESCRIPTION
 			    percentage that a count for something starting with
 			    NAME or matching /NAME-PATTERN/ represents (from
 			    that group of named counts).
-    --name-percentage-threshold N
-			    Only report counts and percentages if the percentage
-			    is at least N%; i.e. omit infrequent NAMEs. This
-			    applies to all following --name-percentages
-			    arguments.
     --percentage-total|-# NAME|/NAME-PATTERN/ TOTAL
 			    After the reported count for something starting with
 			    NAME or matching /NAME-PATTERN/, also include the
@@ -182,6 +177,11 @@ HELPDESCRIPTION
 			    this compares against a canned fixed value, whereas
 			    --name-percentages compares against the sum of named
 			    counts.
+    --name-percentage-threshold N
+			    Only report counts and percentages if the percentage
+			    is at least N%; i.e. omit infrequent NAMEs. This
+			    applies to all following --name-percentages and
+			    --percentage-total arguments.
 All PATTERNs are AWK-style extended regular expressions.
 Due to the continuous parsing and reporting, anchoring to the beginning via ^
 does not just match the beginning of the line, but the position after each end
@@ -322,6 +322,7 @@ isQuiet=
 reportOrder='compareByKeyArgumentOrder'
 reportLimit=
 typeset -A percentageTotals=()
+typeset -A percentageTotalThresholds=()
 while [ $# -ne 0 ]
 do
     case "$1" in
@@ -432,7 +433,7 @@ do
 	--name-percentage-threshold)
 				shift; currentNamePercentageThreshold="$1"; shift;;
 	--name-percentages|-%)	shift; namePercentages+=("$1"); namePercentageThresholds+=($currentNamePercentageThreshold); shift;;
-	--percentage-total|-\#) shift; percentageTotals["${1:?}"]="${2:?}"; shift; shift;;
+	--percentage-total|-\#) shift; percentageTotals["${1:?}"]="${2:?}"; percentageTotalThresholds["${1:?}"]="$currentNamePercentageThreshold"; shift; shift;;   # Assumption: Dicts with same keys iterate values in the same order (seems to hold for Bash 5.0.17(1)-release).
 	--)		shift; break;;
 	-*)		{ echo "ERROR: Unknown option \"$1\"!"; echo; printUsage "$0"; } >&2; exit 2;;
 	*)		break;;
@@ -580,6 +581,7 @@ $EXEC awk \
     -v "isCountBeforeText=${EXTRACTMATCHES_COUNT_BEFORE_TEXT}" \
     -v "percentageTotalKeyList=${!percentageTotals[*]}" \
     -v "percentageTotalValueList=${percentageTotals[*]//\\/\\\\}" \
+    -v "percentageTotalThresholdList=${percentageTotalThresholds[*]}" \
 '
 BEGIN {
     FS = "\n"
@@ -622,8 +624,16 @@ BEGIN {
 	print "Assert: Mismatch in number of percentageTotals keys and values." > "/dev/stderr"
 	exit 3
     }
+    if (split(percentageTotalThresholdList, percentageTotalTemp) != percentageTotalNum) {
+	print "Assert: Mismatch in number of percentageTotals and their thresholds." > "/dev/stderr"
+	exit 3
+    }
     delete percentageTotals
-    for (i = 1; i <= percentageTotalNum; ++i) percentageTotals[percentageTotalKeys[i]] = percentageTotalValues[i]
+    delete percentageTotalThresholds
+    for (i = 1; i <= percentageTotalNum; ++i) {
+	percentageTotals[percentageTotalKeys[i]] = percentageTotalValues[i]
+	percentageTotalThresholds[percentageTotalKeys[i]] = percentageTotalTemp[i]
+    }
 
     PROCINFO["sorted_in"] = "@ind_str_asc"
     delete delayedCounts    # Reify as array; else, the length(delayedCounts) will create it as a scalar instead.
@@ -1153,7 +1163,7 @@ function addPercentage(key, count,      n, pt, ptPattern, np, npPattern, tmp, su
 	    sum = percentageTotals[pt]
 	}
 
-	return renderPercentage(count, sum, namePercentageThresholds[n])
+	return renderPercentage(count, sum, percentageTotalThresholds[pt])
     }
 
     for (n = 1; n <= namePercentagesNum; ++n) {
