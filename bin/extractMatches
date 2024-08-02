@@ -506,6 +506,7 @@ replacements+=(''); others+=(''); names+=('')	# Add one empty element so that sp
 : ${EXTRACTMATCHES_COUNT_PREFIX="$(getCountPrefix)"}
 : ${EXTRACTMATCHES_COUNT_SUFFIX="$(getCountSuffix)"}
 : ${EXTRACTMATCHES_MATCH_BEFORE_COUNTS="$(getMatchBeforeCounts)"}   # Whether the last match is reported before or after the count(s).
+: ${EXTRACTMATCHES_COUNT_BEFORE_TEXT=}	# Whether the count is reported before or after the text.
 file='/dev/stdout'
 case "$originalRender" in
     command|notify|highlight|flash) ;;
@@ -567,6 +568,7 @@ $EXEC awk \
     -v "countPrefix=${EXTRACTMATCHES_COUNT_PREFIX//\\/\\\\}" \
     -v "countSuffix=${EXTRACTMATCHES_COUNT_SUFFIX//\\/\\\\}" \
     -v "isMatchBeforeCounts=${EXTRACTMATCHES_MATCH_BEFORE_COUNTS}" \
+    -v "isCountBeforeText=${EXTRACTMATCHES_COUNT_BEFORE_TEXT}" \
 '
 BEGIN {
     FS = "\n"
@@ -859,7 +861,10 @@ function renderIt(theMatchReset, theMatch, theCounts, resultList,      resultCnt
 		PROCINFO["sorted_in"] = save_sorted_in
 		    countAndPercentage = addPercentage(key, theCounts[key]["count"])
 		    if (countAndPercentage != "" && (reportLimit == "" || resultCnt < reportLimit))
-			resultList[++resultCnt] = theCounts[key]["text"] (theCounts[key]["isIncludeCount"] ? countPrefix countAndPercentage countSuffix : "")
+			resultList[++resultCnt] = \
+			    (isCountBeforeText ? "" : theCounts[key]["text"]) \
+			    (theCounts[key]["isIncludeCount"] ? countPrefix countAndPercentage countSuffix : "") \
+			    (isCountBeforeText ? theCounts[key]["text"] : "")
 		PROCINFO["sorted_in"] = reportOrder
 	    }
 	PROCINFO["sorted_in"] = save_sorted_in
@@ -996,7 +1001,14 @@ function renderCount(key, isIncludeCount, before, text, count, after,      tmp, 
 	case "highlight":
 	    countAndPercentage = addPercentage(key, count)
 	    if (countAndPercentage != "")
-		$0 = before highlightPrefix text (isIncludeCount ? countPrefix countAndPercentage countSuffix : "") highlightSuffix after
+		$0 = \
+		    before \
+			highlightPrefix \
+			    (isCountBeforeText ? "" : text) \
+			    (isIncludeCount ? countPrefix countAndPercentage countSuffix : "") \
+			    (isCountBeforeText ? text : "") \
+			highlightSuffix \
+		    after
 	    break
 	case "flash":
 	    countAndPercentage = addPercentage(key, count)
@@ -1007,14 +1019,15 @@ function renderCount(key, isIncludeCount, before, text, count, after,      tmp, 
 	    # will remain, as the original line is shorter. To avoid that, add
 	    # (and backspace) filler spaces to the end.
 	    flashAdditionalWidth = length(tmp)
+	    tmp = (isCountBeforeText ? tmp text : text tmp)
 
 	    if (isQuiet) {
-		printf "%s", flash(text tmp, text)
+		printf "%s", flash(tmp, text)
 		fflush()
 		$0 = after
 	    } else {
 		printf "%s", before
-		$0 = flash(text tmp, text) after
+		$0 = flash(tmp, text) after
 	    }
 	    break
 	case "file":
@@ -1028,7 +1041,11 @@ function renderCount(key, isIncludeCount, before, text, count, after,      tmp, 
 	    } else {
 		countAndPercentage = addPercentage(key, count)
 		if (countAndPercentage != "")
-		    writeToFile(text (isIncludeCount ? countPrefix countAndPercentage countSuffix : ""))
+		    writeToFile(\
+			(isCountBeforeText ? "" : text) \
+			(isIncludeCount ? countPrefix countAndPercentage countSuffix : "") \
+			(isCountBeforeText ? text : "") \
+		)
 	    }
 	    break
 	default:
