@@ -18,7 +18,7 @@ Last: 9" ]
 }
 
 @test "reconfigured delayed match is written after delayed counts" {
-    export EXTRACTMATCHES_MATCH_BEFORE_COUNT=''
+    export EXTRACTMATCHES_MATCH_BEFORE_COUNTS=''
     run extractMatches --to "$LOG" --regexp fo+ --count '\<\w{4}\>' --global --match-count '\<i\w\>' --global <<<"$DELAY_INPUT"
     [ "$output" = "$DELAY_INPUT" ]
     assert_log "This: 4

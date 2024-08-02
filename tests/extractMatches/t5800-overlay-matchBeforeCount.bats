@@ -13,7 +13,7 @@ ${R}here:6|in:1|it:1|foooo${N}" ]
 }
 
 @test "reconfigured delayed match is overlaid before delayed counts" {
-    export EXTRACTMATCHES_MATCH_BEFORE_COUNT=t
+    export EXTRACTMATCHES_MATCH_BEFORE_COUNTS=t
     run extractMatches --to overlay --regexp fo+ --count '\<\w{4}\>' --global --match-count '\<i\w\>' --global <<<"$SIMPLE_INPUT"
     [ "$output" = "Just some text.
 ${R}text:3${N}This has foo in it.

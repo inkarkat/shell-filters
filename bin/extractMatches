@@ -208,7 +208,7 @@ getCountPrefix()
 	stderr|concatenated|*)				printf ': ';;
     esac
 }
-getMatchBeforeCount()
+getMatchBeforeCounts()
 {
     case "$originalRender" in
 	overlay|title|stderr|concatenated|command|notify)   printf '';;
@@ -505,7 +505,7 @@ fi >&2
 replacements+=(''); others+=(''); names+=('')	# Add one empty element so that split() will yield at least one in case of a single empty one.
 : ${EXTRACTMATCHES_COUNT_PREFIX="$(getCountPrefix)"}
 : ${EXTRACTMATCHES_COUNT_SUFFIX="$(getCountSuffix)"}
-: ${EXTRACTMATCHES_MATCH_BEFORE_COUNT="$(getMatchBeforeCount)"}
+: ${EXTRACTMATCHES_MATCH_BEFORE_COUNTS="$(getMatchBeforeCounts)"}   # Whether the last match is reported before or after the count(s).
 file='/dev/stdout'
 case "$originalRender" in
     command|notify|highlight|flash) ;;
@@ -566,7 +566,7 @@ $EXEC awk \
     -v "highlightSuffix=${EXTRACTMATCHES_HIGHLIGHT_SUFFIX//\\/\\\\}" \
     -v "countPrefix=${EXTRACTMATCHES_COUNT_PREFIX//\\/\\\\}" \
     -v "countSuffix=${EXTRACTMATCHES_COUNT_SUFFIX//\\/\\\\}" \
-    -v "isMatchBeforeCount=${EXTRACTMATCHES_MATCH_BEFORE_COUNT}" \
+    -v "isMatchBeforeCounts=${EXTRACTMATCHES_MATCH_BEFORE_COUNTS}" \
 '
 BEGIN {
     FS = "\n"
@@ -845,10 +845,10 @@ function postLine()
 }
 function renderIt(theMatchReset, theMatch, theCounts, resultList,      resultCnt, key, save_sorted_in, countAndPercentage)
 {
-    if (isMatchBeforeCount && theMatchReset != "") {
+    if (isMatchBeforeCounts && theMatchReset != "") {
 	resultList[++resultCnt] = theMatchReset
     }
-    if (isMatchBeforeCount && theMatch != "") {
+    if (isMatchBeforeCounts && theMatch != "") {
 	resultList[++resultCnt] = theMatch
     }
 
@@ -865,10 +865,10 @@ function renderIt(theMatchReset, theMatch, theCounts, resultList,      resultCnt
 	PROCINFO["sorted_in"] = save_sorted_in
     }
 
-    if (! isMatchBeforeCount && theMatchReset != "") {
+    if (! isMatchBeforeCounts && theMatchReset != "") {
 	resultList[++resultCnt] = theMatchReset
     }
-    if (! isMatchBeforeCount && theMatch != "") {
+    if (! isMatchBeforeCounts && theMatch != "") {
 	resultList[++resultCnt] = theMatch
     }
 
