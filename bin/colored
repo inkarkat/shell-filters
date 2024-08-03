@@ -8,11 +8,11 @@ printUsage()
 Make all output appear in ATTRIBUTE and/or COLOR (via ANSI escape sequences).
 HELPTEXT
     echo
-    printf 'Usage: [COLORED_SEPARATE_SEQUENCES=true] %q %s %s %s\n' "$(basename "$1")" '[--color=(always|auto|never)|--no-color]' "$ATTRIBUTE_COLOR_SYNTAX" '-- FILE [...] [-?|-h|--help|--list-colors]'
+    printf 'Usage: [COLORED_SEPARATE_SEQUENCES=true] %q %s %s %s\n' "$(basename "$1")" '[--color=(always|auto|never)|--no-color]' "$ATTRIBUTE_COLOR_SYNTAX" '[--color=(always|auto|never)|--no-color] -- FILE [...] [-?|-h|--help|--list-colors]'
     echo
-    printf 'Usage: %q %s\n' "$(basename "$1")" '[--color=(always|auto|never)|--no-color] [ATTRIBUTE [...]] [COLOR [COLOR]] MESSAGE [...]'
+    printf 'Usage: %q %s\n' "$(basename "$1")" '[--color=(always|auto|never)|--no-color] [ATTRIBUTE [...]] [COLOR [COLOR]] [--color=(always|auto|never)|--no-color] MESSAGE [...]'
     echo
-    printf 'Usage: cat FILE [...] | %q %s\n' "$(basename "$1")" '[--color=(always|auto|never)|--no-color] [ATTRIBUTE [...]] [COLOR [COLOR]]'
+    printf 'Usage: cat FILE [...] | %q %s\n' "$(basename "$1")" '[--color=(always|auto|never)|--no-color] [ATTRIBUTE [...]] [COLOR [COLOR]] [--color=(always|auto|never)|--no-color]'
     echo
     printf 'Usage: %q -g|--get [ATTRIBUTE [...]] [COLOR [COLOR]]\n' "$(basename "$1")"
     printf 'Usage: %q [ATTRIBUTE [...]] [COLOR [COLOR]] -g|--get\n' "$(basename "$1")"
@@ -105,6 +105,25 @@ else
     joinedSequences="[${sequences[*]}m"
 fi
 IFS="$saveIFS"
+
+case "$1" in
+    --no-color|--color=never)
+			isColor=; shift;;
+    --color=always)	isColor=t; shift;;
+    --color=auto)	shift;;
+    --color)		case "$2" in
+			    always) isColor=t;;
+			    never)  isColor=;;
+			    auto)   ;;
+			    *)	    echo >&2 "ERROR: Invalid --color arg: $2"
+				    echo >&2
+				    printUsage "$0" >&2
+				    exit 2
+				    ;;
+			esac
+			shift; shift
+			;;
+esac
 
 [ "$isColor" ] \
     && typeset -a COLOR=(sed -e "s/\\[0m/${joinedSequences}/g" -e "s/^/${joinedSequences}/" -e "s/$/[0m/") \
