@@ -8,19 +8,37 @@ printUsage()
 Make all output appear in ATTRIBUTE and/or COLOR (via ANSI escape sequences).
 HELPTEXT
     echo
-    printf 'Usage: [COLORED_SEPARATE_SEQUENCES=true] %q %s %s\n' "$(basename "$1")" "$ATTRIBUTE_COLOR_SYNTAX" '-- FILE [...] [-?|-h|--help|--list-colors]'
+    printf 'Usage: [COLORED_SEPARATE_SEQUENCES=true] %q %s %s %s\n' "$(basename "$1")" '[--color=(always|auto|never)|--no-color]' "$ATTRIBUTE_COLOR_SYNTAX" '[--color=(always|auto|never)|--no-color] -- FILE [...] [-?|-h|--help|--list-colors]'
     echo
-    printf 'Usage: %q %s\n' "$(basename "$1")" '[ATTRIBUTE [...]] [COLOR [COLOR]] MESSAGE [...]'
+    printf 'Usage: %q %s\n' "$(basename "$1")" '[--color=(always|auto|never)|--no-color] [ATTRIBUTE [...]] [COLOR [COLOR]] [--color=(always|auto|never)|--no-color] MESSAGE [...]'
     echo
-    printf 'Usage: cat FILE [...] | %q [ATTRIBUTE [...]] [COLOR [COLOR]]\n' "$(basename "$1")"
+    printf 'Usage: cat FILE [...] | %q %s\n' "$(basename "$1")" '[--color=(always|auto|never)|--no-color] [ATTRIBUTE [...]] [COLOR [COLOR]] [--color=(always|auto|never)|--no-color]'
     echo
     printf 'Usage: %q -g|--get [ATTRIBUTE [...]] [COLOR [COLOR]]\n' "$(basename "$1")"
     printf 'Usage: %q [ATTRIBUTE [...]] [COLOR [COLOR]] -g|--get\n' "$(basename "$1")"
 }
+
+isColor=; [ -t 1 ] && isColor=t
 isPrintSequence=
 typeset -a sequences=()
 case "$1" in
     --help|-h|-\?)	shift; printUsage "$0"; exit 0;;
+    --no-color|--color=never)
+			isColor=; shift;;
+    --color=always)	isColor=t; shift;;
+    --color=auto)	shift;;
+    --color)		case "$2" in
+			    always) isColor=t;;
+			    never)  isColor=;;
+			    auto)   ;;
+			    *)	    echo >&2 "ERROR: Invalid --color arg: $2"
+				    echo >&2
+				    printUsage "$0" >&2
+				    exit 2
+				    ;;
+			esac
+			shift; shift
+			;;
     --list-colors)	shift; printf '%s\n' "$ATTRIBUTE_COLOR_SYNTAX"; exit 0;;
     --get|-g)		shift; isPrintSequence=t;;
 esac
@@ -88,14 +106,45 @@ else
 fi
 IFS="$saveIFS"
 
-typeset -a COLOR=(sed -e "s/\\[0m/${joinedSequences}/g" -e "s/^/${joinedSequences}/" -e "s/$/[0m/")
+case "$1" in
+    --no-color|--color=never)
+			isColor=; shift;;
+    --color=always)	isColor=t; shift;;
+    --color=auto)	shift;;
+    --color)		case "$2" in
+			    always) isColor=t;;
+			    never)  isColor=;;
+			    auto)   ;;
+			    *)	    echo >&2 "ERROR: Invalid --color arg: $2"
+				    echo >&2
+				    printUsage "$0" >&2
+				    exit 2
+				    ;;
+			esac
+			shift; shift
+			;;
+esac
+
+[ "$isColor" ] \
+    && typeset -a COLOR=(sed -e "s/\\[0m/${joinedSequences}/g" -e "s/^/${joinedSequences}/" -e "s/$/[0m/") \
+    || typeset -a COLOR=()
+
 if [ $# -eq 0 -a "$isPrintSequence" ] || [ $# -eq 1 -a \( "$1" = --get -o "$1" = -g \) ]; then
     printf %s "$joinedSequences"
+    exit 0
 elif [ $# -eq 0 ]; then
-    exec "${COLOR[@]}"
-elif [ $# -ge 2 -a "$1" = '--' ]; then
-    shift
-    cat -- "$@" | "${COLOR[@]}"
-else
-    printf '%s\n' "$*" | "${COLOR[@]}"
+    exec "${COLOR[@]:-cat}"
 fi
+
+color()
+{
+    if [ $# -ge 2 -a "$1" = '--' ]; then
+	shift
+	cat -- "$@"
+    else
+	printf '%s\n' "$*"
+    fi
+}
+
+eval 'color "$@"'\
+    "${COLOR:+|}" '"${COLOR[@]}"'
