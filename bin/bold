@@ -5,19 +5,47 @@ printUsage()
     cat <<HELPTEXT
 Make all output bold (via ANSI escape sequences).
 HELPTEXT
-    printf 'Usage: %q %s\n' "$(basename "$1")" '-- FILE [...] [-?|-h|--help]'
-    printf 'Usage: %q %s\n' "$(basename "$1")" 'MESSAGE [...]'
-    printf 'Usage: cat FILE [...] | %q\n' "$(basename "$1")"
+    printf 'Usage: %q %s\n' "$(basename "$1")" '[--color=(always|auto|never)|--no-color] -- FILE [...] [-?|-h|--help]'
+    printf 'Usage: %q %s\n' "$(basename "$1")" '[--color=(always|auto|never)|--no-color] MESSAGE [...]'
+    printf 'Usage: cat FILE [...] | %q %s\n' "$(basename "$1")" '[--color=(always|auto|never)|--no-color]'
 }
+
+isColor=; [ -t 1 ] && isColor=t
 case "$1" in
     --help|-h|-\?)	shift; printUsage "$0"; exit 0;;
+    --no-color|--color=never)
+			isColor=; shift;;
+    --color=always)	isColor=t; shift;;
+    --color=auto)	shift;;
+    --color)		case "$2" in
+			    always) isColor=t;;
+			    never)  isColor=;;
+			    auto)   ;;
+			    *)	    echo >&2 "ERROR: Invalid --color arg: $2"
+				    echo >&2
+				    printUsage "$0" >&2
+				    exit 2
+				    ;;
+			esac
+			shift; shift
+			;;
 esac
 
-typeset -a BOLD=(sed -e 's/\[0m/[01m/g' -e 's/^/[01m/' -e 's/$/[0m/')
-if [ $# -eq 0 ]; then
-    exec "${BOLD[@]}"
-elif [ $# -ge 2 -a "$1" = '--' ]; then
-    cat "$@" | "${BOLD[@]}"
-else
-    printf '%s\n' "$*" | "${BOLD[@]}"
-fi
+[ "$isColor" ] \
+    && typeset -a BOLD=(sed -e 's/\[0m/[01m/g' -e 's/^/[01m/' -e 's/$/[0m/') \
+    || typeset -a BOLD=()
+
+
+[ $# -gt 0 ] \
+    || exec "${BOLD[@]:-cat}"
+bold()
+{
+    if [ $# -ge 2 -a "$1" = '--' ]; then
+	cat "$@"
+    else
+	printf '%s\n' "$*"
+    fi
+}
+
+eval 'bold "$@"'\
+    "${BOLD:+|}" '"${BOLD[@]}"'
