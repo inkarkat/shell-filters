@@ -1,0 +1,53 @@
+#!/bin/bash
+
+printShortUsage()
+{
+    # Note: short followed by long option; if the user knows the short one, they can
+    # skim the long one.
+    printf 'Usage: %q %s\n' "$(basename "$1")" '[-s|--separator SEPERATOR] [--] FILE [...] [-?|-h|--help]'
+}
+printUsage()
+{
+    # This is the short help when launched with no or incorrect arguments.
+    # It is printed to stderr to avoid accidental processing.
+    printShortUsage "$1" >&2
+    printf >&2 '\nTry %q --help for more information.\n' "$(basename "$1")"
+}
+printLongUsage()
+{
+    # This is the long "man page" when launched with the help argument.
+    # It is printed to stdout to allow paging with 'more'.
+    cat <<HELPDESCRIPTION
+Concatenate files with an empty line / SEPERATOR in between each.
+HELPDESCRIPTION
+    echo
+    printShortUsage "$1"
+    echo
+    cat <<HELPTEXT
+    --separator|-s SEP	Use SEP as the separator between FILEs. Needs to include
+			the trailing newline. Default is an empty line.
+
+RELATED COMMANDS:
+- To prepend the filespec to each file's contents, use: tail -n +1 FILE [...]
+HELPTEXT
+}
+
+separator=$'\n'
+while [ $# -ne 0 ]
+do
+    case "$1" in
+	--help|-h|-\?)	shift; printLongUsage "$0"; exit 0;;
+	--separator|-s)	shift; separator="${1?}"; shift;;
+	--)		shift; break;;
+	-)		break;; # For supporting special - FILE without prior --
+	-*)		{ echo "ERROR: Unknown option \"$1\"!"; echo; printUsage "$0"; } >&2; exit 2;;
+	*)		break;;
+    esac
+done
+
+exec awk \
+    -v "separator=${separator//\\/\\\\}" \
+'
+FNR == 1 && NR != 1 { printf("%s", separator) }
+{ print }
+' "$@"
