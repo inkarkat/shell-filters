@@ -25,14 +25,15 @@ HELPDESCRIPTION
     echo
     cat <<HELPTEXT
     --separator|-s SEP	Use SEP as the separator between FILEs. Needs to include
-			the trailing newline. Default is an empty line.
+			leading and trailing newline if line breaks are desired.
+			Default is an empty line; i.e. two newline characters.
 
 RELATED COMMANDS:
 - To prepend the filespec to each file's contents, use: tail -n +1 FILE [...]
 HELPTEXT
 }
 
-separator=$'\n'
+separator=$'\n\n'
 while [ $# -ne 0 ]
 do
     case "$1" in
@@ -49,5 +50,7 @@ exec awk \
     -v "separator=${separator//\\/\\\\}" \
 '
 FNR == 1 && NR != 1 { printf("%s", separator) }
-{ print }
+FNR == 1 { printf("%s", $0) }
+FNR > 1 { printf("\n%s", $0) }
+END { printf("\n") }
 ' "$@"
