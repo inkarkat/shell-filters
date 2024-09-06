@@ -4,7 +4,7 @@ printShortUsage()
 {
     # Note: short followed by long option; if the user knows the short one, they can
     # skim the long one.
-    printf 'Usage: %q %s\n' "$(basename "$1")" '[-s|--separator SEPERATOR] [--] FILE [...] [-?|-h|--help]'
+    printf 'Usage: %q %s\n' "$(basename "$1")" '[-s|--separator SEPERATOR] [-e|--truncate-empty-lines] [--] FILE [...] [-?|-h|--help]'
 }
 printUsage()
 {
@@ -27,6 +27,11 @@ HELPDESCRIPTION
     --separator|-s SEP	Use SEP as the separator between FILEs. Needs to include
 			leading and trailing newline if line breaks are desired.
 			Default is an empty line; i.e. two newline characters.
+    --truncate-empty-lines|-e
+			Remove completely empty lines at the beginning and end
+			of each file. A file that just contains empty lines will
+			be shown as two separators end to end; a zero-length
+			file is completely ignored.
 
 RELATED COMMANDS:
 - To prepend the filespec to each file's contents, use: tail -n +1 FILE [...]
@@ -34,11 +39,14 @@ HELPTEXT
 }
 
 separator=$'\n\n'
+isTruncateEmptyLines=
 while [ $# -ne 0 ]
 do
     case "$1" in
 	--help|-h|-\?)	shift; printLongUsage "$0"; exit 0;;
 	--separator|-s)	shift; separator="${1?}"; shift;;
+	--truncate-empty-lines|-e)
+			shift; isTruncateEmptyLines=t;;
 	--)		shift; break;;
 	-)		break;; # For supporting special - FILE without prior --
 	-*)		{ echo "ERROR: Unknown option \"$1\"!"; echo; printUsage "$0"; } >&2; exit 2;;
@@ -48,9 +56,51 @@ done
 
 exec awk \
     -v "separator=${separator//\\/\\\\}" \
+    -v "isTruncateEmptyLines=$isTruncateEmptyLines" \
 '
-FNR == 1 && NR != 1 { printf("%s", separator) }
-FNR == 1 { printf("%s", $0) }
-FNR > 1 { printf("\n%s", $0) }
-END { printf("\n") }
+FNR == 1 {
+    currentSep = separator
+    isFirstFile = (NR == 1)
+    firstLnum = 1
+    buffer = ""
+    while (isTruncateEmptyLines && $0 == "" && getline) {
+	if (FNR == 1) {
+	    firstLnum = 1
+	    if (isFirstFile) {
+		# Empty first file does not need leading newline on the upcoming separation.
+		currentSep = gensub(/^\n/, "", 1, separator)
+	    } else {
+		# Omit the trailing newline as the current empty file did not have any output.
+		printf("%s", gensub(/\n$/, "", 1, separator))
+		isSeparatorLast = 1
+	    }
+	} else {
+	    ++firstLnum
+	}
+    }
+}
+FNR == firstLnum && NR != firstLnum {
+    printf("%s", currentSep)
+    isSeparatorLast = 1
+}
+{
+    newline = (FNR == firstLnum ? "" : "\n")
+    if (isTruncateEmptyLines) {
+	if (FNR > firstLum) {
+	    if ($0 == "") {
+		buffer = buffer newline $0
+	    } else {
+		printf("%s" newline "%s", buffer, $0)
+		buffer = ""
+		isSeparatorLast = 0
+	    }
+	}
+    } else {
+	printf(newline "%s", $0)
+    }
+}
+END {
+    # We only need conclusion if the the last file actually had content.
+    if (! isSeparatorLast) printf("\n")
+}
 ' "$@"
