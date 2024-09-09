@@ -1,0 +1,69 @@
+#!/bin/bash
+
+printShortUsage()
+{
+    # Note: short followed by long option; if the user knows the short one, she can
+    # skim the long one.
+    printf 'Usage: %q %s\n' "$(basename "$1")" '[-m|--multiline] [-a|--additional-chars CHARS] [-?|-h|--help]'
+    printf 'Usage: %q %s\n' "$(basename "$1")" '[...] -- FILE [...]'
+    printf 'Usage: %q %s\n' "$(basename "$1")" '[...] TEXT [...]'
+    printf 'Usage: cat FILE [...] | %q %s\n' "$(basename "$1")" '[...]'
+}
+printUsage()
+{
+    # This is the short help when launched with no or incorrect arguments.
+    # It is printed to stderr to avoid accidental processing.
+    printShortUsage "$1" >&2
+    printf >&2 '\nTry %q --help for more information.\n' "$(basename "$1")"
+}
+printLongUsage()
+{
+    # This is the long "man page" when launched with the help argument.
+    # It is printed to stdout to allow paging with 'more'.
+    cat <<HELPDESCRIPTION
+Convert passed FILE contents / each passed TEXT to a literal replacement string
+(for sed et al.)
+HELPDESCRIPTION
+    echo
+    printShortUsage "$1"
+    echo
+    cat <<HELPTEXT
+    --multiline|-m	Convert the entire input / TEXT to a single replacement
+			with \n instead of converting each line separately.
+    --additional-chars|-a CHARS
+			Also escape each character in CHARS as well.
+HELPTEXT
+}
+basicChars='\&'
+additionalChars=
+typeset -a joinerBeforeSedArgs=() joinerAfterSedArgs=()
+while [ $# -ne 0 ]
+do
+    case "$1" in
+	--help|-h|-\?)	shift; printLongUsage "$0"; exit 0;;
+	--additional-chars|-a)
+			shift; additionalChars+="${1?}"; shift;;
+	--multiline|-m)	shift; joinerBeforeSedArgs+=(-e :a -e '$!{ N; b a; }' -e '$!b'); joinerAfterSedArgs+=(-e '$s/\n/\\n/g');;
+	--)		break;;
+	-*)		{ echo "ERROR: Unknown option \"$1\"!"; echo; printUsage "$0"; } >&2; exit 2;;
+	*)		break;;
+    esac
+done
+
+typeset -a TOLITERALREPLACEMENT=(
+    sed "${joinerBeforeSedArgs[@]}" \
+	-e "s/[${basicChars}${additionalChars//\//\\/}]/\\\\&/g" \
+	"${joinerAfterSedArgs[@]}" \
+	"${additionalSedArgs[@]}"
+)
+if [ $# -eq 0 ]; then
+    exec "${TOLITERALREPLACEMENT[@]}"
+elif [ $# -ge 2 -a "$1" = '--' ]; then
+    shift
+    cat -- "$@" | "${TOLITERALREPLACEMENT[@]}"
+else
+    for text
+    do
+	printf '%s\n' "$text" | "${TOLITERALREPLACEMENT[@]}"
+    done
+fi
