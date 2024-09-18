@@ -10,7 +10,7 @@ HELPTEXT
     echo
     printf 'Usage: [COLORED_SEPARATE_SEQUENCES=true] %q %s %s %s\n' "$(basename "$1")" '[--color=(always|auto|never)|--no-color]' "$ATTRIBUTE_COLOR_SYNTAX" '[--color=(always|auto|never)|--no-color] -- FILE [...] [-?|-h|--help|--list-colors]'
     echo
-    printf 'Usage: %q %s\n' "$(basename "$1")" '[--color=(always|auto|never)|--no-color] [ATTRIBUTE [...]] [COLOR [COLOR]] [--color=(always|auto|never)|--no-color] MESSAGE [...]'
+    printf 'Usage: %q %s\n' "$(basename "$1")" '[--color=(always|auto|never)|--no-color] [ATTRIBUTE [...]] [COLOR [COLOR]] [--color=(always|auto|never)|--no-color] TEXT [...]'
     echo
     printf 'Usage: cat FILE [...] | %q %s\n' "$(basename "$1")" '[--color=(always|auto|never)|--no-color] [ATTRIBUTE [...]] [COLOR [COLOR]] [--color=(always|auto|never)|--no-color]'
     echo

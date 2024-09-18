@@ -5,8 +5,9 @@ printUsage()
     cat <<HELPTEXT
 Convert all lowercase characters to uppercase (which means "shouting" in IRC).
 HELPTEXT
+    echo
     printf 'Usage: %q %s\n' "$(basename "$1")" '-- FILE [...] [-?|-h|--help]'
-    printf 'Usage: %q %s\n' "$(basename "$1")" 'MESSAGE [...]'
+    printf 'Usage: %q %s\n' "$(basename "$1")" 'TEXT [...]'
     printf 'Usage: cat FILE [...] | %q\n' "$(basename "$1")"
 }
 case "$1" in

@@ -5,8 +5,9 @@ printUsage()
     cat <<HELPTEXT
 Make all output bold (via ANSI escape sequences).
 HELPTEXT
+    echo
     printf 'Usage: %q %s\n' "$(basename "$1")" '[--color=(always|auto|never)|--no-color] -- FILE [...] [-?|-h|--help]'
-    printf 'Usage: %q %s\n' "$(basename "$1")" '[--color=(always|auto|never)|--no-color] MESSAGE [...]'
+    printf 'Usage: %q %s\n' "$(basename "$1")" '[--color=(always|auto|never)|--no-color] TEXT [...]'
     printf 'Usage: cat FILE [...] | %q %s\n' "$(basename "$1")" '[--color=(always|auto|never)|--no-color]'
 }
 
