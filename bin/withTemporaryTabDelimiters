@@ -2,6 +2,7 @@
 set -o pipefail
 
 : ${WITHTEMPORARYTABDELIMITERS_COMMAND_JOINER=|}
+: ${WITHTEMPORARYTABDELIMITERS_INPUTFILES_END=;}
 
 printUsage()
 {
@@ -12,16 +13,32 @@ spaces.
 HELPTEXT
     echo
     printf 'Usage: cat FILE [...] | %q %s\n' "$(basename "$1")" '-c|--command "COMMANDLINE" [-c ...] | [--] SIMPLECOMMAND [...]'
-    printf 'Usage: %q %s\n' "$(basename "$1")" '-i|--input FILESPEC [...] -c ... [-?|-h|--help]'
+    printf 'Usage: %q %s\n' "$(basename "$1")" "-i|--input FILE [-i ...]|--input-files FILE [...] ${WITHTEMPORARYTABDELIMITERS_INPUTFILES_END} -c ... [-?|-h|--help]"
 }
 
-typeset -a spaceConverterArgs=()
+typeset -a inputFilespecs=()
 commands=
 while [ $# -ne 0 ]
 do
     case "$1" in
 	--help|-h|-\?)	shift; printUsage "$0"; exit 0;;
-	--input|-i)	shift; spaceConverterArgs+=("$1"); shift;;
+	--input|-i)	shift; inputFilespecs+=("${1:?}"); shift;;
+	--input-files)	shift
+			while [ $# -gt 0 -a "$1" != "$WITHTEMPORARYTABDELIMITERS_INPUTFILES_END" ]
+			do
+			    inputFilespecs+=("$1")
+			    shift
+			done
+			if [ $# -eq 0 ]; then
+			    echo "ERROR: --input-files must be concluded with '${WITHTEMPORARYTABDELIMITERS_INPUTFILES_END}'"; echo; printUsage "$0"
+			    exit 2
+			fi >&2
+			shift
+			if [ ${#inputFilespecs[@]} -eq 0 ]; then
+			    echo 'ERROR: --input-files must be followed by at least one FILE.'; echo; printUsage "$0"
+			    exit 2
+			fi >&2
+			;;
 	--command|-c)	shift; commands+="${commands:+ $WITHTEMPORARYTABDELIMITERS_COMMAND_JOINER }$1"; shift;;
 	--)		shift; break;;
 	-*)		{ echo "ERROR: Unknown option \"$1\"!"; echo; printUsage "$0"; } >&2; exit 2;;
@@ -41,6 +58,6 @@ if [ -z "$commands" ]; then
     exit 2
 fi >&2
 
-spaces2tab -- "${spaceConverterArgs[@]}" \
+spaces2tab -- "${inputFilespecs[@]}" \
     | eval "$commands" \
     | column -s $'\t' -t --keep-empty-lines
