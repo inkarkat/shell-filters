@@ -21,14 +21,14 @@ printLongUsage()
     # This is the long "man page" when launched with the help argument.
     # It is printed to stdout to allow paging with 'more'.
     cat <<HELPDESCRIPTION
-Convert passed FILE contents / each passed TEXT to a literal replacement string
-(for sed et al.)
+Convert each passed FILE contents / TEXT to a literal replacement string (for
+sed et al.)
 HELPDESCRIPTION
     echo
     printShortUsage "$1"
     echo
     cat <<HELPTEXT
-    --multiline|-m	Convert the entire input / TEXT to a single replacement
+    --multiline|-m	Convert the entire FILE / TEXT to a single replacement
 			with \n instead of converting each line separately.
     --additional-chars|-a CHARS
 			Also escape each character in CHARS as well.
@@ -60,7 +60,10 @@ if [ $# -eq 0 ]; then
     exec "${TOLITERALREPLACEMENT[@]}"
 elif [ $# -ge 2 -a "$1" = '--' ]; then
     shift
-    cat -- "$@" | "${TOLITERALREPLACEMENT[@]}"
+    for filespec
+    do
+	cat -- "$filespec" | "${TOLITERALREPLACEMENT[@]}"
+    done
 else
     for text
     do

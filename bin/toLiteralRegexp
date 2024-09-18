@@ -21,8 +21,8 @@ printLongUsage()
     # This is the long "man page" when launched with the help argument.
     # It is printed to stdout to allow paging with 'more'.
     cat <<HELPDESCRIPTION
-Convert passed FILE contents / each passed TEXT to a basic regular expression
-that matches the literal TEXT.
+Convert each passed FILE contents / TEXT to a basic regular expression that
+matches the literal TEXT.
 HELPDESCRIPTION
     echo
     printShortUsage "$1"
@@ -32,7 +32,7 @@ HELPDESCRIPTION
 			Apply escaping for interpretation as an extended regular
 			expression.
     --line-regexp|-x	Add ^ and $ anchors to the resulting regular expression.
-    --multiline|-m	Convert the entire input / TEXT to a single regular
+    --multiline|-m	Convert the entire FILE / TEXT to a single regular
 			expression with \n atoms instead of converting each line
 			separately.
     --additional-chars|-a CHARS
@@ -76,7 +76,10 @@ if [ $# -eq 0 ]; then
     exec "${TOLITERALREGEXP[@]}"
 elif [ $# -ge 2 -a "$1" = '--' ]; then
     shift
-    cat -- "$@" | "${TOLITERALREGEXP[@]}"
+    for filespec
+    do
+	cat -- "$filespec" | "${TOLITERALREGEXP[@]}"
+    done
 else
     for text
     do
