@@ -1,0 +1,94 @@
+#!/bin/bash
+set -o pipefail
+
+printShortUsage()
+{
+    # Note: short followed by long option; if the user knows the short one, she can
+    # skim the long one.
+    printf 'Usage: %q %s\n' "$(basename "$1")" '[-w|--width WIDTH] [--truncate-with ELLIPSIS] -- FILE [...] [-?|-h|--help]'
+    printf 'Usage: %q %s\n' "$(basename "$1")" '... PATHSPEC [...]'
+    printf 'Usage: cat FILE [...] | %q %s\n' "$(basename "$1")" '... [-]'
+}
+printUsage()
+{
+    # This is the short help when launched with no or incorrect arguments.
+    # It is printed to stderr to avoid accidental processing.
+    printShortUsage "$1" >&2
+    printf >&2 '\nTry %q --help for more information.\n' "$(basename "$1")"
+}
+printLongUsage()
+{
+    # This is the long "man page" when launched with the help argument.
+    # It is printed to stdout to allow paging with 'more'.
+    cat <<HELPDESCRIPTION
+Limit PATHSPEC(s) [read from FILE(s) or standard input] to a maximum width by
+dropping intermediate subpaths or simply characters from the middle and using
+shell shortcuts (~) for the user's home directory.
+HELPDESCRIPTION
+    echo
+    printShortUsage "$1"
+    echo
+    cat <<HELPTEXT
+    --width|-w WIDTH	Use at most WIDTH characters; defaults to the terminal's
+			width.
+    --truncate-with ELLIPSIS
+			Use ELLIPSIS as the replacement for the truncated part;
+			default "$ellipsis"
+HELPTEXT
+}
+
+ellipsis='...'
+width=${COLUMNS:-80}
+while [ $# -ne 0 ]
+do
+    case "$1" in
+	--help|-h|-\?)	shift; printLongUsage "$0"; exit 0;;
+	--width|-w)	shift; width="${1:?}"; shift;;
+	--truncate-with)
+			shift; ellipsis="${1:?}"; shift;;
+	--)		shift; break;;
+	-)		break;; # For supporting special - FILE without prior --
+	-*)		{ echo "ERROR: Unknown option \"$1\"!"; echo; printUsage "$0"; } >&2; exit 2;;
+	*)		break;;
+    esac
+done
+
+
+pathTruncater()
+{
+    local fullPath shortenedPath pathFront pathBack
+    while IFS=$'\n' read -r fullPath || [ -n "$fullPath" ]
+    do
+	if [ -n "$HOME" ] && [[ "$fullPath" =~ ^"$HOME"(/.*|$) ]]; then
+	    shortenedPath="~${BASH_REMATCH[1]}"
+	elif [ -n "$REALHOME" ] && [[ "$fullPath" =~ ^"$REALHOME"(/.*|$) ]]; then
+	    shortenedPath="~${BASH_REMATCH[1]}"
+	else
+	    # Currently not in home directory structure.
+	    shortenedPath="$fullPath"
+	fi
+
+	# Limit path length; if necessary, replace intermediate part with '/.../'
+	if [ ${#shortenedPath} -gt $width ]; then
+	    pathFront="${shortenedPath:0:$(((width - ${#ellipsis})/2))}"
+	    [[ "${pathFront:1}" =~ / ]] && pathFront="${pathFront%/*}/"	# Trim right to up to slash.
+
+	    # pathBack contains the last characters (as many of $width that are not yet spent by the front part plus the $ellipsis).
+	    pathBack="${shortenedPath:$((${#shortenedPath} - width + ${#pathFront} + ${#ellipsis}))}"
+	    [[ "${pathBack:0:-1}" =~ / ]] && pathBack="/${pathBack#*/}"    # Trim left up to slash.
+
+	    shortenedPath="${pathFront}${ellipsis}${pathBack}"	# Reassemble path.
+	fi
+	printf '%s\n' "$shortenedPath"
+    done
+}
+
+if [ $# -eq 0 -o "$*" = - ]; then
+    pathTruncater
+elif [ "$1" = '--' -a $# -eq 2 -a "$2" != - ]; then
+    pathTruncater < "$2"
+elif [ "$1" = '--' -a $# -ge 2 ]; then
+    cat "$@" | pathTruncater
+else
+    printf '%s\n' "$*" | pathTruncater
+fi
