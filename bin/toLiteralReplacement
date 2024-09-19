@@ -5,9 +5,9 @@ printShortUsage()
     # Note: short followed by long option; if the user knows the short one, she can
     # skim the long one.
     printf 'Usage: %q %s\n' "$(basename "$1")" '[-m|--multiline] [-a|--additional-chars CHARS] [-?|-h|--help]'
-    printf 'Usage: %q %s\n' "$(basename "$1")" '[...] -- FILE [...]'
-    printf 'Usage: %q %s\n' "$(basename "$1")" '[...] TEXT [...]'
-    printf 'Usage: cat FILE [...] | %q %s\n' "$(basename "$1")" '[...]'
+    printf 'Usage: %q %s\n' "$(basename "$1")" '... -- FILE [...]'
+    printf 'Usage: %q %s\n' "$(basename "$1")" '... TEXT [...]'
+    printf 'Usage: cat FILE [...] | %q %s\n' "$(basename "$1")" '... [-]'
 }
 printUsage()
 {
@@ -56,7 +56,8 @@ typeset -a TOLITERALREPLACEMENT=(
 	"${joinerAfterSedArgs[@]}" \
 	"${additionalSedArgs[@]}"
 )
-if [ $# -eq 0 ]; then
+
+if [ $# -eq 0 -o "$*" = - ]; then
     exec "${TOLITERALREPLACEMENT[@]}"
 elif [ $# -ge 2 -a "$1" = '--' ]; then
     shift

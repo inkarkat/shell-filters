@@ -8,18 +8,16 @@ HELPTEXT
     echo
     printf 'Usage: %q %s\n' "$(basename "$1")" '-- FILE [...] [-?|-h|--help]'
     printf 'Usage: %q %s\n' "$(basename "$1")" 'TEXT [...]'
-    printf 'Usage: cat FILE [...] | %q\n' "$(basename "$1")"
+    printf 'Usage: cat FILE [...] | %q %s\n' "$(basename "$1")" '[-]'
 }
 case "$1" in
     --help|-h|-\?)	shift; printUsage "$0"; exit 0;;
 esac
 
 typeset -a SHOUT=(sed -e 'y/abcdefghijklmnopqrstuvwxyz/ABCDEFGHIJKLMNOPQRSTUVWXYZ/' -e 's#\(\x1b\[[0-9:;]*\)M#\1m#g')
-if [ $# -eq 0 ]; then
-    exec "${SHOUT[@]}"
-elif [ $# -ge 2 -a "$1" = '--' ]; then
-    shift
-    cat -- "$@" | "${SHOUT[@]}"
+
+if [ $# -eq 0 -o "$*" = - ] || [ $# -ge 2 -a "$1" = '--' ]; then
+    exec "${SHOUT[@]:-cat}" "$@"
 else
-    printf '%s\n' "$*" | "${SHOUT[@]}"
+    eval 'printf %s\\n "$*"' "${SHOUT:+|}" '"${SHOUT[@]}"'
 fi

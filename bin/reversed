@@ -8,7 +8,7 @@ HELPTEXT
     echo
     printf 'Usage: %q %s\n' "$(basename "$1")" '[--color=(always|auto|never)|--no-color] -- FILE [...] [-?|-h|--help]'
     printf 'Usage: %q %s\n' "$(basename "$1")" '[--color=(always|auto|never)|--no-color] TEXT [...]'
-    printf 'Usage: cat FILE [...] | %q %s\n' "$(basename "$1")" '[--color=(always|auto|never)|--no-color]'
+    printf 'Usage: cat FILE [...] | %q %s\n' "$(basename "$1")" '[--color=(always|auto|never)|--no-color] [-]'
 }
 
 isColor=; [ -t 1 ] && isColor=t
@@ -36,16 +36,8 @@ esac
     && typeset -a REVERSED=(sed -e 's/\[0m/[07m/g' -e 's/^/[07m/' -e 's/$/[0m/') \
     || typeset -a REVERSED=()
 
-[ $# -gt 0 ] \
-    || exec "${REVERSED[@]:-cat}"
-reversed()
-{
-    if [ $# -ge 2 -a "$1" = '--' ]; then
-	cat "$@"
-    else
-	printf '%s\n' "$*"
-    fi
-}
-
-eval 'reversed "$@"'\
-    "${REVERSED:+|}" '"${REVERSED[@]}"'
+if [ $# -eq 0 -o "$*" = - ] || [ $# -ge 2 -a "$1" = '--' ]; then
+    exec "${REVERSED[@]:-cat}" "$@"
+else
+    eval 'printf %s\\n "$*"' "${REVERSED:+|}" '"${REVERSED[@]}"'
+fi
