@@ -6,15 +6,18 @@ printUsage()
 Convert all lowercase characters to uppercase (which means "shouting" in IRC).
 HELPTEXT
     echo
-    printf 'Usage: %q %s\n' "$(basename "$1")" '-- FILE [...] [-?|-h|--help]'
-    printf 'Usage: %q %s\n' "$(basename "$1")" 'TEXT [...]'
-    printf 'Usage: cat FILE [...] | %q %s\n' "$(basename "$1")" '[-]'
+    printf 'Usage: %q %s\n' "$(basename "$1")" '[-u|--unbuffered] -- FILE [...] [-?|-h|--help]'
+    printf 'Usage: %q %s\n' "$(basename "$1")" '... TEXT [...]'
+    printf 'Usage: cat FILE [...] | %q %s\n' "$(basename "$1")" '... [-]'
 }
+
+typeset -a sedArgs=()
 case "$1" in
     --help|-h|-\?)	shift; printUsage "$0"; exit 0;;
+    --unbuffered|-u)	sedArgs+=("$1"); shift;;
 esac
 
-typeset -a SHOUT=(sed -e 'y/abcdefghijklmnopqrstuvwxyz/ABCDEFGHIJKLMNOPQRSTUVWXYZ/' -e 's#\(\x1b\[[0-9:;]*\)M#\1m#g')
+typeset -a SHOUT=(sed -e 'y/abcdefghijklmnopqrstuvwxyz/ABCDEFGHIJKLMNOPQRSTUVWXYZ/' -e 's#\(\x1b\[[0-9:;]*\)M#\1m#g' "${sedArgs[@]}")
 
 if [ $# -eq 0 -o "$*" = - ] || [ $# -ge 2 -a "$1" = '--' ]; then
     exec "${SHOUT[@]:-cat}" "$@"

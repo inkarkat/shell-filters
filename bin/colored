@@ -8,40 +8,49 @@ printUsage()
 Make all output appear in ATTRIBUTE and/or COLOR (via ANSI escape sequences).
 HELPTEXT
     echo
-    printf 'Usage: [COLORED_SEPARATE_SEQUENCES=true] %q %s %s %s\n' "$(basename "$1")" '[--color=(always|auto|never)|--no-color]' "$ATTRIBUTE_COLOR_SYNTAX" '[--color=(always|auto|never)|--no-color] -- FILE [...] [-?|-h|--help|--list-colors]'
+    printf 'Usage: [COLORED_SEPARATE_SEQUENCES=true] %q %s %s %s\n' "$(basename "$1")" '[--color=(always|auto|never)|--no-color]' "$ATTRIBUTE_COLOR_SYNTAX" '[--color=(always|auto|never)|--no-color] [-u|--unbuffered] -- FILE [...] [-?|-h|--help|--list-colors]'
     echo
-    printf 'Usage: %q %s\n' "$(basename "$1")" '[--color=(always|auto|never)|--no-color] [ATTRIBUTE [...]] [COLOR [COLOR]] [--color=(always|auto|never)|--no-color] TEXT [...]'
+    printf 'Usage: %q %s\n' "$(basename "$1")" '[--color=(always|auto|never)|--no-color] [ATTRIBUTE [...]] [COLOR [COLOR]] [--color=(always|auto|never)|--no-color] [-u|--unbuffered] TEXT [...]'
     echo
-    printf 'Usage: cat FILE [...] | %q %s\n' "$(basename "$1")" '[--color=(always|auto|never)|--no-color] [ATTRIBUTE [...]] [COLOR [COLOR]] [--color=(always|auto|never)|--no-color] [-]'
+    printf 'Usage: cat FILE [...] | %q %s\n' "$(basename "$1")" '[--color=(always|auto|never)|--no-color] [ATTRIBUTE [...]] [COLOR [COLOR]] [--color=(always|auto|never)|--no-color] [-u|--unbuffered] [-]'
     echo
     printf 'Usage: %q -g|--get [ATTRIBUTE [...]] [COLOR [COLOR]]\n' "$(basename "$1")"
     printf 'Usage: %q [ATTRIBUTE [...]] [COLOR [COLOR]] -g|--get\n' "$(basename "$1")"
 }
 
+typeset -a sedArgs=()
 isColor=; [ -t 1 ] && isColor=t
 isPrintSequence=
 typeset -a sequences=()
-case "$1" in
-    --help|-h|-\?)	shift; printUsage "$0"; exit 0;;
-    --no-color|--color=never)
+while [ $# -ne 0 ]
+do
+    case "$1" in
+	--help|-h|-\?)	shift; printUsage "$0"; exit 0;;
+	--no-color|--color=never)
 			isColor=; shift;;
-    --color=always)	isColor=t; shift;;
-    --color=auto)	shift;;
-    --color)		case "$2" in
-			    always) isColor=t;;
-			    never)  isColor=;;
-			    auto)   ;;
-			    *)	    echo >&2 "ERROR: Invalid --color arg: $2"
-				    echo >&2
-				    printUsage "$0" >&2
-				    exit 2
-				    ;;
+	--color=always)	isColor=t; shift;;
+	--color=auto)	shift;;
+	--color)	case "$2" in
+			always) isColor=t;;
+			never)  isColor=;;
+			auto)   ;;
+			*)	echo >&2 "ERROR: Invalid --color arg: $2"
+				echo >&2
+				printUsage "$0" >&2
+				exit 2
+				;;
 			esac
 			shift; shift
 			;;
-    --list-colors)	shift; printf '%s\n' "$ATTRIBUTE_COLOR_SYNTAX"; exit 0;;
-    --get|-g)		shift; isPrintSequence=t;;
-esac
+	--unbuffered|-u)
+			sedArgs+=("$1"); shift;;
+	--list-colors)	shift; printf '%s\n' "$ATTRIBUTE_COLOR_SYNTAX"; exit 0;;
+	--get|-g)	shift; isPrintSequence=t;;
+	--)		break;;
+	-*)		{ echo "ERROR: Unknown option \"$1\"!"; echo; printUsage "$0"; } >&2; exit 2;;
+	*)		break;;
+    esac
+done
 while [ $# -ne 0 ]
 do
     case "$1" in
@@ -106,12 +115,14 @@ else
 fi
 IFS="$saveIFS"
 
-case "$1" in
-    --no-color|--color=never)
+while [ $# -ne 0 ]
+do
+    case "$1" in
+	--no-color|--color=never)
 			isColor=; shift;;
-    --color=always)	isColor=t; shift;;
-    --color=auto)	shift;;
-    --color)		case "$2" in
+	--color=always)	isColor=t; shift;;
+	--color=auto)	shift;;
+	--color)	case "$2" in
 			    always) isColor=t;;
 			    never)  isColor=;;
 			    auto)   ;;
@@ -123,10 +134,16 @@ case "$1" in
 			esac
 			shift; shift
 			;;
-esac
+	--unbuffered|-u)
+			sedArgs+=("$1"); shift;;
+	--)		break;;
+	-*)		{ echo "ERROR: Unknown option \"$1\"!"; echo; printUsage "$0"; } >&2; exit 2;;
+	*)		break;;
+    esac
+done
 
 [ "$isColor" ] \
-    && typeset -a COLOR=(sed -e "s/\\[0m/${joinedSequences}/g" -e "s/^/${joinedSequences}/" -e "s/$/[0m/") \
+    && typeset -a COLOR=(sed -e "s/\\[0m/${joinedSequences}/g" -e "s/^/${joinedSequences}/" -e "s/$/[0m/" "${sedArgs[@]}") \
     || typeset -a COLOR=()
 
 if [ $# -eq 0 -a "$isPrintSequence" ] || [ $# -eq 1 -a \( "$1" = --get -o "$1" = -g \) ]; then

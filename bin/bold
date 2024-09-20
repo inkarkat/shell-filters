@@ -6,19 +6,22 @@ printUsage()
 Make all output bold (via ANSI escape sequences).
 HELPTEXT
     echo
-    printf 'Usage: %q %s\n' "$(basename "$1")" '[--color=(always|auto|never)|--no-color] -- FILE [...] [-?|-h|--help]'
-    printf 'Usage: %q %s\n' "$(basename "$1")" '[--color=(always|auto|never)|--no-color] TEXT [...]'
-    printf 'Usage: cat FILE [...] | %q %s\n' "$(basename "$1")" '[--color=(always|auto|never)|--no-color] [-]'
+    printf 'Usage: %q %s\n' "$(basename "$1")" '[--color=(always|auto|never)|--no-color] [-u|--unbuffered] -- FILE [...] [-?|-h|--help]'
+    printf 'Usage: %q %s\n' "$(basename "$1")" '... TEXT [...]'
+    printf 'Usage: cat FILE [...] | %q %s\n' "$(basename "$1")" '... [-]'
 }
 
+typeset -a sedArgs=()
 isColor=; [ -t 1 ] && isColor=t
-case "$1" in
-    --help|-h|-\?)	shift; printUsage "$0"; exit 0;;
-    --no-color|--color=never)
+while [ $# -ne 0 ]
+do
+    case "$1" in
+	--help|-h|-\?)	shift; printUsage "$0"; exit 0;;
+	--no-color|--color=never)
 			isColor=; shift;;
-    --color=always)	isColor=t; shift;;
-    --color=auto)	shift;;
-    --color)		case "$2" in
+	--color=always)	isColor=t; shift;;
+	--color=auto)	shift;;
+	--color)	case "$2" in
 			    always) isColor=t;;
 			    never)  isColor=;;
 			    auto)   ;;
@@ -30,10 +33,16 @@ case "$1" in
 			esac
 			shift; shift
 			;;
-esac
+	--unbuffered|-u)
+			sedArgs+=("$1"); shift;;
+	--)		break;;
+	-*)		{ echo "ERROR: Unknown option \"$1\"!"; echo; printUsage "$0"; } >&2; exit 2;;
+	*)		break;;
+    esac
+done
 
 [ "$isColor" ] \
-    && typeset -a BOLD=(sed -e 's/\[0m/[01m/g' -e 's/^/[01m/' -e 's/$/[0m/') \
+    && typeset -a BOLD=(sed -e 's/\[0m/[01m/g' -e 's/^/[01m/' -e 's/$/[0m/' "${sedArgs[@]}") \
     || typeset -a BOLD=()
 
 if [ $# -eq 0 -o "$*" = - ] || [ $# -ge 2 -a "$1" = '--' ]; then
