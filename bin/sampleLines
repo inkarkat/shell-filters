@@ -22,12 +22,14 @@ else
     : ${SAMPLELINES_COUNT_SUFFIX=')'}
 fi
 
+: ${SAMPLELINES_COMMAND_JOINER=|}
+: ${SAMPLELINES_EXEC_END=;}
 
 printShortUsage()
 {
     # Note: short followed by long option; if the user knows the short one, she can
     # skim the long one.
-    printf 'Usage: cat FILE [...] | %q %s\n' "$(basename "$1")" '[-r|--reset-on PATTERN [-r ...]] [-i|--inline-or-none|--inline-or-passthrough|-I|--inline-always [--inline-prefix IP] [-c|--clear] [-a|--append-reset|-k|--keep-reset]] [-S|--summarize WHAT[,PLURAL-WHAT] --summary-only] [-n|--count WHAT] [-s|--skip PATTERN [-s ...]] [-m|--match PATTERN [-m ...]] [-t|--timespan TIMESPAN[SUFFIX][ADJUSTMENT]] [-T|--initial-delay TIMESPAN[SUFFIX]] [-?|-h|--help]'
+    printf 'Usage: cat FILE [...] | %q %s\n' "$(basename "$1")" "[-r|--reset-on PATTERN [-r ...]] [-i|--inline-or-none|--inline-or-passthrough|-I|--inline-always [--inline-prefix IP] [-c|--clear] [-a|--append-reset|-k|--keep-reset]] [--transform-command TRANSFORM-COMMAND [--transform-command ...] | --transform-exec SIMPLECOMMAND [...] ${SAMPLELINES_EXEC_END} [--transform-exec ...]] [-S|--summarize WHAT[,PLURAL-WHAT] --summary-only] [-n|--count WHAT] [-s|--skip PATTERN [-s ...]] [-m|--match PATTERN [-m ...]] [-t|--timespan TIMESPAN[SUFFIX][ADJUSTMENT]] [-T|--initial-delay TIMESPAN[SUFFIX]] [-?|-h|--help]"
 }
 printUsage()
 {
@@ -69,6 +71,15 @@ HELPDESCRIPTION
 			lines (which could be informative headers or some other
 			crucial context), and continuing the inline sampling
 			below.
+    --transform CMD	Start CMD as a coprocess. The original contents of a
+			sampled line are written to CMD's standard input, and
+			one resulting line is read back and replaces the line's
+			contents. So CMD must respond with one output line for
+			each input line, without buffering.
+    --transform-exec CMD [...] ${SAMPLELINES_EXEC_END}
+			Start CMD as a coprocess; all following arguments are
+			taken to be arguments to the CMD until an argument
+			consisting of '${SAMPLELINES_EXEC_END}' is encountered.
     --summarize|-S WHAT[,PLURAL-WHAT]
 			Before printing selected output, also summarize the
 			amount of lines (characterized as WHAT, e.g. "line",
@@ -190,6 +201,7 @@ matchPattern=
 timespan=1
 timespanAdjustment=
 initialDelay=0
+transformCommands=
 while [ $# -ne 0 ]
 do
     case "$1" in
@@ -215,6 +227,24 @@ do
 	--inline-prefix)
 			shift; inlinePrefix="$1"; shift;;
 	--clear|-c)	shift; isClear=t;;
+	--transform-command)
+			shift; transformCommands+="${transformCommands:+ $SAMPLELINES_COMMAND_JOINER }$1"; shift;;
+	--transform-exec)
+			shift
+			cmd=
+			while [ $# -gt 0 -a "$1" != "$SAMPLELINES_EXEC_END" ]
+			do
+			    printf -v quotedArg %q "$1"
+			    cmd+="${cmd:+ }${quotedArg}"
+			    shift
+			done
+			if [ $# -eq 0 ]; then
+			    echo "ERROR: --transform-exec command must be concluded with '${SAMPLELINES_EXEC_END}'"; echo; printUsage "$0"
+			    exit 2
+			fi >&2
+			shift
+			transformCommands+="${transformCommands:+ $SAMPLELINES_COMMAND_JOINER }${cmd}"
+			;;
 	--summarize|-S)	shift
 			case "$1" in
 			    *,*)    summarizeWhat="${1%%,*}"
@@ -300,6 +330,7 @@ let count=0
 isAgain=
 isFirstExpiry=t
 
+[ -z "$transformCommands" ] || coproc TRANSFORMER { eval "$transformCommands"; } # Start a coproc to transform individual lines; this is much more efficient than starting a new process for each line.
 keepResetPrefix=
 while IFS=$'\n' read -r line || { [ -n "$summarizeWhat" ] || suffix=; [ -n "$line" ]; }
 do
@@ -326,7 +357,12 @@ do
 
     hasExpired=; isExpired && hasExpired=t
     if [ -n "$isTakeThisLine" ] || [ "$hasExpired" ]; then
-	sample="$line"
+	if [ -n "$transformCommands" ]; then
+	    printf '%s\n' "$line" >&"${TRANSFORMER[1]}"
+	    read -ru "${TRANSFORMER[0]}" sample
+	else
+	    sample="$line"
+	fi
 	if [ -n "$summarizeWhat" ]; then
 	    if [ "$isSummaryOnly" ]; then
 		summarySuffix=
