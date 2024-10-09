@@ -8,13 +8,16 @@ BEGIN {
 	    print "Print the lowest and highest number (separated by a space / SEPARATOR) found in"
 	    print "ARGS or the input."
 	    print ""
-	    print "Usage: minmax [-- -s|--separator SEPARATOR] ARG [...] [-?|-- -h|-H|--man|--usage]"
-	    print "Usage: cat FILE [...] | minmax [-- -s|--separator SEPARATOR]"
+	    print "Usage: minmax [-- -s|--separator SEPARATOR|--min|--max] ARG [...] [-?|-- -h|-H|--man|--usage]"
+	    print "Usage: cat FILE [...] | minmax [-- -s|--separator SEPARATOR|--min|--max]"
 	    isHelp = 1
 	    exit
 	} else if (ARGV[ARGB] == "--separator" || ARGV[ARGB] == "-s") {
 	    delete ARGV[ARGB++]
 	    separator = ARGV[ARGB]
+	    delete ARGV[ARGB++]
+	} else if (ARGV[ARGB] ~ /--(min|max)/) {
+	    only = substr(ARGV[ARGB], 3)
 	    delete ARGV[ARGB++]
 	} else {
 	    break
@@ -43,5 +46,13 @@ BEGIN {
     }
 }
 END {
-    if (! isHelp) printf "%d%s%d\n", min, separator, max
+    if (! isHelp) {
+	if (only == "min") {
+	    printf "%d\n", min
+	} else if (only == "max") {
+	    printf "%d\n", max
+	} else {
+	    printf "%d%s%d\n", min, separator, max
+	}
+    }
 }
