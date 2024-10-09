@@ -8,6 +8,9 @@ BEGIN {
 	    print "Print the lowest and highest number (separated by a space / SEPARATOR) found in"
 	    print "ARGS or the input."
 	    print ""
+	    print "EXIT STATUS:"
+	    print "   99   No data."
+	    print ""
 	    print "Usage: minmax [-- -s|--separator SEPARATOR|--min|--max] ARG [...] [-?|-- -h|-H|--man|--usage]"
 	    print "Usage: cat FILE [...] | minmax [-- -s|--separator SEPARATOR|--min|--max]"
 	    isHelp = 1
@@ -27,6 +30,7 @@ BEGIN {
 
 function tally(value)
 {
+    hasValue = 1
     min = (value < min ? value : min)
     max = (value > max ? value : max)
 }
@@ -47,7 +51,9 @@ BEGIN {
 }
 END {
     if (! isHelp) {
-	if (only == "min") {
+	if (! hasValue) {
+	    exit 99
+	} else if (only == "min") {
 	    printf "%d\n", min
 	} else if (only == "max") {
 	    printf "%d\n", max
