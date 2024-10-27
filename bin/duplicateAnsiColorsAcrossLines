@@ -1,0 +1,32 @@
+#!/bin/sed -uf
+
+## Duplicate ANSI escape sequences for coloring to the beginning of following
+## line(s). The allows correct color rendering with less --RAW-CONTROL-CHARS
+## (which (unlike the terminal) resets colors on each new line).
+## Cp. https://stackoverflow.com/questions/32925593/prevent-less-r-from-resetting-colours-across-newlines
+##
+## Usage: duplicateAnsiColorsAcrossLines FILE [...]
+## Usage: cat FILE [...] | duplicateAnsiColorsAcrossLines
+
+# Recall last color sequence and append it to the beginning of the line.
+/^\x1b\[[0-9:;]*m/!{
+    G
+    s/^\(.*\)\n\([^\n]*\)/\2\1/
+}
+
+# Clear last color sequence when a reset sequence is found.
+/\x1b\[0*m$/{
+    h
+    s/.*//
+    x
+    b
+}
+
+# Store last color sequence in hold space.
+/\x1b\[[0-9:;]*m/{
+    $b
+    h
+    s/^.*\(\x1b\[[0-9:;]*m\).*$/\1/
+    x
+    b
+}
