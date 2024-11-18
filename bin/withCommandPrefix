@@ -6,7 +6,7 @@ printShortUsage()
 {
     # Note: short followed by long option; if the user knows the short one, she can
     # skim the long one.
-    printf 'Usage: %q %s\n' "$(basename "$1")" "[--each-line] [-s|--separator SEP] -c|--command \"COMMANDLINE\" [-c ...] | --exec SIMPLECOMMAND ... $WITHCOMMANDPREFIX_EXEC_END [--exec ...] | [--] SIMPLECOMMAND [...] [-?|-h|--help]"
+    printf 'Usage: %q %s\n' "$(basename "$1")" "[--each-line] [-s|--separator SEP] [--command-filter FILTER-COMMAND] -c|--command \"COMMANDLINE\" [-c ...] | --exec SIMPLECOMMAND ... $WITHCOMMANDPREFIX_EXEC_END [--exec ...] | [--] SIMPLECOMMAND [...] [-?|-h|--help]"
 }
 printUsage()
 {
@@ -31,12 +31,18 @@ HELPDESCRIPTION
     --separator|-s SEP
 		Use SEP as the separator between the command name and the output
 		(instead of the default single space character).
+    --command-filter FILTER-COMMAND
+		Pipe the command name through FILTER-COMMAND before using it for
+		prefixing. E.g. to render the name in uppercase and bold, use
+		--command-filter 'bold --color=always' --command-filter shout
 HELPTEXT
 }
 
+commandFilter=
 getCommandName()
 {
-    commandName --no-interpreter --undefined '' "$@"
+    eval 'commandName --no-interpreter --undefined '' "$@"' \
+	"${commandFilter:+|}$commandFilter"
 }
 
 typeset -a args=()
@@ -49,6 +55,8 @@ do
 	--help|-h|-\?)	shift; printLongUsage "$0"; exit 0;;
 	--each-line)	shift; prefixFirstArg=();;
 	--separator|-s)	shift; separator="${1?}"; shift;;
+	--command-filter)
+			shift; commandFilter+="${commandFilter:+ | }${1?}"; shift;;
 
 	--command|-c)	args+=("$1"); shift; [ -n "$commandName" ] || commandName="$(getCommandName --eval -- "$1")"; args+=("$1"); shift;;
 	--exec)		args+=("$1"); shift
