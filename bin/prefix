@@ -90,7 +90,7 @@ literalPrefix="${literalPrefix//$'\n'/\\n}"
 address=
 typeset -a indentSedProcessing=()
 if [ "$isOnlyFirst" ]; then
-    indent="${prefix//?/ }"
+    indent="$(printf %s "$prefix" | noansi)"; indent="${indent//?/ }"
     address=1
     indentSedProcessing=(-e "${address}!s#\\(^${isKeepIndent:+[[:space:]]*}\\)#\\1${indent}#")
 fi

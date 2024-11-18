@@ -126,7 +126,7 @@ fi
 
 typeset -a indentSedProcessing=()
 if [ "$isOnlyFirst" ]; then
-    indent="${prefix//?/ }"
+    indent="$(printf %s "$prefix" | noansi)"; indent="${indent//?/ }"
     prefixAddress=1
     indentSedProcessing=(-e "${prefixAddress}!s#\\(^\\|\\n\\)\\(${isKeepWhitespace:+[ \t\v\f\r]*}\\)\\([^\\n]*[^${isKeepWhitespace:+ \t\v\f}\\n\\r]\\|\\)\\([${isKeepWhitespace:+ \t\v\f}\r]*\$\\)#\\1\2${indent}\\3${literalSuffix//#/\\#}\\4#")
 fi
