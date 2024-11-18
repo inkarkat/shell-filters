@@ -1,0 +1,92 @@
+#!/bin/bash
+
+: ${WITHCOMMANDPREFIX_EXEC_END=;}
+
+printShortUsage()
+{
+    # Note: short followed by long option; if the user knows the short one, she can
+    # skim the long one.
+    printf 'Usage: %q %s\n' "$(basename "$1")" "[--each-line] [-s|--separator SEP] [--command-filter FILTER-COMMAND] -c|--command \"COMMANDLINE\" [-c ...] | --exec SIMPLECOMMAND ... $WITHCOMMANDPREFIX_EXEC_END [--exec ...] | [--] SIMPLECOMMAND [...] [-?|-h|--help]"
+}
+printUsage()
+{
+    # This is the short help when launched with no or incorrect arguments.
+    # It is printed to stderr to avoid accidental processing.
+    printShortUsage "$1" >&2
+    printf >&2 '\nTry %q --help for more information.\n' "$(basename "$1")"
+}
+printLongUsage()
+{
+    # This is the long "man page" when launched with the help argument.
+    # It is printed to stdout to allow paging with 'more'.
+    cat <<HELPDESCRIPTION
+Execute COMMAND and prefix its output with the command's name.
+HELPDESCRIPTION
+    echo
+    printShortUsage "$1"
+    echo
+    cat <<HELPTEXT
+    --each-line	Prefix each line of the output with the command's name, not just
+		the first.
+    --separator|-s SEP
+		Use SEP as the separator between the command name and the output
+		(instead of the default single space character).
+    --command-filter FILTER-COMMAND
+		Pipe the command name through FILTER-COMMAND before using it for
+		prefixing. E.g. to render the name in uppercase and bold, use
+		--command-filter 'bold --color=always' --command-filter shout
+HELPTEXT
+}
+
+commandFilter=
+getCommandName()
+{
+    eval 'commandName --no-interpreter --undefined '' "$@"' \
+	"${commandFilter:+|}$commandFilter"
+}
+
+typeset -a args=()
+commandName=
+typeset -a prefixFirstArg=(--first-then-indent)
+separator=' '
+while [ $# -ne 0 ]
+do
+    case "$1" in
+	--help|-h|-\?)	shift; printLongUsage "$0"; exit 0;;
+	--each-line)	shift; prefixFirstArg=();;
+	--separator|-s)	shift; separator="${1?}"; shift;;
+	--command-filter)
+			shift; commandFilter+="${commandFilter:+ | }${1?}"; shift;;
+
+	--command|-c)	args+=("$1"); shift; [ -n "$commandName" ] || commandName="$(getCommandName --eval -- "$1")"; args+=("$1"); shift;;
+	--exec)		args+=("$1"); shift
+			typeset -a cmd=()
+			while [ $# -gt 0 -a "$1" != "$WITHCOMMANDPREFIX_EXEC_END" ]
+			do
+			    cmd+=("$1"); shift
+			done
+			if [ $# -eq 0 ]; then
+			    echo "ERROR: --exec command must be concluded with '${WITHCOMMANDPREFIX_EXEC_END}'"; echo; printUsage "$0"
+			    exit 2
+			fi >&2
+			args+=("${cmd[@]}" "$1"); shift
+			[ -n "$commandName" ] || commandName="$(getCommandName -- "${cmd[@]}")"
+			;;
+	--)		args+=("$1"); shift
+			[ -n "$commandName" ] || commandName="$(getCommandName -- "$@")"
+			break
+			;;
+	*)		args+=("$1"); shift;;
+    esac
+done
+set -- "${args[@]}" "$@"
+if [ $# -eq 0 ]; then
+    printUsage >&2 "$0"
+    exit 2
+elif [ -z "$commandName" ]; then
+    commandName="$(getCommandName -- "$@")"
+fi
+
+WITHOUTPUTTOSINK_EXEC_END="$WITHCOMMANDPREFIX_EXEC_END" \
+WITHOUTPUTTOSINK_COMMAND_JOINER="$WITHCOMMANDPREFIX_COMMAND_JOINER" \
+    exec withOutputToSink --bare --sink-exec prefix "${prefixFirstArg[@]}" "${commandName:-undefined}${separator}" \; "$@"
