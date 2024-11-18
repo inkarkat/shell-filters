@@ -2,13 +2,33 @@
 
 : ${WITHCOMMANDPREFIX_EXEC_END=;}
 
+printShortUsage()
+{
+    # Note: short followed by long option; if the user knows the short one, she can
+    # skim the long one.
+    printf 'Usage: %q %s\n' "$(basename "$1")" "[--each-line] -c|--command \"COMMANDLINE\" [-c ...] | --exec SIMPLECOMMAND ... $WITHCOMMANDPREFIX_EXEC_END [--exec ...] | [--] SIMPLECOMMAND [...] [-?|-h|--help]"
+}
 printUsage()
 {
-    cat <<HELPTEXT
+    # This is the short help when launched with no or incorrect arguments.
+    # It is printed to stderr to avoid accidental processing.
+    printShortUsage "$1" >&2
+    printf >&2 '\nTry %q --help for more information.\n' "$(basename "$1")"
+}
+printLongUsage()
+{
+    # This is the long "man page" when launched with the help argument.
+    # It is printed to stdout to allow paging with 'more'.
+    cat <<HELPDESCRIPTION
 Execute COMMAND and prefix its output with the command's name.
-HELPTEXT
+HELPDESCRIPTION
     echo
-    printf 'Usage: %q %s\n' "$(basename "$1")" "-c|--command \"COMMANDLINE\" [-c ...] | --exec SIMPLECOMMAND ... $WITHCOMMANDPREFIX_EXEC_END [--exec ...] | [--] SIMPLECOMMAND [...] [-?|-h|--help]"
+    printShortUsage "$1"
+    echo
+    cat <<HELPTEXT
+    --each-line	Prefix each line of the output with the command's name, not just
+		the first.
+HELPTEXT
 }
 
 getCommandName()
@@ -18,10 +38,12 @@ getCommandName()
 
 typeset -a args=()
 commandName=
+typeset -a prefixFirstArg=(--first-then-indent)
 while [ $# -ne 0 ]
 do
     case "$1" in
-	--help|-h|-\?)	shift; printUsage "$0"; exit 0;;
+	--help|-h|-\?)	shift; printLongUsage "$0"; exit 0;;
+	--each-line)	shift; prefixFirstArg=();;
 	--command|-c)	args+=("$1"); shift; [ -n "$commandName" ] || commandName="$(getCommandName --eval -- "$1")"; args+=("$1"); shift;;
 	--exec)		args+=("$1"); shift
 			typeset -a cmd=()
@@ -53,4 +75,4 @@ fi
 
 WITHOUTPUTTOSINK_EXEC_END="$WITHCOMMANDPREFIX_EXEC_END" \
 WITHOUTPUTTOSINK_COMMAND_JOINER="$WITHCOMMANDPREFIX_COMMAND_JOINER" \
-    exec withOutputToSink --bare --sink-exec prefix --first-then-indent "${commandName:-undefined} " \; "$@"
+    exec withOutputToSink --bare --sink-exec prefix "${prefixFirstArg[@]}" "${commandName:-undefined} " \; "$@"
