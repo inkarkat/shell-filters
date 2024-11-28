@@ -129,7 +129,7 @@ function getWidth(seconds)
 }
 function convert(integer,      seconds, hours, minutes, days, weeks, months, years, generations, renderedDuration)
 {
-    seconds = factor * integer
+    seconds = integer
 
     generations = int(seconds / GENERATION_IN_SECONDS)
     seconds = seconds - (GENERATION_IN_SECONDS * generations)
@@ -194,6 +194,7 @@ function repeat(text, count,      tmp, i)
 }
 function format(integer, width, precision, isSpacePadded,      precisionParse, precisionSigil, duration, rounder, c)
 {
+    integer *= factor
     duration = convert(integer)
 
     if (match(precision, /^([UZ])?(\.([0-9]+))?(mo|[smhdwyg])$/, precisionParse)) {
