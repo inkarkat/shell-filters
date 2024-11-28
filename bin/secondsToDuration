@@ -2,6 +2,9 @@
 
 : ${WORKDAY_SECONDS:=28800}; export WORKDAY_SECONDS
 : ${WORKWEEK_SECONDS:=$((WORKDAY_SECONDS * 5))}; export WORKWEEK_SECONDS
+: ${WORKMONTH_SECONDS:=$((WORKWEEK_SECONDS * 4))}; export WORKMONTH_SECONDS
+: ${WORKYEAR_SECONDS:=$((WORKMONTH_SECONDS * 12))}; export WORKYEAR_SECONDS
+: ${WORKGENERATION_SECONDS:=$((WORKYEAR_SECONDS * 38))}; export WORKGENERATION_SECONDS
 : ${WORK_PREFIX:=w}; export WORK_PREFIX
 
 printShortUsage()
@@ -25,7 +28,7 @@ printLongUsage()
     # It is printed to stdout to allow paging with 'more'.
     cat <<HELPDESCRIPTION
 Treat any integer in the input as seconds and convert them into
-[Ww ][Dd ] [Hh ][Mm ][Ss]|[HH:]MM:SS.
+[Gg ][Yy ][MOmo ][Ww ][Dd ] [Hh ][Mm ][Ss]|[HH:]MM:SS.
 HELPDESCRIPTION
     echo
     printShortUsage "$1"
@@ -40,12 +43,13 @@ HELPDESCRIPTION
 			    (comprised of $((WORKDAY_SECONDS / 3600)) hours, not 24) instead of calendar
 			    days, and adapt the unit (1${WORK_PREFIX}d, not 1d), too.
 			    The exact counting can be configured via
-			    \$WORKDAY_SECONDS and \$WORKWEEK_SECONDS; prefix is
-			    \$WORK_PREFIX.
+			    \$WORKDAY_SECONDS, \$WORKWEEK_SECONDS,
+			    \$WORKMONTH_SECONDS, \$WORKYEAR_SECONDS,
+			    \$WORKGENERATION_SECONDS; prefix is \$WORK_PREFIX.
     --precision|-p WIDTH    Remove smaller units so that the result will fit
 			    WIDTH; for example "01:02:03" will be rendered as
 			    "1h 2m", with "3s" removed to fit a width of 7.
-    --precision|-p [U|Z][.N](w|d|h|m|s)
+    --precision|-p [U|Z][.N](g|y|mo|w|d|h|m|s)
 			    Render purely as the passed unit [with N digits
 			    right of the decimal point]. A "U" sigil rounds up,
 			    a "Z" down towards zero; default is to nearest, ties
@@ -123,32 +127,52 @@ function getWidth(seconds)
 	return max(widthArg, length(seconds))
     }
 }
-function convert(integer,      seconds, hours, minutes)
+function convert(integer,      seconds, hours, minutes, days, weeks, months, years, generations, renderedDuration)
 {
-    seconds = factor * integer
+    seconds = integer
+
+    generations = int(seconds / GENERATION_IN_SECONDS)
+    seconds = seconds - (GENERATION_IN_SECONDS * generations)
+
+    years = int(seconds / YEAR_IN_SECONDS)
+    seconds = seconds - (YEAR_IN_SECONDS * years)
+
+    months = int(seconds / MONTH_IN_SECONDS)
+    seconds = seconds - (MONTH_IN_SECONDS * months)
+
     weeks = int(seconds / WEEK_IN_SECONDS)
     seconds = seconds - (WEEK_IN_SECONDS * weeks)
+
     days = int(seconds / DAY_IN_SECONDS)
     seconds = seconds - (DAY_IN_SECONDS * days)
+
     hours = int(seconds / 3600)
     seconds = seconds - (3600 * hours)
+
     minutes = int(seconds / 60)
     seconds = seconds - (60 * minutes)
 
     if ((minutes == 0 || seconds == 0) && ! isPreferClock) {
-	return gensub(\
+	renderedDuration = gensub(\
 		/ $/, "", 1, \
-		(weeks > 0 ? weeks workDayPrefix "w " : "") \
+		(generations > 0 ? generations workDayPrefix "g " : "") \
+		    (years > 0 ? years workDayPrefix "y " : "") \
+		    (months > 0 ? months workDayPrefix "mo " : "") \
+		    (weeks > 0 ? weeks workDayPrefix "w " : "") \
 		    (days > 0 ? days workDayPrefix "d " : "") \
 		    (hours > 0 ? hours "h " : "") \
 		    (minutes > 0 ? minutes "m " : "") \
 		    (seconds > 0 ? seconds "s " : ""))
+	return (renderedDuration == "" ? "0s" : renderedDuration)
     } else {
-	return (weeks > 0 ? weeks workDayPrefix "w " : "") \
+	return (generations > 0 ? generations workDayPrefix "g " : "") \
+		(years > 0 ? years workDayPrefix "y " : "") \
+		(months > 0 ? months workDayPrefix "mo " : "") \
+		(weeks > 0 ? weeks workDayPrefix "w " : "") \
 		(days > 0 ? days workDayPrefix "d " : "") \
-		(weeks > 0 || days > 0 || hours > 0 ? sprintf("%02d", hours) ":" : "") \
-		(weeks > 0 || days > 0 || hours > 0 || minutes > 0 ? sprintf("%02d", minutes) ":" : "") \
-		(weeks > 0 || days > 0 || hours > 0 || minutes > 0 ? sprintf("%02d", seconds) : sprintf("00:%02d", seconds))
+		(generations > 0 || years > 0 || months > 0 || weeks > 0 || days > 0 || hours > 0 ? sprintf("%02d", hours) ":" : "") \
+		(generations > 0 || years > 0 || months > 0 || weeks > 0 || days > 0 || hours > 0 || minutes > 0 ? sprintf("%02d", minutes) ":" : "") \
+		(generations > 0 || years > 0 || months > 0 || weeks > 0 || days > 0 || hours > 0 || minutes > 0 ? sprintf("%02d", seconds) : sprintf("00:%02d", seconds))
     }
 }
 function shallowclone(target, source,      e)
@@ -170,9 +194,10 @@ function repeat(text, count,      tmp, i)
 }
 function format(integer, width, precision, isSpacePadded,      precisionParse, precisionSigil, duration, rounder, c)
 {
+    integer *= factor
     duration = convert(integer)
 
-    if (match(precision, /^([UZ])?(\.([0-9]+))?([smhdw])$/, precisionParse)) {
+    if (match(precision, /^([UZ])?(\.([0-9]+))?(mo|[smhdwyg])$/, precisionParse)) {
 	precisionSigil = precisionParse[4]
 	if (precisionParse[1] != "") {
 	    ROUNDMODE = precisionParse[1]
@@ -183,6 +208,9 @@ function format(integer, width, precision, isSpacePadded,      precisionParse, p
 	rounder[2] = 3600
 	rounder[3] = DAY_IN_SECONDS
 	rounder[4] = WEEK_IN_SECONDS
+	rounder[5] = MONTH_IN_SECONDS
+	rounder[6] = YEAR_IN_SECONDS
+	rounder[7] = GENERATION_IN_SECONDS
 
 	for (c = 1; c <= length(rounder) + 1 && length(duration) > precision; ++c) {
 	    duration = rounder[c] \
@@ -201,6 +229,9 @@ function format(integer, width, precision, isSpacePadded,      precisionParse, p
     return sprintf("%" width "s", duration)
 }
 BEGIN {
+    GENERATION_IN_SECONDS = (isWorkDay ? ENVIRON["WORKGENERATION_SECONDS"] : 31556952 * 30)
+    YEAR_IN_SECONDS = (isWorkDay ? ENVIRON["WORKYEAR_SECONDS"] : 31536000)
+    MONTH_IN_SECONDS = (isWorkDay ? ENVIRON["WORKMONTH_SECONDS"] : 2628000)
     WEEK_IN_SECONDS = (isWorkDay ? ENVIRON["WORKWEEK_SECONDS"] : 604800)
     DAY_IN_SECONDS = (isWorkDay ? ENVIRON["WORKDAY_SECONDS"] : 86400)
     workDayPrefix = (isWorkDay ? ENVIRON["WORK_PREFIX"] : "")
@@ -210,6 +241,9 @@ BEGIN {
     dividers["h"] = 3600
     dividers["d"] = DAY_IN_SECONDS
     dividers["w"] = WEEK_IN_SECONDS
+    dividers["mo"] = MONTH_IN_SECONDS
+    dividers["y"] = YEAR_IN_SECONDS
+    dividers["g"] = GENERATION_IN_SECONDS
 
     if (ARGC > 1) {
 	i = 1

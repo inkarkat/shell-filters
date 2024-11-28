@@ -2,6 +2,9 @@
 
 : ${WORKDAY_SECONDS:=28800}; export WORKDAY_SECONDS
 : ${WORKWEEK_SECONDS:=$((WORKDAY_SECONDS * 5))}; export WORKWEEK_SECONDS
+: ${WORKMONTH_SECONDS:=$((WORKWEEK_SECONDS * 4))}; export WORKMONTH_SECONDS
+: ${WORKYEAR_SECONDS:=$((WORKMONTH_SECONDS * 12))}; export WORKYEAR_SECONDS
+: ${WORKGENERATION_SECONDS:=$((WORKYEAR_SECONDS * 38))}; export WORKGENERATION_SECONDS
 : ${WORK_PREFIX:=w}; export WORK_PREFIX
 
 printShortUsage()
@@ -23,7 +26,7 @@ printLongUsage()
     # This is the long "man page" when launched with the help argument.
     # It is printed to stdout to allow paging with 'more'.
     cat <<HELPDESCRIPTION
-Convert matches of [Ww ][Dd |D-][HH:]MM:SS into seconds.
+Convert matches of [Gg ][Yy ][MOmo ][Ww ][Dd |D-][HH:]MM:SS into seconds.
 HELPDESCRIPTION
     echo
     printShortUsage "$1"
@@ -73,6 +76,36 @@ function convert(duration,      calendar, n, c, cc, clock, result, hasMatch)
     }
 
     for (cc = 1; cc <= c; ++cc) {
+	if (calendar[cc] ~ "^[[:digit:]]+" ENVIRON["WORK_PREFIX"] "g$") {
+	    result += substr(calendar[cc], 1, length(calendar[cc]) - 1) * ENVIRON["WORKGENERATION_SECONDS"]
+	    hasMatch = 1
+	    continue
+	}
+	if (calendar[cc] ~ /^[[:digit:]]+g$/) {
+	    result += substr(calendar[cc], 1, length(calendar[cc]) - 1) * 31556952 * 30
+	    hasMatch = 1
+	    continue
+	}
+	if (calendar[cc] ~ "^[[:digit:]]+" ENVIRON["WORK_PREFIX"] "y$") {
+	    result += substr(calendar[cc], 1, length(calendar[cc]) - 1) * ENVIRON["WORKYEAR_SECONDS"]
+	    hasMatch = 1
+	    continue
+	}
+	if (calendar[cc] ~ /^[[:digit:]]+y$/) {
+	    result += substr(calendar[cc], 1, length(calendar[cc]) - 1) * 31536000
+	    hasMatch = 1
+	    continue
+	}
+	if (calendar[cc] ~ "^[[:digit:]]+" ENVIRON["WORK_PREFIX"] "mo$") {
+	    result += substr(calendar[cc], 1, length(calendar[cc]) - 1) * ENVIRON["WORKMONTH_SECONDS"]
+	    hasMatch = 1
+	    continue
+	}
+	if (calendar[cc] ~ /^[[:digit:]]+mo$/) {
+	    result += substr(calendar[cc], 1, length(calendar[cc]) - 1) * 2628000
+	    hasMatch = 1
+	    continue
+	}
 	if (calendar[cc] ~ "^[[:digit:]]+" ENVIRON["WORK_PREFIX"] "w$") {
 	    result += substr(calendar[cc], 1, length(calendar[cc]) - 1) * ENVIRON["WORKWEEK_SECONDS"]
 	    hasMatch = 1
@@ -132,7 +165,19 @@ function join(n, list, seps,      i, result) {
     return result
 }
 BEGIN {
-    DURATION_PATTERN = "\\<([[:digit:]]+(" ENVIRON["WORK_PREFIX"] ")?w )?(([[:digit:]]+((" ENVIRON["WORK_PREFIX"] ")?d |-))?[[:digit:]]+(:[[:digit:]]{2}){1,2}|([[:digit:]]+(" ENVIRON["WORK_PREFIX"] ")?d )?([[:digit:]]+h )?([[:digit:]]+m )?([[:digit:]]+s)|([[:digit:]]+(" ENVIRON["WORK_PREFIX"] ")?d )?([[:digit:]]+h )?([[:digit:]]+m)|([[:digit:]]+(" ENVIRON["WORK_PREFIX"] ")?d )?([[:digit:]]+h)|([[:digit:]]+(" ENVIRON["WORK_PREFIX"] ")?d))\\>|\\<([[:digit:]]+(" ENVIRON["WORK_PREFIX"] ")?w)\\>"
+    DIGITS_WORK = "[[:digit:]]+(" ENVIRON["WORK_PREFIX"] ")?"
+    WEEK_AND_LONGER_PATTERN = "(" DIGITS_WORK "g )?(" DIGITS_WORK "y )?(" DIGITS_WORK "mo )?" DIGITS_WORK "w"
+    WEEK_AND_LONGER_PATTERN = WEEK_AND_LONGER_PATTERN "|(" DIGITS_WORK "g )?(" DIGITS_WORK "y )?" DIGITS_WORK "mo"
+    WEEK_AND_LONGER_PATTERN = WEEK_AND_LONGER_PATTERN "|(" DIGITS_WORK "g )?" DIGITS_WORK "y"
+    WEEK_AND_LONGER_PATTERN = WEEK_AND_LONGER_PATTERN "|" DIGITS_WORK "g"
+    DAY_PATTERN = DIGITS_WORK "d"
+    DAY_AND_TIME_PATTERN = "([[:digit:]]+((" ENVIRON["WORK_PREFIX"] ")?d |-))?[[:digit:]]+(:[[:digit:]]{2}){1,2}"
+    HMS_PATTERN = "([[:digit:]]+h )?([[:digit:]]+m )?([[:digit:]]+s)"
+    HM_PATTERN = "([[:digit:]]+h )?([[:digit:]]+m)"
+    H_PATTERN = "([[:digit:]]+h)"
+
+    DURATION_PATTERN = "\\<((" WEEK_AND_LONGER_PATTERN ") )?(" DAY_AND_TIME_PATTERN "|(" DAY_PATTERN " )?" HMS_PATTERN "|(" DAY_PATTERN " )?" HM_PATTERN "|(" DAY_PATTERN " )?" H_PATTERN "|(" DAY_PATTERN "))\\>"
+    DURATION_PATTERN = DURATION_PATTERN "|\\<(" WEEK_AND_LONGER_PATTERN ")\\>"
 
     if (ARGC > 1) {
 	for (i = 1; i < ARGC; ++i) {
