@@ -127,7 +127,7 @@ function getWidth(seconds)
 	return max(widthArg, length(seconds))
     }
 }
-function convert(integer,      seconds, hours, minutes, days, weeks, months, years, generations)
+function convert(integer,      seconds, hours, minutes, days, weeks, months, years, generations, renderedDuration)
 {
     seconds = factor * integer
 
@@ -153,7 +153,7 @@ function convert(integer,      seconds, hours, minutes, days, weeks, months, yea
     seconds = seconds - (60 * minutes)
 
     if ((minutes == 0 || seconds == 0) && ! isPreferClock) {
-	return gensub(\
+	renderedDuration = gensub(\
 		/ $/, "", 1, \
 		(generations > 0 ? generations workDayPrefix "g " : "") \
 		    (years > 0 ? years workDayPrefix "y " : "") \
@@ -163,6 +163,7 @@ function convert(integer,      seconds, hours, minutes, days, weeks, months, yea
 		    (hours > 0 ? hours "h " : "") \
 		    (minutes > 0 ? minutes "m " : "") \
 		    (seconds > 0 ? seconds "s " : ""))
+	return (renderedDuration == "" ? "0s" : renderedDuration)
     } else {
 	return (generations > 0 ? generations workDayPrefix "g " : "") \
 		(years > 0 ? years workDayPrefix "y " : "") \
