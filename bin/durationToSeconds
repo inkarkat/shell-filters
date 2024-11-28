@@ -132,7 +132,16 @@ function join(n, list, seps,      i, result) {
     return result
 }
 BEGIN {
-    DURATION_PATTERN = "\\<([[:digit:]]+(" ENVIRON["WORK_PREFIX"] ")?w )?(([[:digit:]]+((" ENVIRON["WORK_PREFIX"] ")?d |-))?[[:digit:]]+(:[[:digit:]]{2}){1,2}|([[:digit:]]+(" ENVIRON["WORK_PREFIX"] ")?d )?([[:digit:]]+h )?([[:digit:]]+m )?([[:digit:]]+s)|([[:digit:]]+(" ENVIRON["WORK_PREFIX"] ")?d )?([[:digit:]]+h )?([[:digit:]]+m)|([[:digit:]]+(" ENVIRON["WORK_PREFIX"] ")?d )?([[:digit:]]+h)|([[:digit:]]+(" ENVIRON["WORK_PREFIX"] ")?d))\\>|\\<([[:digit:]]+(" ENVIRON["WORK_PREFIX"] ")?w)\\>"
+    DIGITS_WORK = "[[:digit:]]+(" ENVIRON["WORK_PREFIX"] ")?"
+    WEEK_PATTERN = DIGITS_WORK "w"
+    DAY_PATTERN = DIGITS_WORK "d"
+    DAY_AND_TIME_PATTERN = "([[:digit:]]+((" ENVIRON["WORK_PREFIX"] ")?d |-))?[[:digit:]]+(:[[:digit:]]{2}){1,2}"
+    HMS_PATTERN = "([[:digit:]]+h )?([[:digit:]]+m )?([[:digit:]]+s)"
+    HM_PATTERN = "([[:digit:]]+h )?([[:digit:]]+m)"
+    H_PATTERN = "([[:digit:]]+h)"
+
+    DURATION_PATTERN = "\\<(" WEEK_PATTERN " )?(" DAY_AND_TIME_PATTERN "|(" DAY_PATTERN " )?" HMS_PATTERN "|(" DAY_PATTERN " )?" HM_PATTERN "|(" DAY_PATTERN " )?" H_PATTERN "|(" DAY_PATTERN "))\\>"
+    DURATION_PATTERN = DURATION_PATTERN "|\\<(" WEEK_PATTERN ")\\>"
 
     if (ARGC > 1) {
 	for (i = 1; i < ARGC; ++i) {
