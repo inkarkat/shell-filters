@@ -1,0 +1,18 @@
+#!/bin/bash
+
+printUsage()
+{
+    cat <<HELPTEXT
+Make all output grey (via ANSI escape sequences).
+HELPTEXT
+    echo
+    printf 'Usage: %q %s\n' "$(basename "$1")" '[--color=(always|auto|never)|--no-color] [-u|--unbuffered] -- FILE [...] [-?|-h|--help]'
+    printf 'Usage: %q %s\n' "$(basename "$1")" '... TEXT [...]'
+    printf 'Usage: cat FILE [...] | %q %s\n' "$(basename "$1")" '... [-]'
+}
+
+case "$1" in
+    --help|-h|-\?)	shift; printUsage "$0"; exit 0;;
+esac
+
+exec colored 245 "$@"

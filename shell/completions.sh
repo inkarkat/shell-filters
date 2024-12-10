@@ -1,3 +1,3 @@
 #!/bin/sh source-this-script
 
-completeAsCommand firstRestLines insert pipeappend prefix suffix sumerr surround
+completeAsCommand greyerr hlerr firstRestLines insert pipeappend prefix suffix sumerr surround
