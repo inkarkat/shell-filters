@@ -1,0 +1,86 @@
+#!/bin/bash
+set -o pipefail
+
+: ${SUMERR_COMMAND_JOINER=;}
+
+printShortUsage()
+{
+    # Note: short followed by long option; if the user knows the short one, she can
+    # skim the long one.
+    printf 'Usage: %q %s\n' "$(basename "$1")" '[--no-header] [-Y|--summary-only] -c|--command "COMMANDLINE" [-c ...] | [--] SIMPLECOMMAND [...] [-?|-h|--help]'
+}
+printUsage()
+{
+    # This is the short help when launched with no or incorrect arguments.
+    # It is printed to stderr to avoid accidental processing.
+    printShortUsage "$1" >&2
+    printf >&2 '\nTry %q --help for more information.\n' "$(basename "$1")"
+}
+printLongUsage()
+{
+    # This is the long "man page" when launched with the help argument.
+    # It is printed to stdout to allow paging with 'more'.
+    cat <<HELPDESCRIPTION
+Execute COMMAND, deemphasizing the stderr output, then separately summarize the
+stdout output after COMMAND's execution (and normal output).
+HELPDESCRIPTION
+    echo
+    printShortUsage "$1"
+    echo
+    cat <<HELPTEXT
+    --no-header		Omit the empty line and header above the output summary.
+    --summary-only|-Y	Remove stdout output during the COMMAND execution so
+			that regular output is only shown once, at the end.
+HELPTEXT
+}
+
+isHeader=t
+isSummaryOnly=
+commands=
+while [ $# -ne 0 ]
+do
+    case "$1" in
+	--help|-h|-\?)	shift; printLongUsage "$0"; exit 0;;
+	--no-header)	shift; isHeader=;;
+	--summary-only|-Y)
+			shift; isSummaryOnly=t;;
+	--command|-c)	shift; commands+="${commands:+ $SUMERR_COMMAND_JOINER }$1"; shift;;
+	--)		shift; break;;
+	-*)		{ echo "ERROR: Unknown option \"$1\"!"; echo; printUsage "$0"; } >&2; exit 2;;
+	*)		break;;
+    esac
+done
+if [ $# -ne 0 ]; then
+    # Combine --command and SIMPLECOMMAND; need to quote SIMPLECOMMAND to
+    # undo the effects of eval.
+    printf -v quotedSimpleCommand '%q ' "$@"
+    commands+="${commands:+ $SUMERR_COMMAND_JOINER }${quotedSimpleCommand% }"
+fi
+if [ -z "$commands" ]; then
+    echo >&2 'ERROR: No COMMAND(s) specified; need to pass -c|--command "COMMANDLINE", or SIMPLECOMMAND.'
+    exit 2
+fi
+
+TMPFILE="$(mktemp --tmpdir "$(basename -- "$0")-XXXXXX" 2>/dev/null || echo "${TMPDIR:-/tmp}/$(basename -- "$0").$$")"
+
+finally()
+{
+    if [ -s "$TMPFILE" ]; then
+	[ "$isHeader" ] && printf '\n\e[01m=== OUTPUT ===\e[0m\n'
+	cat -- "$TMPFILE"
+    fi
+
+    rm --force -- "$TMPFILE" 2>/dev/null
+}
+trap 'finally' EXIT
+
+execute()
+{
+    eval "$commands"
+}
+
+if [ "$isSummaryOnly" ]; then
+    {  execute 3>&1 1>&2 2>&3 3>&- >"$TMPFILE" | greyed --color=always; } 3>&1 1>&2 2>&3 3>&-
+else
+    {  execute 3>&1 1>&2 2>&3 3>&- | greyed --color=always; } 3>&1 1>&2 2>&3 3>&- | tee -- "$TMPFILE"
+fi

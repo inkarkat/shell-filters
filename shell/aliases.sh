@@ -8,4 +8,5 @@ addAliasSupport pipeappend
 addAliasSupport prefix
 addAliasSupport suffix
 addAliasSupport sumerr
+addAliasSupport sumout
 addAliasSupport surround
