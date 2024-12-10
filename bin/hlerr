@@ -34,5 +34,5 @@ if [ -z "$commands" ]; then
 fi
 
 {
-    eval "$commands" 3>&1 1>&2 2>&3 3>&- | sed -e 's/.\+/[01;31m&[0m/'
+    eval "$commands" 3>&1 1>&2 2>&3 3>&- | sed --unbuffered -e 's/.\+/[01;31m&[0m/'
 } 3>&1 1>&2 2>&3 3>&-
