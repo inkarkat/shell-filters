@@ -7,7 +7,8 @@ printUsage()
     cat <<HELPTEXT
 Execute COMMAND while highlighting the stderr output.
 HELPTEXT
-printf 'Usage: %q %s\n' "$(basename "$1")" '-c|--command "COMMANDLINE" [-c ...] | [--] SIMPLECOMMAND [...] [-?|-h|--help]'
+    echo
+    printf 'Usage: %q %s\n' "$(basename "$1")" '-c|--command "COMMANDLINE" [-c ...] | [--] SIMPLECOMMAND [...] [-?|-h|--help]'
 }
 
 commands=
@@ -31,17 +32,6 @@ if [ -z "$commands" ]; then
     echo >&2 'ERROR: No COMMAND(s) specified; need to pass -c|--command "COMMANDLINE", or SIMPLECOMMAND.'
     exit 2
 fi
-
-
-finally()
-{
-    if [ -s "$TMPFILE" ]; then
-	echo -e "\\n\\e[01;31m=== ERRORS ==="
-	cat -- "$TMPFILE"
-    fi
-    rm -f -- "$TMPFILE" 2>/dev/null
-}
-trap 'finally' EXIT
 
 {
     eval "$commands" 3>&1 1>&2 2>&3 3>&- | sed -e 's/.\+/[01;31m&[0m/'
