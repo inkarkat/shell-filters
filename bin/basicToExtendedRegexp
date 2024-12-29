@@ -1,0 +1,54 @@
+#!/bin/bash
+
+printUsage()
+{
+    cat <<HELPDESCRIPTION
+Convert each passed FILE contents / REGEXP from basic regular expression syntax to
+extended syntax.
+HELPDESCRIPTION
+    echo
+    # Note: short followed by long option; if the user knows the short one, she can
+    # skim the long one.
+    printf 'Usage: %q %s\n' "$(basename "$1")" '[-u|--unbuffered] [-?|-h|--help]'
+    printf 'Usage: %q %s\n' "$(basename "$1")" '... -- FILE [...]'
+    printf 'Usage: %q %s\n' "$(basename "$1")" '... REGEXP [...]'
+    printf 'Usage: cat FILE [...] | %q %s\n' "$(basename "$1")" '... [-]'
+}
+
+typeset -a additionalSedArgs=()
+while [ $# -ne 0 ]
+do
+    case "$1" in
+	--help|-h|-\?)	shift; printUsage "$0"; exit 0;;
+	--unbuffered|-u)
+			additionalSedArgs+=("$1"); shift;;
+	--)		break;;
+	-)		break;; # For supporting special - FILE without prior --
+	-*)		{ echo "ERROR: Unknown option \"$1\"!"; echo; printUsage "$0"; } >&2; exit 2;;
+	*)		break;;
+    esac
+done
+
+typeset -a CONVERT=(
+    sed \
+	"${additionalSedArgs[@]}" \
+	-e 's/\\\\/\n\n/g' \
+	-e 's/\(^\|[^\\]\)\([+?{}|()]\)/\1\n\2/g' \
+	-e 's/\\\([+?{}|()]\)/\1/g' \
+	-e 's/\n/\\/g'
+)
+
+if [ $# -eq 0 -o "$*" = - ]; then
+    exec "${CONVERT[@]}"
+elif [ $# -ge 2 -a "$1" = '--' ]; then
+    shift
+    for filespec
+    do
+	cat -- "$filespec" | "${CONVERT[@]}"
+    done
+else
+    for regexp
+    do
+	printf '%s\n' "$regexp" | "${CONVERT[@]}"
+    done
+fi
