@@ -54,7 +54,7 @@ do
 	--basic-regexp|-G)
 			shift;;
 	--extended-regexp|-E)
-			shift; additionalChars+='+?{}.|()';;
+			shift; additionalChars+='+?{}|()';;
 	--perl-regexp|-P)
 			shift; basicChars='\\'; additionalSedArgs+=(-e 's/[^\\]\+/\\Q&\\E/g');;
 	--line-regexp|-x)
