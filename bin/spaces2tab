@@ -3,20 +3,22 @@
 printUsage()
 {
     cat <<HELPTEXT
-Convert (runs of) spaces to (single) tabs.
+Convert (runs of) spaces (only multiple with -m|--multiple) to (single) tabs.
 HELPTEXT
     echo
-    printf 'Usage: %q %s\n' "$(basename "$1")" '[--] [FILE ...] [-?|-h|--help]'
+    printf 'Usage: %q %s\n' "$(basename "$1")" '[-m|--multiple] [--] [FILE ...] [-?|-h|--help]'
     printf 'Usage: cat FILE [...] | %q\n' "$(basename "$1")"
 }
+
+typeset -a converterCommand=(tr --squeeze-repeats ' ' $'\t')
 case "$1" in
     --help|-h|-\?)	shift; printUsage "$0"; exit 0;;
+    --multiple|-m)	shift; typeset -a converterCommand=(sed -e 's/ \{2,\}/\t/g');;
     --)			shift;;
 esac
 
-typeset -a converterCommand=(tr --squeeze-repeats ' ' $'\t')
-if [ $# -eq 0 ]; then
-    exec "${converterCommand[@]}"
+if [ $# -eq 0 -o "${converterCommand[0]}" = sed ]; then
+    exec "${converterCommand[@]}" "$@"
 else
     set -o pipefail
     cat -- "$@" | "${converterCommand[@]}"
