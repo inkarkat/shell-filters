@@ -51,7 +51,7 @@ HELPDESCRIPTION
     cat <<HELPTEXT
     --reset-on|-r PATTERN
 			Reset the sampling interval on lines matching PATTERN,
-			and and unconditionally print these lines.
+			and unconditionally print these lines.
     --inline-or-none|-i	Overwrite the existing terminal line instead of
 			accumulating the sampled lines in the output.
 			When not outputting to a terminal, suppress all output.
@@ -111,10 +111,15 @@ HELPDESCRIPTION
 			Wait for TIMESPAN before printing anything. By default,
 			the first line is printed immediately.
 All PATTERNs are POSIX-style unanchored extended regular expressions.
+
+RELATED COMMANDS:
+- pv (pipe viewer) shows inline statistics of the data going through it
+
 Example:
 HELPTEXT
 
-    printf 'tail -f file | %q %s\n' "$(basename "$1")" '--inline-or-none --clear >&2'
+    printf 'ping localhost | %q %s\n' "$(basename "$1")" '--inline-or-none --clear -t 3'
+    printf 'ping -c 10 localhost | tee >(%q %s >/dev/tty) | tail -n 1 | delay 1s\n' "$(basename "$1")" '--inline-or-none --clear -t 3'
 }
 timeToSeconds()
 {
