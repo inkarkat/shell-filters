@@ -49,6 +49,8 @@ HELPDESCRIPTION
     --precision|-p WIDTH    Remove smaller units so that the result will fit
 			    WIDTH; for example "01:02:03" will be rendered as
 			    "1h 2m", with "3s" removed to fit a width of 7.
+			    For human-readable output, use 7 (or 8 if you prefer
+			    "01:02:03" over "1h 2m").
     --precision|-p [U|Z][.N](g|y|mo|w|d|h|m|s)
 			    Render purely as the passed unit [with N digits
 			    right of the decimal point]. A "U" sigil rounds up,
