@@ -1,6 +1,5 @@
 #!/bin/bash
-
-: ${NOCOMMENT_EXPR:=#}
+set -o pipefail
 
 printUsage()
 {
@@ -18,7 +17,26 @@ case "$1" in
     --)			shift;;
 esac
 
-exec sed \
-    -e "/^[[:space:]]*\(${NOCOMMENT_EXPR//\//\\/}\)/d" \
-    -e "s/[[:space:]]\+\(${NOCOMMENT_EXPR//\//\\/}\).*$//" \
-    -- "$@"
+typeset -a sedArgs=()
+
+cppFilter()
+{
+    cpp -fpreprocessed -o- - 2>/dev/null \
+	| sed -e '1{ /^#/d; }' # cpp adds a line like # 1 "<stdin>" to the beginning of the output.
+}
+
+toeolFilter()
+{
+    : ${NOCOMMENT_EXPR:=#}
+    sed \
+	-e "/^[[:space:]]*\(${NOCOMMENT_EXPR//\//\\/}\)/d" \
+	-e "s/[[:space:]]\+\(${NOCOMMENT_EXPR//\//\\/}\).*$//" \
+	-- "$@"
+}
+
+if [ -n "$NOCOMMENT_EXPR" ]; then
+    # A custom comment expression disables the cpp-based filtering.
+    toeolFilter "$@"
+else
+    toeolFilter "$@" | cppFilter
+fi

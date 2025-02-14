@@ -78,3 +78,31 @@ no;a comment
 The end
 EOF
 }
+
+@test "contents with custom semicolon and REM comments" {
+    NOCOMMENT_EXPR=';\|REM' run -0 nocomment <<'EOF'
+# First line hash comment
+First text
+    ; semicolon comment
+    REM slashslash comment
+more text after empty line
+
+mixed ; with comment
+mixed REM with comment
+no;a comment
+; More comments
+;
+REM as well
+The end
+EOF
+    assert_output - <<'EOF'
+# First line hash comment
+First text
+more text after empty line
+
+mixed
+mixed
+no;a comment
+The end
+EOF
+}
