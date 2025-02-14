@@ -19,7 +19,7 @@ EOF
 First text
 more text after empty line
 
-mixed # with comment
+mixed
 no#a comment
 The end
 EOF
