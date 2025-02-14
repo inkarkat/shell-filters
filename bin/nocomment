@@ -1,19 +1,46 @@
 #!/bin/bash
-# Source: http://www.debian-administration.org/article/616/Hiding_comments_in_configuration_files
+set -o pipefail
+
+: ${STRIPCMT:=stripcmd}
 
 printUsage()
 {
     cat <<HELPTEXT
-Filter out any lines that purely consist of "# comment" or are devoid of
-printable characters.
+Filter out any "# comment" (entire lines if they purely consist of such a
+comment).
 HELPTEXT
     echo
-    printf 'Usage: %q %s\n' "$(basename "$1")" '[--] FILE [...] [-?|-h|--help]'
+    printf 'Usage: [NOCOMMENT_EXPR=[#;]\\\\|//] %q %s\n' "$(basename "$1")" '[--] FILE [...] [-?|-h|--help]'
     printf 'Usage: cat FILE [...] | %q\n' "$(basename "$1")"
 }
+
 case "$1" in
     --help|-h|-\?)	shift; printUsage "$0"; exit 0;;
     --)			shift;;
 esac
 
-exec grep -a -v -e '^[[:space:]]*#\|^[^[:print:]]*$' -- "$@"
+typeset -a sedArgs=()
+
+cppFilter()
+{
+    cpp -fpreprocessed -o- - 2>/dev/null \
+	| sed -e '1{ /^#/d; }' # cpp adds a line like # 1 "<stdin>" to the beginning of the output.
+}
+
+toeolFilter()
+{
+    : ${NOCOMMENT_EXPR:=#}
+    sed \
+	-e "/^[[:space:]]*\(${NOCOMMENT_EXPR//\//\\/}\)/d" \
+	-e "s/[[:space:]]\+\(${NOCOMMENT_EXPR//\//\\/}\).*$//" \
+	-- "$@"
+}
+
+if [ -n "$NOCOMMENT_EXPR" ]; then
+    # A custom comment expression disables the cpp-based filtering.
+    toeolFilter "$@"
+elif type -t "$STRIPCMT" >/dev/null; then
+    toeolFilter "$@" | "$STRIPCMT"
+else
+    toeolFilter "$@" | cppFilter
+fi
