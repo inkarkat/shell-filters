@@ -9,6 +9,7 @@ All of these transform some input into some output, potentially with other side 
 ### Dependencies
 
 * Bash, GNU `awk`, GNU `sed`
+* [`stripcmt`](https://github.com/DimonSE/stripcmt) (optional, for `nocomment`)
 * automated testing is done with _bats - Bash Automated Testing System_ (https://github.com/bats-core/bats-core)
 
 ### Installation

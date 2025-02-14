@@ -1,6 +1,8 @@
 #!/bin/bash
 set -o pipefail
 
+: ${STRIPCMT:=stripcmd}
+
 printUsage()
 {
     cat <<HELPTEXT
@@ -37,6 +39,8 @@ toeolFilter()
 if [ -n "$NOCOMMENT_EXPR" ]; then
     # A custom comment expression disables the cpp-based filtering.
     toeolFilter "$@"
+elif type -t "$STRIPCMT" >/dev/null; then
+    toeolFilter "$@" | "$STRIPCMT"
 else
     toeolFilter "$@" | cppFilter
 fi
