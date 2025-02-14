@@ -4,8 +4,7 @@
 printUsage()
 {
     cat <<HELPTEXT
-Filter out any lines that purely consist of "# comment" or are devoid of
-printable characters.
+Filter out any lines that purely consist of a "# comment".
 HELPTEXT
     echo
     printf 'Usage: %q %s\n' "$(basename "$1")" '[--] FILE [...] [-?|-h|--help]'
@@ -16,4 +15,4 @@ case "$1" in
     --)			shift;;
 esac
 
-exec grep -a -v -e '^[[:space:]]*#\|^[^[:print:]]*$' -- "$@"
+exec sed -e '/^[[:space:]]*#/d' -- "$@"
