@@ -1,5 +1,7 @@
 #!/bin/bash
 
+: ${NOCOMMENT_EXPR:=#}
+
 printUsage()
 {
     cat <<HELPTEXT
@@ -7,7 +9,7 @@ Filter out any "# comment" (entire lines if they purely consist of such a
 comment).
 HELPTEXT
     echo
-    printf 'Usage: %q %s\n' "$(basename "$1")" '[--] FILE [...] [-?|-h|--help]'
+    printf 'Usage: [NOCOMMENT_EXPR=[#;]\\\\|//] %q %s\n' "$(basename "$1")" '[--] FILE [...] [-?|-h|--help]'
     printf 'Usage: cat FILE [...] | %q\n' "$(basename "$1")"
 }
 
@@ -16,4 +18,7 @@ case "$1" in
     --)			shift;;
 esac
 
-exec sed -e '/^[[:space:]]*#/d' -e 's/[[:space:]]\+#.*$//' -- "$@"
+exec sed \
+    -e "/^[[:space:]]*\(${NOCOMMENT_EXPR//\//\\/}\)/d" \
+    -e "s/[[:space:]]\+\(${NOCOMMENT_EXPR//\//\\/}\).*$//" \
+    -- "$@"
