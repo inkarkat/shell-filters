@@ -1,0 +1,230 @@
+#!/bin/bash
+shopt -qs nullglob
+
+: ${CONGLOMERATEDLINESFROM_COMMAND_JOINER=;}
+: ${CONGLOMERATEDLINESFROM_EXEC_END=;}
+
+printShortUsage()
+{
+    # Note: short followed by long option; if the user knows the short one, they can
+    # skim the long one.
+    printf 'Usage: %q %s\n' "$(basename "$1")" "[-S|--successful-only] [-1|--stdout|-2|--stderr] [-r|--record M] [-t|--take N] [-e|--grep PATTERN [-e ...]] [-v|--vgrep PATTERN [-v ...]] [-s|--skip PATTERN [-s ...]] [-m|--match PATTERN [-m ...]] [-a|--all] [-i|--id ID] -c|--command \"COMMANDLINE\" [-c ...] | --exec SIMPLECOMMAND [...] ${CONGLOMERATEDLINESFROM_EXEC_END} [--exec ...] | [--] SIMPLECOMMAND [...] [-?|-h|--help]"
+    echo
+    printf 'Usage: cat FILE [...] | %q %s\n' "$(basename "$1")" '... -i|--id ID'
+}
+printUsage()
+{
+    # This is the short help when launched with no or incorrect arguments.
+    # It is printed to stderr to avoid accidental processing.
+    printShortUsage "$1" >&2
+    printf >&2 '\nTry %q --help for more information.\n' "$(basename "$1")"
+}
+printLongUsage()
+{
+    # This is the long "man page" when launched with the help argument.
+    # It is printed to stdout to allow paging with 'more'.
+    cat <<HELPDESCRIPTION
+Execute COMMAND and print all those lines that have occurred in the last ${recordCount:?}
+recorded executions for at least ${takeCount:?} times. Useful to reduce the
+noise on cron jobs or CI/CD runs.
+HELPDESCRIPTION
+    echo
+    printShortUsage "$1"
+    echo
+    cat <<HELPTEXT
+    --successful-only|-S
+			Skip recording for failed commands and directly print
+			all of its output.
+    --stdout|-1         Only record standard output.
+    --stderr|-2         Only record error output.
+    --record|-r M	Consider the last M (default: ${recordCount}) executions of COMMAND
+			(including this one).
+    --take|-t N		Print those lines from the current output of COMMAND
+			that have been seen N times in the last M executions of
+			COMMAND (default: ${takeCount} of ${recordCount}).
+    --grep|-e PATTERN	Only record lines that match PATTERN. Other lines (and
+			those that also match --vgrep PATTERN) are printed
+			directly.
+    --vgrep|-v PATTERN	Directly print and do not record lines that match
+			PATTERN.
+    --skip|-s PATTERN	Ignore the parts of a line that match PATTERN (e.g.
+			timestamps or filenames) when considering occurrences.
+    --match|-m PATTERN	Only consider the parts of a line that match PATTERN
+			when considering occurrences.
+    --all|-a		When parts of a line have been (de-)selected by a
+			PATTERN, print all matches from all records (with the
+			execution time prepended), not just the matching line(s)
+			from the current execution of COMMAND.
+    --reset-after-print|-R
+			After printing a line that has been seen N times, don't
+			immediately report the line on the next run again if it
+			appears again, but instead wait until N new occurrences
+			have been spotted.
+    --id|-i ID          Identifier for the running COMMAND. If omitted, will use
+			COMMAND itself. Pass this if the command is different
+			(but equivalent) on invocations. Mandatory when no
+			COMMAND is given and recording standard input.
+    --command|-c CMD	Execute CMD as a command-line.
+    --exec CMD [...] ${CONGLOMERATEDLINESFROM_EXEC_END}	Execute CMD; all following arguments are taken to be
+			arguments to the CMD until an argument consisting of
+			'${CONGLOMERATEDLINESFROM_EXEC_END}' is encountered.
+SEE ALSO:
+- (Commands offering complementary functionality, or commands using this command.)
+
+RELATED COMMANDS:
+- (Alternatives from other authors, other approaches, references not used here.)
+
+EXIT STATUS:
+    0	Complete success.
+    2	Bad invocation, wrong or missing command-line arguments.
+    3	Internal error or failed assertion.
+    *   any exit status from COMMAND(s)
+
+Example:
+HELPTEXT
+    printf '%q %s\n' "$(basename "$1")" '--foo bar /tmp/foobar' # TODO
+}
+
+isSuccessfulOnly=
+redirPrefix='2>&1'
+redirSuffix=
+recordCount=4
+takeCount=3
+grepPattern=
+vgrepPattern=
+skipPattern=
+matchPattern=
+isAll=
+isResetAfterPrint=
+commandId=
+commands=
+while [ $# -ne 0 ]
+do
+    case "$1" in
+	--help|-h|-\?)	shift; printLongUsage "$0"; exit 0;;
+	--successful-only|-S)
+			shift; isSuccessfulOnly=t;;
+	--stdout|-1)	shift; redirPrefix='';;
+	--stderr|-2)	shift; redirPrefix='3>&1 1>&2 2>&3 3>&-'; redirSuffix='3>&1 1>&2 2>&3 3>&-';;
+	--record|-r)	shift; recordCount="${1:?}"; shift;;
+	--take|-t)	shift; takeCount="${1:?}"; shift;;
+	--grep|-e)	shift; grepPattern+="${grepPattern:+|}${1:?}"; shift;;
+	--vgrep|-v)	shift; vgrepPattern+="${vgrepPattern:+|}${1:?}"; shift;;
+	--skip|-s)	shift; skipPattern+="${skipPattern:+|}${1:?}"; shift;;
+	--match|-m)	shift; matchPattern+="${matchPattern:+|}${1:?}"; shift;;
+	--all|-a)	shift; isAll=t;;
+	--reset-after-print|-R)
+			shift; isResetAfterPrint=t;;
+	--id|-i)	shift; commandId="${1:?}"; shift;;
+	--command|-c)	shift; commands+="${commands:+ $CONGLOMERATEDLINESFROM_COMMAND_JOINER }$1"; shift;;
+	--exec)		shift
+			cmd=
+			while [ $# -gt 0 -a "$1" != "$CONGLOMERATEDLINESFROM_EXEC_END" ]
+			do
+			    printf -v quotedArg %q "$1"
+			    cmd+="${cmd:+ }${quotedArg}"
+			    shift
+			done
+			if [ $# -eq 0 ]; then
+			    echo "ERROR: --exec command must be concluded with '${CONGLOMERATEDLINESFROM_EXEC_END}'"; echo; printUsage "$0"
+			    exit 2
+			fi >&2
+			shift
+			commands+="${commands:+ $CONGLOMERATEDLINESFROM_COMMAND_JOINER }${cmd}"
+			;;
+	--)		shift; break;;
+	-*)		{ echo "ERROR: Unknown option \"$1\"!"; echo; printUsage "$0"; } >&2; exit 2;;
+	*)		break;;
+    esac
+done
+if [[ ! "$recordCount" =~ ^[[:digit:]]+$ ]] || [ $recordCount -lt 1 ]; then
+    echo 'ERROR: Record count must be a positive non-zero number.'
+    echo
+    printUsage "$0"
+    exit 2
+elif [[ ! "$takeCount" =~ ^[[:digit:]]+$ ]] || [ $takeCount -lt 1 ]; then
+    echo 'ERROR: Take count must be a positive non-zero number.'
+    echo
+    printUsage "$0"
+    exit 2
+elif [ $takeCount -gt $recordCount ]; then
+    printf 'ERROR: Take count must not exceed record count (%d).\n' $recordCount
+    echo
+    printUsage "$0"
+    exit 2
+fi >&2
+if [ $# -ne 0 ]; then
+    # Combine --command and SIMPLECOMMAND; need to quote SIMPLECOMMAND to
+    # undo the effects of eval.
+    printf -v quotedSimpleCommand '%q ' "$@"
+    commands+="${commands:+ $CONGLOMERATEDLINESFROM_COMMAND_JOINER }${quotedSimpleCommand% }"
+fi
+
+readonly DATA_DIRSPEC="${XDG_DATA_HOME:-${HOME}/.local/share}/conglomeratedLinesFrom"
+
+conglomerate()
+{
+    local recordDirspec; recordDirspec="${DATA_DIRSPEC}/$(stringAsFilename -- "${commandId:-$commands}")" || exit 3
+    [ -d "$recordDirspec" ] || mkdir --parents -- "$recordDirspec" || { printf >&2 'ERROR: Could not initialize data store at %s\n' "$recordDirspec"; exit 3; }
+    local currentRecordFilespec; currentRecordFilespec="${recordDirspec}/$(date +%s.%N)" || exit 3
+
+    LC_NUMERIC=C acceptStatus 4 99 truncateDir --first --numeric-sort --count $((recordCount - 1)) --remove --force -- "$recordDirspec"
+
+    awk \
+	-v "takeCount=$takeCount" \
+	-v "grepPattern=${grepPattern//\/\\}" \
+	-v "vgrepPattern=${vgrepPattern//\/\\}" \
+	-v "skipPattern=${skipPattern//\/\\}" \
+	-v "matchPattern=${matchPattern//\/\\}" \
+	-v "isAll=$isAll" \
+	-v "isResetAfterPrint=$isResetAfterPrint" \
+	-v "currentRecordFilespec=${currentRecordFilespec//\\/\\\\}" \
+'
+function recordLine(line, source) {
+    if (! (line in lines && source in lines[line])) {
+	lines[line][source] = 1
+    }
+}
+BEGIN {
+    SUBSEP = "\n"
+}
+ARGIND <= ARGC {
+    recordLine($0, ARGIND)
+}
+ARGIND == ARGC - 1 {
+    if (vgrepPattern != "" && line ~ vgrepPattern) next
+    if (grepPattern != "" && line !~ grepPattern) next
+
+    if (! ($0 in currentLines)) {
+	recordLine($0, ARGIND)
+	currentLines[$0] = 1
+	print > currentRecordFilespec
+    }
+
+    if (length(lines[$0]) >= takeCount) {
+	print
+    }
+}
+' "$recordDirspec"/* -
+}
+
+if [ -n "$commands" ]; then
+    if [ "$isSuccessfulOnly" ]; then
+	eval "commandOutput=\"\$($commands ${redirPrefix})\" ${redirSuffix}"; exitStatus=$?
+	[ $exitStatus -eq 0 ] \
+	    && processor=conglomerate \
+	    || processor=''
+	    eval 'printf %s\\n "$commandOutput"' "${processor:+|}${processor} ${redirSuffix}"
+	exit $exitStatus
+    else
+	eval "$commands ${redirPrefix} | conglomerate ${redirSuffix}"; typeset -a states=("${PIPESTATUS[@]}")
+	exit ${states[0]}
+    fi
+elif [ -z "$commandId" ]; then
+    echo >&2 'ERROR: No ID and no COMMAND(s) specified; need to pass -i|--id ID for standard input, or -c|--command "COMMANDLINE", or --exec SIMPLECOMMAND [...] ; or SIMPLECOMMAND.'
+    echo >&2
+    printUsage >&2 "$0"
+    exit 2
+else
+    conglomerate
+fi
