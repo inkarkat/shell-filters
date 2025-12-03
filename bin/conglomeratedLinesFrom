@@ -214,10 +214,11 @@ if [ -n "$commands" ]; then
 	[ $exitStatus -eq 0 ] \
 	    && processor=conglomerate \
 	    || processor=''
-	    eval 'printf %s\\n "$commandOutput"' "${processor:+|}${processor} ${redirSuffix}"
+	    eval 'printf %s\\n "$commandOutput"' "${processor:+|}${processor} ${redirSuffix}" || exit 3
 	exit $exitStatus
     else
-	eval "{ $commands; } ${redirPrefix} | conglomerate ${redirSuffix}"; typeset -a states=("${PIPESTATUS[@]}")
+	eval "{ $commands; } ${redirPrefix} | conglomerate ${redirSuffix}; typeset -a states=(\"\${PIPESTATUS[@]}\")"
+	[ ${states[1]} -eq 0 ] || exit 3
 	exit ${states[0]}
     fi
 elif [ -z "$commandId" ]; then
@@ -226,5 +227,5 @@ elif [ -z "$commandId" ]; then
     printUsage >&2 "$0"
     exit 2
 else
-    conglomerate
+    conglomerate || exit 3
 fi
