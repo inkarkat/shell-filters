@@ -170,6 +170,12 @@ conglomerate()
 
     LC_NUMERIC=C acceptStatus 4 99 truncateDir --first --numeric-sort --count $((recordCount - 1)) --remove --force -- "$recordDirspec"
 
+    local resetFilespec
+    if [ "$isResetAfterPrint" ]; then
+	resetFilespec="$(mktemp --tmpdir "$(basename -- "$0")-XXXXXX" 2>/dev/null || echo "${TMPDIR:-/tmp}/$(basename -- "$0").$$$RANDOM")"
+	[ "${DEBUG:-}" ] || trap 'rm -f -- "$resetFilespec" 2>/dev/null' EXIT
+    fi
+
     awk \
 	-v "takeCount=$takeCount" \
 	-v "grepPattern=${grepPattern//\/\\}" \
@@ -177,7 +183,7 @@ conglomerate()
 	-v "skipPattern=${skipPattern//\/\\}" \
 	-v "matchPattern=${matchPattern//\/\\}" \
 	-v "isAll=$isAll" \
-	-v "isResetAfterPrint=$isResetAfterPrint" \
+	-v "resetFilespec=${resetFilespec//\\/\\\\}" \
 	-v "currentRecordFilespec=${currentRecordFilespec//\\/\\\\}" \
 '
 function recordLine(line, source) {
@@ -203,9 +209,21 @@ ARGIND == ARGC - 1 {
 
     if (length(lines[$0]) >= takeCount) {
 	print
+	if (resetFilespec != "") {
+	    print > resetFilespec
+	}
     }
 }
-' "$recordDirspec"/* -
+' "$recordDirspec"/* -; local status=$?
+
+    if [ -n "$resetFilespec" ]; then
+	pipethrough --exec \
+	    acceptStatus 0 1 \
+		grep --invert-match --fixed-strings --line-regexp --file "$resetFilespec" \
+	    \; -- "$recordDirspec"/* || exit 3
+    fi
+
+    return $status
 }
 
 if [ -n "$commands" ]; then
