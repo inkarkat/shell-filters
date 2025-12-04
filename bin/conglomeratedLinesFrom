@@ -24,9 +24,12 @@ printLongUsage()
     # This is the long "man page" when launched with the help argument.
     # It is printed to stdout to allow paging with 'more'.
     cat <<HELPDESCRIPTION
-Execute COMMAND and print all those lines that have occurred in the last ${recordCount:?}
-recorded executions for at least ${takeCount:?} times. Useful to reduce the
-noise on cron jobs or CI/CD runs.
+Execute COMMAND and print those lines that have been seen in at least
+${takeCount:?} executions of the last ${recordCount:?} recorded executions.
+No deduplication happens for the current COMMAND's output.
+Lines and/or parts of the lines can be prevented from getting recorded via
+positive and/or negative filters.
+Useful to reduce the noise on cron jobs or CI/CD runs.
 HELPDESCRIPTION
     echo
     printShortUsage "$1"
