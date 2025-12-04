@@ -8,7 +8,7 @@ printShortUsage()
 {
     # Note: short followed by long option; if the user knows the short one, they can
     # skim the long one.
-    printf 'Usage: %q %s\n' "$(basename "$1")" "[-S|--successful-only] [-1|--stdout|-2|--stderr] [-r|--record M] [-t|--take N] [-e|--grep PATTERN [-e ...]] [-v|--vgrep PATTERN [-v ...]] [-s|--skip PATTERN [-s ...]] [-m|--match PATTERN [-m ...]] [-a|--all] [-i|--id ID] -c|--command \"COMMANDLINE\" [-c ...] | --exec SIMPLECOMMAND [...] ${CONGLOMERATEDLINESFROM_EXEC_END} [--exec ...] | [--] SIMPLECOMMAND [...] [-?|-h|--help]"
+    printf 'Usage: [CONGLOMERATEDLINESFROM_DATE_FORMAT=DATE-FORMAT] [CONGLOMERATEDLINESFROM_SKIP_PLACEHOLDER=TEXT] %q %s\n' "$(basename "$1")" "[-S|--successful-only] [-1|--stdout|-2|--stderr] [-r|--record M] [-t|--take N] [-e|--grep PATTERN [-e ...]] [-v|--vgrep PATTERN [-v ...]] [-s|--skip PATTERN [-s ...]] [-m|--match PATTERN [-m ...]] [-a|--all] [-i|--id ID] -c|--command \"COMMANDLINE\" [-c ...] | --exec SIMPLECOMMAND [...] ${CONGLOMERATEDLINESFROM_EXEC_END} [--exec ...] | [--] SIMPLECOMMAND [...] [-?|-h|--help]"
     echo
     printf 'Usage: cat FILE [...] | %q %s\n' "$(basename "$1")" '... -i|--id ID'
 }
@@ -52,10 +52,12 @@ HELPDESCRIPTION
     --match|-m PATTERN	Only consider the parts of a line that match PATTERN
 			(and haven't been excluded by --skip) when considering
 			occurrences.
-    --all|-a		When parts of a line have been (de-)selected by a
-			PATTERN, print all matches from all records (with the
-			execution time prepended), not just the matching line(s)
-			from the current execution of COMMAND.
+    --all|-a		Print all previous recorded dates when that particular
+			full line has occurred. When parts of a line have been
+			(de-)selected by --skip PATTERN or --match PATTERN,
+			print all matches from all records (with the execution
+			time prepended), not just the matching line(s) from the
+			current execution of COMMAND.
     --reset-after-print|-R
 			After printing a line that has been seen N times, don't
 			immediately report the line on the next run again if it
@@ -167,10 +169,18 @@ conglomerate()
 {
     local recordDirspec; recordDirspec="${DATA_DIRSPEC}/$(stringAsFilename -- "${commandId:-$commands}")" || exit 3
     [ -d "$recordDirspec" ] || mkdir --parents -- "$recordDirspec" || { printf >&2 'ERROR: Could not initialize data store at %s\n' "$recordDirspec"; exit 3; }
-    local currentRecordFilespec; currentRecordFilespec="${recordDirspec}/$(date +%s.%N)" || exit 3
-    : >"$currentRecordFilespec" || exit 3
+    local currentFilespec; currentFilespec="${recordDirspec}/${NOW:-$(date +%s.%N)}" || exit 3
 
-    LC_NUMERIC=C acceptStatus 4 99 truncateDir --first --numeric-sort --count $recordCount --remove --force -- "$recordDirspec"
+    local currentRecordFilespec="${currentFilespec}.record"
+    : >"$currentRecordFilespec" || exit 3
+    LC_NUMERIC=C acceptStatus 4 99 truncateDir --first --numeric-sort --count $recordCount --remove --force -- "$recordDirspec"/*.record
+
+    local currentLinesFilespec
+    if [ "$isAll" ]; then
+	currentLinesFilespec="${currentFilespec}.lines"
+	: >"$currentLinesFilespec" || exit 3
+	LC_NUMERIC=C acceptStatus 4 99 truncateDir --first --numeric-sort --count $recordCount --remove --force -- "$recordDirspec"/*.lines
+    fi
 
     local resetFilespec
     if [ "$isResetAfterPrint" ]; then
@@ -178,55 +188,137 @@ conglomerate()
 	[ "${DEBUG:-}" ] || trap 'rm -f -- "$resetFilespec" 2>/dev/null' EXIT
     fi
 
+    # DUMPARGS_SINK='&3' dump-args -- "$recordDirspec"/*
     awk \
 	-v "takeCount=$takeCount" \
 	-v "grepPattern=${grepPattern//\/\\}" \
 	-v "vgrepPattern=${vgrepPattern//\/\\}" \
 	-v "skipPattern=${skipPattern//\/\\}" \
 	-v "matchPattern=${matchPattern//\/\\}" \
-	-v "isAll=$isAll" \
 	-v "resetFilespec=${resetFilespec//\\/\\\\}" \
 	-v "currentRecordFilespec=${currentRecordFilespec//\\/\\\\}" \
+	-v "currentLinesFilespec=${currentLinesFilespec//\\/\\\\}" \
 '
-function recordLine(line, source) {
-    if (! (line in lines && source in lines[line])) {
-	lines[line][source] = 1
+function setRecord(record, source) {
+    if (! (record in records && source in records[record])) {
+	records[record][source] = 1
     }
 }
-BEGIN {
-    SUBSEP = "\n"
-    skipPlaceholder = ENVIRON["CONGLOMERATEDLINESFROM_SKIP_PLACEHOLDER"]
-    if (skipPlaceholder == "" ) skipPlaceholder = "\x00"
+
+function renderDate(epoch, nanos) {
+    return strftime(gensub("%N", nanos, "g", dateFormat), epoch)
 }
-ARGIND <= ARGC {
-    recordLine($0, ARGIND)
+
+function setLine(record, line, epoch, nanos,      timestamp, renderedDate) {
+    timestamp = epoch "." nanos
+    # print "****record=" record > "/dev/fd/3"
+    # print "****line=" line > "/dev/fd/3"
+    # print "****date=" timestamp > "/dev/fd/3"
+    if (record == line) {
+	occurrences[record][timestamp] += 1
+    } else {
+	renderedDate = renderDate(epoch, nanos)
+	lines[record] = lines[record] (lines[record] == "" ? "" : "\n") renderedDate (renderedDate == "" ? "" : dateLineSeparator) line
+    }
+}
+
+function printWithHistory(filespec, record, currentLine,      output, timestamp, timestampParts, count) {
+    if (record in lines) {
+	print lines[record]
+	delete lines[record]
+    }
+
+    print currentLine
+
+    if (record in occurrences) {
+	output = ""
+	for (timestamp in occurrences[record]) {
+	    if (split(timestamp, timestampParts, /\./) != 2) {
+		print "ASSERT: Invalid timestamp; not <epoch>.<nanos>: " + timestamp > "/dev/stderr"
+		exit 3
+	    }
+	    count = occurrences[record][timestamp]
+	    output = output (output == "" ? "" : dateDateSeparator) renderDate(timestampParts[1], timestampParts[2]) (count > 1 ? " (" count ")" : "")
+	}
+
+	print "Previously at " output
+	delete occurrences[record]
+    }
+}
+
+BEGIN {
+    PROCINFO["sorted_in"] = "@ind_str_asc"  # For sorting of timestamps in occurrences.
+    SUBSEP = "\n"   # Records cannot contain inner newlines.
+
+    dateFormat = ("CONGLOMERATEDLINESFROM_DATE_FORMAT" in ENVIRON ? ENVIRON["CONGLOMERATEDLINESFROM_DATE_FORMAT"] : "%x %X.%N")
+    dateDateSeparator = ("CONGLOMERATEDLINESFROM_DATE_DATE_SEPARATOR" in ENVIRON ? ENVIRON["CONGLOMERATEDLINESFROM_DATE_DATE_SEPARATOR"] : ", ")
+    dateLineSeparator = ("CONGLOMERATEDLINESFROM_DATE_LINE_SEPARATOR" in ENVIRON ? ENVIRON["CONGLOMERATEDLINESFROM_DATE_LINE_SEPARATOR"] : "\t")
+    skipPlaceholder = ("CONGLOMERATEDLINESFROM_SKIP_PLACEHOLDER" in ENVIRON ? ENVIRON["CONGLOMERATEDLINESFROM_SKIP_PLACEHOLDER"] : "\x00")
+}
+
+ARGIND < (ARGC - 1) {
+    filespec = ARGV[ARGIND]
+    if (match(filespec, /([0-9]+)\.([0-9]+)\.(lines|record)$/, filenameParts)) {
+	epoch = filenameParts[1]
+	nanos = filenameParts[2]
+	fileextension = filenameParts[3]
+	switch (fileextension) {
+	    case "record":
+		setRecord($0, ARGIND)
+		break
+	    case "lines":
+		record = $0
+		if (getline <= 0) {
+		    printf("ASSERT: Existing line after record: %s\n", filespec) > "/dev/stderr"
+		    exit 3
+		}
+		setLine(record, $0, epoch, nanos)
+		break
+	    default: {
+		printf("ASSERT: Invalid record file extension \"%s\" in %s\n", fileextension, filespec) > "/dev/stderr"
+		exit 3
+	    }
+	}
+    } else {
+	printf("ASSERT: Unexpected record file: %s\n", filespec) > "/dev/stderr"
+	exit 3
+    }
 }
 ARGIND == ARGC - 1 {
     if (vgrepPattern != "" && $0 ~ vgrepPattern) next
     if (grepPattern != "" && $0 !~ grepPattern) next
 
-    netLine = $0
+    record = $0
     if (skipPattern != "") {
-	netLine = gensub(skipPattern, skipPlaceholder, "g", netLine)
+	record = gensub(skipPattern, skipPlaceholder, "g", record)
     }
     if (matchPattern != "") {
-	matchCnt = patsplit(netLine, matches, matchPattern)
-	netLine = ""
+	matchCnt = patsplit(record, matches, matchPattern)
+	record = ""
 	for (i = 1; i <= matchCnt; ++i) {
-	    netLine = netLine (i == 1 ? "" : skipPlaceholder) matches[i]
+	    record = record (i == 1 ? "" : skipPlaceholder) matches[i]
 	}
     }
+    isPartial = (record == $0 ? 0 : 1)
 
-    if (! (netLine in currentLines)) {
-	recordLine(netLine, ARGIND)
-	currentLines[netLine] = 1
-	print netLine > currentRecordFilespec
+    if (! (record in currentRecords)) {
+	setRecord(record, ARGIND)
+	currentRecords[record] = 1
+	print record > currentRecordFilespec
     }
 
-    if (length(lines[netLine]) >= takeCount) {
-	print
+    if (currentLinesFilespec != "") {
+	printf("%s\n%s\n", record, $0) > currentLinesFilespec
+    }
+
+    if (length(records[record]) >= takeCount) {
+	if (currentLinesFilespec != "") {
+	    printWithHistory(ARGV[ARGIND], record, $0)
+	} else {
+	    print
+	}
 	if (resetFilespec != "") {
-	    print netLine > resetFilespec
+	    print record > resetFilespec
 	}
     }
 }
@@ -236,7 +328,7 @@ ARGIND == ARGC - 1 {
 	pipethrough --exec \
 	    acceptStatus 0 1 \
 		grep --text --invert-match --fixed-strings --line-regexp --file "$resetFilespec" \
-	    \; -- "$recordDirspec"/* || exit 3
+	    \; -- "$recordDirspec"/*.record || exit 3
     fi
 
     return $status

@@ -66,6 +66,7 @@ EOF
     runAnimals --take 2
     assert_output - <<'EOF'
 aardvark
+dog
 elephant
 EOF
 }
@@ -122,6 +123,7 @@ EOF
     runAnimals --take 1
     assert_output - <<'EOF'
 aardvark
+dog
 elephant
 EOF
 }

@@ -29,4 +29,5 @@ cat
 fox
 ---
 aardvark
+dog
 elephant

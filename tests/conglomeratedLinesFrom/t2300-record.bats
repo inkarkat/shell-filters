@@ -28,5 +28,8 @@ fox
 EOF
 
     runAnimals --record 5
-    assert_output 'aardvark'
+    assert_output - <<'EOF'
+aardvark
+dog
+EOF
 }

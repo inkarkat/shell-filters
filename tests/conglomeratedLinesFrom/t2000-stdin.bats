@@ -61,6 +61,7 @@ EOF
 
     runStdinAnimals <<'EOF'
 aardvark
+dog
 elephant
 EOF
     assert_output 'aardvark'

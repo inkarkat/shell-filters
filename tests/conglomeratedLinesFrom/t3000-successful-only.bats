@@ -47,6 +47,7 @@ EOF
     runFlaggingElephants --successful-only
     assert_output - <<'EOF'
 aardvark
+dog
 elephant
 EOF
 }

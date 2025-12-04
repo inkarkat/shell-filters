@@ -17,5 +17,5 @@ setup()
 
 runAnimals()
 {
-    run conglomeratedLinesFrom "$@" -- dishOutSections --basedir "$BATS_TEST_TMPDIR" -- "${BATS_TEST_DIRNAME}/animals.txt"
+    run conglomeratedLinesFrom "$@" -- dishOutSections --wrap --basedir "$BATS_TEST_TMPDIR" -- "${BATS_TEST_DIRNAME}/animals.txt"
 }
