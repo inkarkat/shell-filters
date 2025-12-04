@@ -167,8 +167,9 @@ conglomerate()
     local recordDirspec; recordDirspec="${DATA_DIRSPEC}/$(stringAsFilename -- "${commandId:-$commands}")" || exit 3
     [ -d "$recordDirspec" ] || mkdir --parents -- "$recordDirspec" || { printf >&2 'ERROR: Could not initialize data store at %s\n' "$recordDirspec"; exit 3; }
     local currentRecordFilespec; currentRecordFilespec="${recordDirspec}/$(date +%s.%N)" || exit 3
+    : >"$currentRecordFilespec" || exit 3
 
-    LC_NUMERIC=C acceptStatus 4 99 truncateDir --first --numeric-sort --count $((recordCount - 1)) --remove --force -- "$recordDirspec"
+    LC_NUMERIC=C acceptStatus 4 99 truncateDir --first --numeric-sort --count $recordCount --remove --force -- "$recordDirspec"
 
     local resetFilespec
     if [ "$isResetAfterPrint" ]; then
@@ -198,8 +199,8 @@ ARGIND <= ARGC {
     recordLine($0, ARGIND)
 }
 ARGIND == ARGC - 1 {
-    if (vgrepPattern != "" && line ~ vgrepPattern) next
-    if (grepPattern != "" && line !~ grepPattern) next
+    if (vgrepPattern != "" && $0 ~ vgrepPattern) next
+    if (grepPattern != "" && $0 !~ grepPattern) next
 
     if (! ($0 in currentLines)) {
 	recordLine($0, ARGIND)
