@@ -48,7 +48,7 @@ EOF
 }
 
 @test "2-of-3 animal reporting with reset after print" {
-    run2of3Animals --reset-after-print --reset-after-print
+    run2of3Animals --reset-after-print
     assert_output ''
 
     run2of3Animals --reset-after-print

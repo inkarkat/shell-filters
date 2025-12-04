@@ -50,7 +50,8 @@ HELPDESCRIPTION
     --skip|-s PATTERN	Ignore the parts of a line that match PATTERN (e.g.
 			timestamps or filenames) when considering occurrences.
     --match|-m PATTERN	Only consider the parts of a line that match PATTERN
-			when considering occurrences.
+			(and haven't been excluded by --skip) when considering
+			occurrences.
     --all|-a		When parts of a line have been (de-)selected by a
 			PATTERN, print all matches from all records (with the
 			execution time prepended), not just the matching line(s)
@@ -194,6 +195,8 @@ function recordLine(line, source) {
 }
 BEGIN {
     SUBSEP = "\n"
+    skipPlaceholder = ENVIRON["CONGLOMERATEDLINESFROM_SKIP_PLACEHOLDER"]
+    if (skipPlaceholder == "" ) skipPlaceholder = "\x00"
 }
 ARGIND <= ARGC {
     recordLine($0, ARGIND)
@@ -202,16 +205,28 @@ ARGIND == ARGC - 1 {
     if (vgrepPattern != "" && $0 ~ vgrepPattern) next
     if (grepPattern != "" && $0 !~ grepPattern) next
 
-    if (! ($0 in currentLines)) {
-	recordLine($0, ARGIND)
-	currentLines[$0] = 1
-	print > currentRecordFilespec
+    netLine = $0
+    if (skipPattern != "") {
+	netLine = gensub(skipPattern, skipPlaceholder, "g", netLine)
+    }
+    if (matchPattern != "") {
+	matchCnt = patsplit(netLine, matches, matchPattern)
+	netLine = ""
+	for (i = 1; i <= matchCnt; ++i) {
+	    netLine = netLine (i == 1 ? "" : skipPlaceholder) matches[i]
+	}
     }
 
-    if (length(lines[$0]) >= takeCount) {
+    if (! (netLine in currentLines)) {
+	recordLine(netLine, ARGIND)
+	currentLines[netLine] = 1
+	print netLine > currentRecordFilespec
+    }
+
+    if (length(lines[netLine]) >= takeCount) {
 	print
 	if (resetFilespec != "") {
-	    print > resetFilespec
+	    print netLine > resetFilespec
 	}
     }
 }
@@ -220,7 +235,7 @@ ARGIND == ARGC - 1 {
     if [ -n "$resetFilespec" ]; then
 	pipethrough --exec \
 	    acceptStatus 0 1 \
-		grep --invert-match --fixed-strings --line-regexp --file "$resetFilespec" \
+		grep --text --invert-match --fixed-strings --line-regexp --file "$resetFilespec" \
 	    \; -- "$recordDirspec"/* || exit 3
     fi
 
