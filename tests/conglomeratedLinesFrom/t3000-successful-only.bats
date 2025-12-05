@@ -2,6 +2,8 @@
 
 load fixture
 
+type -t rg >/dev/null || skip 'rg is not available'
+
 runFlaggingElephants()
 {
     run conglomeratedLinesFrom "$@" -- \

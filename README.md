@@ -10,6 +10,10 @@ All of these transform some input into some output, potentially with other side 
 
 * Bash, GNU `awk`, GNU `sed`
 * [`stripcmt`](https://github.com/DimonSE/stripcmt) (optional, for `nocomment`)
+* [inkarkat/shell-basics](https://github.com/inkarkat/shell-basics) for the `conglomeratedLinesFrom` command
+* [inkarkat/shell-filesystem](https://github.com/inkarkat/shell-filesystem) for the `conglomeratedLinesFrom` command
+* [inkarkat/pipes](https://github.com/inkarkat/pipes) for the `conglomeratedLinesFrom` command
+* [inkarkat/shell-scripting](https://github.com/inkarkat/shell-scripting) for automated tests
 * automated testing is done with _bats - Bash Automated Testing System_ (https://github.com/bats-core/bats-core)
 
 ### Installation
