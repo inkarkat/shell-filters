@@ -6,7 +6,7 @@ export CONGLOMERATEDLINESFROM_DATE_FORMAT='%T'
 
 runAllAnimals()
 {
-    runAnimals --all
+    runAnimals --all "$@"
 }
 
 @test "all animal reporting" {
@@ -66,5 +66,55 @@ EOF
     assert_output - <<'EOF'
 dog
 Previously at 15:24:06, 15:24:10, 15:24:11 (2)
+EOF
+}
+
+@test "customized all animal reporting" {
+    export CONGLOMERATEDLINESFROM_CURRENT_LINE_PREFIX='['
+    export CONGLOMERATEDLINESFROM_CURRENT_LINE_SUFFIX=']'
+    export CONGLOMERATEDLINESFROM_DATE_DATE_SEPARATOR=' / '
+    export CONGLOMERATEDLINESFROM_PREVIOUS_DATES_PREFIX='(Seen at '
+    export CONGLOMERATEDLINESFROM_PREVIOUS_DATES_SUFFIX='.)'
+
+    NOW=1764858240.000000000 runAllAnimals
+    assert_output ''
+
+    NOW=1764858241.000000000 runAllAnimals
+    assert_output ''
+
+    NOW=1764858242.000000000 runAllAnimals
+    assert_output - <<'EOF'
+[dog]
+(Seen at 15:24:00 / 15:24:01 (2).)
+EOF
+
+    NOW=1764858243.000000000 runAllAnimals
+    assert_output - <<'EOF'
+[cat]
+(Seen at 15:24:00 / 15:24:01.)
+[dog]
+(Seen at 15:24:00 / 15:24:01 (2) / 15:24:02.)
+EOF
+}
+
+@test "all animal reporting with color highlighting" {
+    NOW=1764858240.000000000 runAllAnimals --color=always
+    assert_output ''
+
+    NOW=1764858241.000000000 runAllAnimals --color=always
+    assert_output ''
+
+    NOW=1764858242.000000000 runAllAnimals --color=always
+    assert_output - <<'EOF'
+dog[0m
+[3mPreviously at 15:24:00, 15:24:01 (2)[0m
+EOF
+
+    CONGLOMERATEDLINESFROM_COLOR_CURRENT_LINE='[31m' NOW=1764858243.000000000 runAllAnimals --color=always
+    assert_output - <<'EOF'
+[31mcat[0m
+[3mPreviously at 15:24:00, 15:24:01[0m
+[31mdog[0m
+[3mPreviously at 15:24:00, 15:24:01 (2), 15:24:02[0m
 EOF
 }

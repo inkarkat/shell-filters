@@ -3,12 +3,28 @@ shopt -qs nullglob
 
 : ${CONGLOMERATEDLINESFROM_COMMAND_JOINER=;}
 : ${CONGLOMERATEDLINESFROM_EXEC_END=;}
+: ${CONGLOMERATEDLINESFROM_COLOR_HISTORY_DATE='[3;37m'}
+: ${CONGLOMERATEDLINESFROM_COLOR_HISTORY_LINE='[37m'}
+: ${CONGLOMERATEDLINESFROM_COLOR_CURRENT_LINE=}
+: ${CONGLOMERATEDLINESFROM_COLOR_DATE_LINE_SEPARATOR=}
+: ${CONGLOMERATEDLINESFROM_COLOR_PREVIOUS_DATES='[3m'}
+: ${CONGLOMERATEDLINESFROM_COLOR_RESET='[0m'}
+# CONGLOMERATEDLINESFROM_CURRENT_LINE_PREFIX
+# CONGLOMERATEDLINESFROM_CURRENT_LINE_SUFFIX
+# CONGLOMERATEDLINESFROM_DATE_DATE_SEPARATOR
+# CONGLOMERATEDLINESFROM_DATE_LINE_SEPARATOR
+# CONGLOMERATEDLINESFROM_DATE_FORMAT	strftime format
+# CONGLOMERATEDLINESFROM_HISTORY_PREFIX
+# CONGLOMERATEDLINESFROM_HISTORY_SUFFIX
+# CONGLOMERATEDLINESFROM_PREVIOUS_DATES_PREFIX
+# CONGLOMERATEDLINESFROM_PREVIOUS_DATES_SUFFIX
+# CONGLOMERATEDLINESFROM_SKIP_PLACEHOLDER   Replacement for skipped parts of lines; should not naturally occur in lines.
 
 printShortUsage()
 {
     # Note: short followed by long option; if the user knows the short one, they can
     # skim the long one.
-    printf 'Usage: [CONGLOMERATEDLINESFROM_DATE_FORMAT=DATE-FORMAT] [CONGLOMERATEDLINESFROM_SKIP_PLACEHOLDER=TEXT] %q %s\n' "$(basename "$1")" "[-S|--successful-only] [-1|--stdout|-2|--stderr] [-r|--record M] [-t|--take N] [-e|--grep PATTERN [-e ...]] [-v|--vgrep PATTERN [-v ...]] [-s|--skip PATTERN [-s ...]] [-m|--match PATTERN [-m ...]] [-a|--all] [-i|--id ID] -c|--command \"COMMANDLINE\" [-c ...] | --exec SIMPLECOMMAND [...] ${CONGLOMERATEDLINESFROM_EXEC_END} [--exec ...] | [--] SIMPLECOMMAND [...] [-?|-h|--help]"
+    printf 'Usage: %q %s\n' "$(basename "$1")" "[--color=(always|auto|never)|--no-color] [-S|--successful-only] [-1|--stdout|-2|--stderr] [-r|--record M] [-t|--take N] [-e|--grep PATTERN [-e ...]] [-v|--vgrep PATTERN [-v ...]] [-s|--skip PATTERN [-s ...]] [-m|--match PATTERN [-m ...]] [-a|--all] [-i|--id ID] -c|--command \"COMMANDLINE\" [-c ...] | --exec SIMPLECOMMAND [...] ${CONGLOMERATEDLINESFROM_EXEC_END} [--exec ...] | [--] SIMPLECOMMAND [...] [-?|-h|--help]"
     echo
     printf 'Usage: cat FILE [...] | %q %s\n' "$(basename "$1")" '... -i|--id ID'
 }
@@ -91,6 +107,7 @@ HELPTEXT
     printf '%q %s\n' "$(basename "$1")" '--foo bar /tmp/foobar' # TODO
 }
 
+isColor=; [ -t 1 ] && isColor=t
 isSuccessfulOnly=
 redirPrefix='2>&1'
 redirSuffix=
@@ -108,6 +125,22 @@ while [ $# -ne 0 ]
 do
     case "$1" in
 	--help|-h|-\?)	shift; printLongUsage "$0"; exit 0;;
+	--no-color|--color=never)
+			isColor=; shift;;
+	--color=always)	isColor=t; shift;;
+	--color=auto)	shift;;
+	--color)	case "$2" in
+			    always) isColor=t;;
+			    never)  isColor=;;
+			    auto)   ;;
+			    *)	    echo >&2 "ERROR: Invalid --color arg: $2"
+				    echo >&2
+				    printUsage "$0" >&2
+				    exit 2
+				    ;;
+			esac
+			shift; shift
+			;;
 	--successful-only|-S)
 			shift; isSuccessfulOnly=t;;
 	--stdout|-1)	shift; redirPrefix='';;
@@ -165,6 +198,7 @@ if [ $# -ne 0 ]; then
     printf -v quotedSimpleCommand '%q ' "$@"
     commands+="${commands:+ $CONGLOMERATEDLINESFROM_COMMAND_JOINER }${quotedSimpleCommand% }"
 fi
+[ "$isColor" ] && export "${!CONGLOMERATEDLINESFROM_COLOR_@}" || unset "${!CONGLOMERATEDLINESFROM_COLOR_@}"
 
 readonly DATA_DIRSPEC="${XDG_DATA_HOME:-${HOME}/.local/share}/conglomeratedLinesFrom"
 
@@ -214,24 +248,30 @@ function renderDate(epoch, nanos) {
 
 function setLine(record, line, epoch, nanos,      timestamp, renderedDate) {
     timestamp = epoch "." nanos
-    # print "****record=" record > "/dev/fd/3"
-    # print "****line=" line > "/dev/fd/3"
-    # print "****date=" timestamp > "/dev/fd/3"
     if (record == line) {
 	occurrences[record][timestamp] += 1
     } else {
 	renderedDate = renderDate(epoch, nanos)
-	lines[record] = lines[record] (lines[record] == "" ? "" : "\n") renderedDate (renderedDate == "" ? "" : dateLineSeparator) line
+	lines[record] = lines[record] (lines[record] == "" ? "" : "\n") \
+		ENVIRON["CONGLOMERATEDLINESFROM_COLOR_HISTORY_DATE"] renderedDate ENVIRON["CONGLOMERATEDLINESFROM_COLOR_RESET"] \
+		(renderedDate == "" ? "" : ENVIRON["CONGLOMERATEDLINESFROM_COLOR_DATE_LINE_SEPARATOR"] dateLineSeparator ENVIRON["CONGLOMERATEDLINESFROM_COLOR_RESET"]) \
+		ENVIRON["CONGLOMERATEDLINESFROM_COLOR_HISTORY_LINE"] line ENVIRON["CONGLOMERATEDLINESFROM_COLOR_RESET"]
     }
 }
 
 function printWithHistory(filespec, record, currentLine,      output, timestamp, timestampParts, count) {
     if (record in lines) {
-	print lines[record]
+	print ENVIRON["CONGLOMERATEDLINESFROM_HISTORY_PREFIX"] lines[record] ENVIRON["CONGLOMERATEDLINESFROM_HISTORY_SUFFIX"]
 	delete lines[record]
     }
 
-    print currentLine
+    print \
+	currentLineIndent \
+	ENVIRON["CONGLOMERATEDLINESFROM_CURRENT_LINE_PREFIX"] \
+	    ENVIRON["CONGLOMERATEDLINESFROM_COLOR_CURRENT_LINE"] \
+		currentLine \
+	    ENVIRON["CONGLOMERATEDLINESFROM_COLOR_RESET"] \
+	ENVIRON["CONGLOMERATEDLINESFROM_CURRENT_LINE_SUFFIX"]
 
     if (record in occurrences) {
 	output = ""
@@ -244,7 +284,13 @@ function printWithHistory(filespec, record, currentLine,      output, timestamp,
 	    output = output (output == "" ? "" : dateDateSeparator) renderDate(timestampParts[1], timestampParts[2]) (count > 1 ? " (" count ")" : "")
 	}
 
-	print "Previously at " output
+	print \
+	    ENVIRON["CONGLOMERATEDLINESFROM_COLOR_PREVIOUS_DATES"] \
+		previousDatesPrefix \
+		    output \
+		previousDatesSuffix \
+	    ENVIRON["CONGLOMERATEDLINESFROM_COLOR_RESET"]
+
 	delete occurrences[record]
     }
 }
@@ -256,7 +302,14 @@ BEGIN {
     dateFormat = ("CONGLOMERATEDLINESFROM_DATE_FORMAT" in ENVIRON ? ENVIRON["CONGLOMERATEDLINESFROM_DATE_FORMAT"] : "%x %X.%N")
     dateDateSeparator = ("CONGLOMERATEDLINESFROM_DATE_DATE_SEPARATOR" in ENVIRON ? ENVIRON["CONGLOMERATEDLINESFROM_DATE_DATE_SEPARATOR"] : ", ")
     dateLineSeparator = ("CONGLOMERATEDLINESFROM_DATE_LINE_SEPARATOR" in ENVIRON ? ENVIRON["CONGLOMERATEDLINESFROM_DATE_LINE_SEPARATOR"] : "\t")
+    previousDatesPrefix = ("CONGLOMERATEDLINESFROM_PREVIOUS_DATES_PREFIX" in ENVIRON ? ENVIRON["CONGLOMERATEDLINESFROM_PREVIOUS_DATES_PREFIX"] : "Previously at ")
+    previousDatesSuffix = ("CONGLOMERATEDLINESFROM_PREVIOUS_DATES_SUFFIX" in ENVIRON ? ENVIRON["CONGLOMERATEDLINESFROM_PREVIOUS_DATES_SUFFIX"] : "")
     skipPlaceholder = ("CONGLOMERATEDLINESFROM_SKIP_PLACEHOLDER" in ENVIRON ? ENVIRON["CONGLOMERATEDLINESFROM_SKIP_PLACEHOLDER"] : "\x00")
+    if ("CONGLOMERATEDLINESFROM_CURRENT_LINE_PREFIX" in ENVIRON && ENVIRON["CONGLOMERATEDLINESFROM_CURRENT_LINE_PREFIX"] == "") {
+	# DWIM: Defined but empty prefix renders with indent to align with history lines
+	# above.
+	currentLineIndent = gensub(/[^\t]/, " ", "g", renderDate(systime(), "000000000")) dateLineSeparator
+    }
 }
 
 ARGIND < (ARGC - 1) {
