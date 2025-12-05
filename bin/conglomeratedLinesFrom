@@ -239,6 +239,10 @@ function renderDate(epoch, nanos) {
     return strftime(gensub("%N", nanos, "g", dateFormat), epoch)
 }
 
+function surroundText(prefix, text, suffix) {
+    return (text == "" ? "" : prefix text suffix)
+}
+
 function setLine(record, line, epoch, nanos,      timestamp, renderedDate) {
     timestamp = epoch "." nanos
     if (record == line) {
@@ -246,8 +250,11 @@ function setLine(record, line, epoch, nanos,      timestamp, renderedDate) {
     } else {
 	renderedDate = renderDate(epoch, nanos)
 	lines[record] = lines[record] (lines[record] == "" ? "" : "\n") \
-		ENVIRON["CONGLOMERATEDLINESFROM_COLOR_HISTORY_DATE"] renderedDate ENVIRON["CONGLOMERATEDLINESFROM_COLOR_RESET"] \
-		(renderedDate == "" ? "" : ENVIRON["CONGLOMERATEDLINESFROM_COLOR_DATE_LINE_SEPARATOR"] dateLineSeparator ENVIRON["CONGLOMERATEDLINESFROM_COLOR_RESET"]) \
+		surroundText( \
+		    ENVIRON["CONGLOMERATEDLINESFROM_COLOR_HISTORY_DATE"], \
+		    renderedDate, \
+		    ENVIRON["CONGLOMERATEDLINESFROM_COLOR_RESET"] ENVIRON["CONGLOMERATEDLINESFROM_COLOR_DATE_LINE_SEPARATOR"] dateLineSeparator ENVIRON["CONGLOMERATEDLINESFROM_COLOR_RESET"] \
+		)\
 		ENVIRON["CONGLOMERATEDLINESFROM_COLOR_HISTORY_LINE"] line ENVIRON["CONGLOMERATEDLINESFROM_COLOR_RESET"]
     }
 }
