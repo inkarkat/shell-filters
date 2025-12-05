@@ -266,7 +266,7 @@ function printWithHistory(filespec, record, currentLine,      output, timestamp,
     }
 
     print \
-	currentLineIndent \
+	(record == currentLine ? "" : currentLineIndent) \
 	ENVIRON["CONGLOMERATEDLINESFROM_CURRENT_LINE_PREFIX"] \
 	    ENVIRON["CONGLOMERATEDLINESFROM_COLOR_CURRENT_LINE"] \
 		currentLine \
