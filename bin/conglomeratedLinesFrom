@@ -81,7 +81,8 @@ HELPDESCRIPTION
 			After printing a line that has been seen N times, don't
 			immediately report the line on the next run again if it
 			appears again, but instead wait until N new occurrences
-			have been spotted.
+			have been spotted. Lines are included in -all histories,
+			though.
     --id|-i ID          Identifier for the running COMMAND. If omitted, will use
 			COMMAND itself. Pass this if the command is different
 			(but equivalent) on invocations. Mandatory when no
