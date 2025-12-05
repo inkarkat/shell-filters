@@ -19,15 +19,15 @@ runAllAnimals()
     NOW=1764858242.000000000 runAllAnimals
     assert_output - <<'EOF'
 dog
-Previously at 15:24:00, 15:24:01 (2)
+Previously at 14:24:00, 14:24:01 (2)
 EOF
 
     NOW=1764858243.000000000 runAllAnimals
     assert_output - <<'EOF'
 cat
-Previously at 15:24:00, 15:24:01
+Previously at 14:24:00, 14:24:01
 dog
-Previously at 15:24:00, 15:24:01 (2), 15:24:02
+Previously at 14:24:00, 14:24:01 (2), 14:24:02
 EOF
 
     NOW=1764858244.000000000 runAllAnimals
@@ -36,19 +36,19 @@ EOF
     NOW=1764858245.000000000 runAllAnimals
     assert_output - <<'EOF'
 fox
-Previously at 15:24:02, 15:24:04
+Previously at 14:24:02, 14:24:04
 EOF
 
     NOW=1764858246.000000000 runAllAnimals
     assert_output - <<'EOF'
 aardvark
-Previously at 15:24:03, 15:24:05
+Previously at 14:24:03, 14:24:05
 EOF
 
     NOW=1764858250.000000000 runAllAnimals
     assert_output - <<'EOF'
 aardvark
-Previously at 15:24:05, 15:24:06
+Previously at 14:24:05, 14:24:06
 EOF
 
     # Do another (partial) round to verify the reporting of the duplicate "dog"
@@ -56,16 +56,16 @@ EOF
     NOW=1764858251.000000000 runAllAnimals
     assert_output - <<'EOF'
 cat
-Previously at 15:24:05, 15:24:10
+Previously at 14:24:05, 14:24:10
 dog
-Previously at 15:24:06, 15:24:10
+Previously at 14:24:06, 14:24:10
 dog
 EOF
 
     NOW=1764858252.000000000 runAllAnimals
     assert_output - <<'EOF'
 dog
-Previously at 15:24:06, 15:24:10, 15:24:11 (2)
+Previously at 14:24:06, 14:24:10, 14:24:11 (2)
 EOF
 }
 
@@ -85,15 +85,15 @@ EOF
     NOW=1764858242.000000000 runAllAnimals
     assert_output - <<'EOF'
 [dog]
-(Seen at 15:24:00 / 15:24:01 (2).)
+(Seen at 14:24:00 / 14:24:01 (2).)
 EOF
 
     NOW=1764858243.000000000 runAllAnimals
     assert_output - <<'EOF'
 [cat]
-(Seen at 15:24:00 / 15:24:01.)
+(Seen at 14:24:00 / 14:24:01.)
 [dog]
-(Seen at 15:24:00 / 15:24:01 (2) / 15:24:02.)
+(Seen at 14:24:00 / 14:24:01 (2) / 14:24:02.)
 EOF
 }
 
@@ -107,14 +107,14 @@ EOF
     NOW=1764858242.000000000 runAllAnimals --color=always
     assert_output - <<'EOF'
 dog[0m
-[3mPreviously at 15:24:00, 15:24:01 (2)[0m
+[3mPreviously at 14:24:00, 14:24:01 (2)[0m
 EOF
 
     CONGLOMERATEDLINESFROM_COLOR_CURRENT_LINE='[31m' NOW=1764858243.000000000 runAllAnimals --color=always
     assert_output - <<'EOF'
 [31mcat[0m
-[3mPreviously at 15:24:00, 15:24:01[0m
+[3mPreviously at 14:24:00, 14:24:01[0m
 [31mdog[0m
-[3mPreviously at 15:24:00, 15:24:01 (2), 15:24:02[0m
+[3mPreviously at 14:24:00, 14:24:01 (2), 14:24:02[0m
 EOF
 }

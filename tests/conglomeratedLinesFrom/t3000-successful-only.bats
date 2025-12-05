@@ -2,10 +2,10 @@
 
 load fixture
 
-type -t rg >/dev/null || skip 'rg is not available'
-
 runFlaggingElephants()
 {
+    type -t rg >/dev/null || skip 'rg is not available'
+
     run conglomeratedLinesFrom "$@" -- \
 	pipelineBuilder \
 	    --exec dishOutSections --basedir "$BATS_TEST_TMPDIR" -- "${BATS_TEST_DIRNAME}/animals.txt" \; \

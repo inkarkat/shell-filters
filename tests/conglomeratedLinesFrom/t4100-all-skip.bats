@@ -90,53 +90,53 @@ runAllAnimalVowels()
 
     NOW=1764858242.000000000 runAllAnimalVowels
     assert_output - <<'EOF'
-15:24:00	dog
-15:24:01	dog
-15:24:01	dog
+14:24:00	dog
+14:24:01	dog
+14:24:01	dog
 fox
 dog
 EOF
 
     NOW=1764858243.000000000 runAllAnimalVowels
     assert_output - <<'EOF'
-15:24:00	cat
-15:24:01	cat
+14:24:00	cat
+14:24:01	cat
 cat
-15:24:00	dog
-15:24:01	dog
-15:24:01	dog
-15:24:02	fox
-15:24:02	dog
+14:24:00	dog
+14:24:01	dog
+14:24:01	dog
+14:24:02	fox
+14:24:02	dog
 dog
 EOF
 
     NOW=1764858244.000000000 runAllAnimalVowels
     assert_output - <<'EOF'
-15:24:01	dog
-15:24:01	dog
-15:24:02	fox
-15:24:02	dog
-15:24:03	dog
+14:24:01	dog
+14:24:01	dog
+14:24:02	fox
+14:24:02	dog
+14:24:03	dog
 fox
 EOF
 
     NOW=1764858245.000000000 runAllAnimalVowels
     assert_output - <<'EOF'
-15:24:02	fox
-15:24:02	dog
-15:24:03	dog
-15:24:04	fox
+14:24:02	fox
+14:24:02	dog
+14:24:03	dog
+14:24:04	fox
 fox
 EOF
 
     NOW=1764858246.000000000 runAllAnimalVowels
     assert_output - <<'EOF'
-15:24:03	aardvark
-15:24:05	aardvark
+14:24:03	aardvark
+14:24:05	aardvark
 aardvark
-15:24:03	dog
-15:24:04	fox
-15:24:05	fox
+14:24:03	dog
+14:24:04	fox
+14:24:05	fox
 dog
 EOF
 }
@@ -150,23 +150,23 @@ EOF
 
     CONGLOMERATEDLINESFROM_CURRENT_LINE_PREFIX='' NOW=1764858242.000000000 runAllAnimalVowels
     assert_output - <<'EOF'
-15:24:00	dog
-15:24:01	dog
-15:24:01	dog
+14:24:00	dog
+14:24:01	dog
+14:24:01	dog
         	fox
         	dog
 EOF
 
     CONGLOMERATEDLINESFROM_CURRENT_LINE_PREFIX='' NOW=1764858243.000000000 runAllAnimalVowels
     assert_output - <<'EOF'
-15:24:00	cat
-15:24:01	cat
+14:24:00	cat
+14:24:01	cat
         	cat
-15:24:00	dog
-15:24:01	dog
-15:24:01	dog
-15:24:02	fox
-15:24:02	dog
+14:24:00	dog
+14:24:01	dog
+14:24:01	dog
+14:24:02	fox
+14:24:02	dog
         	dog
 EOF
 }
@@ -186,9 +186,9 @@ EOF
     NOW=1764858242.000000000 runAllAnimalVowels
     assert_output - <<'EOF'
 ,--- history ---
-|15:24:00 dog
-|15:24:01 dog
-|15:24:01 dog
+|14:24:00 dog
+|14:24:01 dog
+|14:24:01 dog
 `---------------
 fox
 dog
@@ -197,16 +197,16 @@ EOF
     NOW=1764858243.000000000 runAllAnimalVowels
     assert_output - <<'EOF'
 ,--- history ---
-|15:24:00 cat
-|15:24:01 cat
+|14:24:00 cat
+|14:24:01 cat
 `---------------
 cat
 ,--- history ---
-|15:24:00 dog
-|15:24:01 dog
-|15:24:01 dog
-|15:24:02 fox
-|15:24:02 dog
+|14:24:00 dog
+|14:24:01 dog
+|14:24:01 dog
+|14:24:02 fox
+|14:24:02 dog
 `---------------
 dog
 EOF
@@ -221,23 +221,23 @@ EOF
 
     NOW=1764858242.000000000 runAllAnimalVowels --color=always
     assert_output - <<'EOF'
-[3;37m15:24:00[0m	[0m[37mdog[0m
-[3;37m15:24:01[0m	[0m[37mdog[0m
-[3;37m15:24:01[0m	[0m[37mdog[0m
+[3;37m14:24:00[0m	[0m[37mdog[0m
+[3;37m14:24:01[0m	[0m[37mdog[0m
+[3;37m14:24:01[0m	[0m[37mdog[0m
 fox[0m
 dog[0m
 EOF
 
     NOW=1764858243.000000000 runAllAnimalVowels --color=always
     assert_output - <<'EOF'
-[3;37m15:24:00[0m	[0m[37mcat[0m
-[3;37m15:24:01[0m	[0m[37mcat[0m
+[3;37m14:24:00[0m	[0m[37mcat[0m
+[3;37m14:24:01[0m	[0m[37mcat[0m
 cat[0m
-[3;37m15:24:00[0m	[0m[37mdog[0m
-[3;37m15:24:01[0m	[0m[37mdog[0m
-[3;37m15:24:01[0m	[0m[37mdog[0m
-[3;37m15:24:02[0m	[0m[37mfox[0m
-[3;37m15:24:02[0m	[0m[37mdog[0m
+[3;37m14:24:00[0m	[0m[37mdog[0m
+[3;37m14:24:01[0m	[0m[37mdog[0m
+[3;37m14:24:01[0m	[0m[37mdog[0m
+[3;37m14:24:02[0m	[0m[37mfox[0m
+[3;37m14:24:02[0m	[0m[37mdog[0m
 dog[0m
 EOF
 }

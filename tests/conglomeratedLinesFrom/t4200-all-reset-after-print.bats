@@ -16,16 +16,16 @@ run2of3AnimalsOnly()
     NOW=1764858241.000000000 run2of3AnimalsOnly --reset-after-print
     assert_output - <<'EOF'
 cat
-Previously at 15:24:00
+Previously at 14:24:00
 dog
-Previously at 15:24:00
+Previously at 14:24:00
 dog
 EOF
 
     NOW=1764858242.000000000 run2of3AnimalsOnly --reset-after-print
     assert_output - <<'EOF'
 bird
-Previously at 15:24:00
+Previously at 14:24:00
 EOF
 
     # Note how the two dogs from the run that reset the counter are still included,
@@ -33,38 +33,38 @@ EOF
     NOW=1764858243.000000000 run2of3AnimalsOnly --reset-after-print
     assert_output - <<'EOF'
 dog
-Previously at 15:24:01 (2), 15:24:02
+Previously at 14:24:01 (2), 14:24:02
 EOF
 
     NOW=1764858244.000000000 run2of3AnimalsOnly --reset-after-print
     assert_output - <<'EOF'
 fox
-Previously at 15:24:02
+Previously at 14:24:02
 EOF
 
     NOW=1764858245.000000000 run2of3AnimalsOnly --reset-after-print
     assert_output - <<'EOF'
 aardvark
-Previously at 15:24:03
+Previously at 14:24:03
 cat
-Previously at 15:24:03
+Previously at 14:24:03
 EOF
 
     NOW=1764858246.000000000 run2of3AnimalsOnly --reset-after-print
     assert_output - <<'EOF'
 elephant
-Previously at 15:24:04
+Previously at 14:24:04
 EOF
 
-    # Again, aardvark from 15:24:05 wasn't reported, but is included in the history
+    # Again, aardvark from 14:24:05 wasn't reported, but is included in the history
     # here.
     NOW=1764858250.000000000 run2of3AnimalsOnly --reset-after-print
     assert_output - <<'EOF'
 aardvark
-Previously at 15:24:05, 15:24:06
+Previously at 14:24:05, 14:24:06
 bird
-Previously at 15:24:05
+Previously at 14:24:05
 dog
-Previously at 15:24:06
+Previously at 14:24:06
 EOF
 }
