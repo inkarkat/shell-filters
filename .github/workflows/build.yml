@@ -12,4 +12,6 @@ on:
 jobs:
   build:
     uses: inkarkat/scripting-setup/.github/workflows/build.yml@master
+    with:
+      additional-packages: ripgrep
     secrets: inherit

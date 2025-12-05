@@ -1,0 +1,412 @@
+#!/bin/bash
+shopt -qs nullglob
+
+: ${CONGLOMERATEDLINESFROM_COMMAND_JOINER=;}
+: ${CONGLOMERATEDLINESFROM_EXEC_END=;}
+: ${CONGLOMERATEDLINESFROM_COLOR_HISTORY_DATE='[3;37m'}
+: ${CONGLOMERATEDLINESFROM_COLOR_HISTORY_LINE='[37m'}
+: ${CONGLOMERATEDLINESFROM_COLOR_CURRENT_LINE=}
+: ${CONGLOMERATEDLINESFROM_COLOR_DATE_LINE_SEPARATOR=}
+: ${CONGLOMERATEDLINESFROM_COLOR_PREVIOUS_DATES='[3m'}
+: ${CONGLOMERATEDLINESFROM_COLOR_RESET='[0m'}
+# CONGLOMERATEDLINESFROM_CURRENT_LINE_PREFIX	By default indents like the previous historical dates; set to empty to disable that.
+# CONGLOMERATEDLINESFROM_CURRENT_LINE_SUFFIX
+# CONGLOMERATEDLINESFROM_DATE_DATE_SEPARATOR
+# CONGLOMERATEDLINESFROM_DATE_LINE_SEPARATOR
+# CONGLOMERATEDLINESFROM_DATE_FORMAT	strftime format
+# CONGLOMERATEDLINESFROM_HISTORY_PREFIX
+# CONGLOMERATEDLINESFROM_HISTORY_SUFFIX
+# CONGLOMERATEDLINESFROM_PREVIOUS_DATES_PREFIX
+# CONGLOMERATEDLINESFROM_PREVIOUS_DATES_SUFFIX
+# CONGLOMERATEDLINESFROM_SKIP_PLACEHOLDER   Replacement for skipped parts of lines; should not naturally occur in lines.
+
+printShortUsage()
+{
+    # Note: short followed by long option; if the user knows the short one, they can
+    # skim the long one.
+    printf 'Usage: %q %s\n' "$(basename "$1")" "[--color=(always|auto|never)|--no-color] [-S|--successful-only] [-1|--stdout|-2|--stderr] [-r|--record M] [-t|--take N] [-e|--grep PATTERN [-e ...]] [-v|--vgrep PATTERN [-v ...]] [-s|--skip PATTERN [-s ...]] [-m|--match PATTERN [-m ...]] [-a|--all] [-i|--id ID] -c|--command \"COMMANDLINE\" [-c ...] | --exec SIMPLECOMMAND [...] ${CONGLOMERATEDLINESFROM_EXEC_END} [--exec ...] | [--] SIMPLECOMMAND [...] [-?|-h|--help]"
+    echo
+    printf 'Usage: cat FILE [...] | %q %s\n' "$(basename "$1")" '... -i|--id ID'
+}
+printUsage()
+{
+    # This is the short help when launched with no or incorrect arguments.
+    # It is printed to stderr to avoid accidental processing.
+    printShortUsage "$1" >&2
+    printf >&2 '\nTry %q --help for more information.\n' "$(basename "$1")"
+}
+printLongUsage()
+{
+    # This is the long "man page" when launched with the help argument.
+    # It is printed to stdout to allow paging with 'more'.
+    cat <<HELPDESCRIPTION
+Execute COMMAND and print those lines that have been seen in at least
+${takeCount:?} executions of the last ${recordCount:?} recorded executions.
+No deduplication happens for the current COMMAND's output.
+Lines and/or parts of the lines can be prevented from getting recorded via
+positive and/or negative filters.
+Useful to reduce the noise on cron jobs or CI/CD runs by suppressing one-off
+occasional hiccups, while still getting informed about regular, persistent
+issues (albeit now with a bit of delay).
+HELPDESCRIPTION
+    echo
+    printShortUsage "$1"
+    echo
+    cat <<HELPTEXT
+    --successful-only|-S
+			Skip recording for a failed COMMAND and directly print
+			all of its output.
+    --stdout|-1         Only record standard output, errors are passed through.
+    --stderr|-2         Only record error output, pass through regular output.
+    --record|-r M	Consider the last M (default: ${recordCount}) executions of COMMAND
+			(including this one).
+    --take|-t N		Print those lines from the current output of COMMAND
+			that have been seen N times in the last M executions of
+			COMMAND (default: ${takeCount} of ${recordCount}).
+    --grep|-e PATTERN	Only record lines that match PATTERN. Other lines (and
+			those that also match --vgrep PATTERN) are passed
+			through.
+    --vgrep|-v PATTERN	Directly print and do not record lines that match
+			PATTERN.
+    --skip|-s PATTERN	Ignore the parts of a line that match PATTERN (e.g.
+			timestamps or filenames) when considering occurrences.
+    --match|-m PATTERN	Only consider the parts of a line that match PATTERN
+			(and haven't been excluded by --skip) when considering
+			occurrences.
+    --all|-a		Print all previous recorded dates when that particular
+			full line has occurred. When parts of a line have been
+			(de-)selected by --skip PATTERN or --match PATTERN,
+			print all matches from all records (with the execution
+			time prepended), not just the matching line(s) from the
+			current execution of COMMAND.
+    --reset-after-print|-R
+			After printing a line that has been seen N times, don't
+			immediately print the line on the next run again if it
+			appears again, but instead wait until N new occurrences
+			have been spotted. Lines are included in histories from
+			--all, though.
+    --id|-i ID          Identifier for the running COMMAND. If omitted, will use
+			COMMAND itself. Pass this if the command is different
+			(but equivalent) on invocations. Mandatory when no
+			COMMAND is given and recording standard input.
+    --command|-c CMD	Execute CMD as a command-line.
+    --exec CMD [...] ${CONGLOMERATEDLINESFROM_EXEC_END}	Execute CMD; all following arguments are taken to be
+			arguments to the CMD until an argument consisting of
+			'${CONGLOMERATEDLINESFROM_EXEC_END}' is encountered.
+EXIT STATUS:
+    0	Complete success.
+    2	Bad invocation, wrong or missing command-line arguments.
+    3	Internal error or failed assertion.
+    *   any exit status from COMMAND(s)
+HELPTEXT
+}
+
+isColor=; [ -t 1 ] && isColor=t
+isSuccessfulOnly=
+redirPrefix='2>&1'
+redirSuffix=
+recordCount=4
+takeCount=3
+grepPattern=
+vgrepPattern=
+skipPattern=
+matchPattern=
+isAll=
+isResetAfterPrint=
+commandId=
+commands=
+while [ $# -ne 0 ]
+do
+    case "$1" in
+	--help|-h|-\?)	shift; printLongUsage "$0"; exit 0;;
+	--no-color|--color=never)
+			isColor=; shift;;
+	--color=always)	isColor=t; shift;;
+	--color=auto)	shift;;
+	--color)	case "$2" in
+			    always) isColor=t;;
+			    never)  isColor=;;
+			    auto)   ;;
+			    *)	    echo >&2 "ERROR: Invalid --color arg: $2"
+				    echo >&2
+				    printUsage "$0" >&2
+				    exit 2
+				    ;;
+			esac
+			shift; shift
+			;;
+	--successful-only|-S)
+			shift; isSuccessfulOnly=t;;
+	--stdout|-1)	shift; redirPrefix='';;
+	--stderr|-2)	shift; redirPrefix='3>&1 1>&2 2>&3 3>&-'; redirSuffix='3>&1 1>&2 2>&3 3>&-';;
+	--record|-r)	shift; recordCount="${1:?}"; shift;;
+	--take|-t)	shift; takeCount="${1:?}"; shift;;
+	--grep|-e)	shift; grepPattern+="${grepPattern:+|}${1:?}"; shift;;
+	--vgrep|-v)	shift; vgrepPattern+="${vgrepPattern:+|}${1:?}"; shift;;
+	--skip|-s)	shift; skipPattern+="${skipPattern:+|}${1:?}"; shift;;
+	--match|-m)	shift; matchPattern+="${matchPattern:+|}${1:?}"; shift;;
+	--all|-a)	shift; isAll=t;;
+	--reset-after-print|-R)
+			shift; isResetAfterPrint=t;;
+	--id|-i)	shift; commandId="${1:?}"; shift;;
+	--command|-c)	shift; commands+="${commands:+ $CONGLOMERATEDLINESFROM_COMMAND_JOINER }$1"; shift;;
+	--exec)		shift
+			cmd=
+			while [ $# -gt 0 -a "$1" != "$CONGLOMERATEDLINESFROM_EXEC_END" ]
+			do
+			    printf -v quotedArg %q "$1"
+			    cmd+="${cmd:+ }${quotedArg}"
+			    shift
+			done
+			if [ $# -eq 0 ]; then
+			    echo "ERROR: --exec command must be concluded with '${CONGLOMERATEDLINESFROM_EXEC_END}'"; echo; printUsage "$0"
+			    exit 2
+			fi >&2
+			shift
+			commands+="${commands:+ $CONGLOMERATEDLINESFROM_COMMAND_JOINER }${cmd}"
+			;;
+	--)		shift; break;;
+	-*)		{ echo "ERROR: Unknown option \"$1\"!"; echo; printUsage "$0"; } >&2; exit 2;;
+	*)		break;;
+    esac
+done
+if [[ ! "$recordCount" =~ ^[[:digit:]]+$ ]] || [ $recordCount -lt 1 ]; then
+    echo 'ERROR: Record count must be a positive non-zero number.'
+    echo
+    printUsage "$0"
+    exit 2
+elif [[ ! "$takeCount" =~ ^[[:digit:]]+$ ]] || [ $takeCount -lt 1 ]; then
+    echo 'ERROR: Take count must be a positive non-zero number.'
+    echo
+    printUsage "$0"
+    exit 2
+elif [ $takeCount -gt $recordCount ]; then
+    printf 'ERROR: Take count must not exceed record count (%d).\n' $recordCount
+    echo
+    printUsage "$0"
+    exit 2
+fi >&2
+if [ $# -ne 0 ]; then
+    # Combine --command and SIMPLECOMMAND; need to quote SIMPLECOMMAND to
+    # undo the effects of eval.
+    printf -v quotedSimpleCommand '%q ' "$@"
+    commands+="${commands:+ $CONGLOMERATEDLINESFROM_COMMAND_JOINER }${quotedSimpleCommand% }"
+fi
+[ "$isColor" ] && export "${!CONGLOMERATEDLINESFROM_COLOR_@}" || unset "${!CONGLOMERATEDLINESFROM_COLOR_@}"
+
+readonly DATA_DIRSPEC="${XDG_DATA_HOME:-${HOME}/.local/share}/conglomeratedLinesFrom"
+
+conglomerate()
+{
+    local recordDirspec; recordDirspec="${DATA_DIRSPEC}/$(stringAsFilename -- "${commandId:-$commands}")" || exit 3
+    [ -d "$recordDirspec" ] || mkdir --parents -- "$recordDirspec" || { printf >&2 'ERROR: Could not initialize data store at %s\n' "$recordDirspec"; exit 3; }
+    local currentFilespec; currentFilespec="${recordDirspec}/${NOW:-$(date +%s.%N)}" || exit 3
+
+    local currentRecordFilespec="${currentFilespec}.record"
+    : >"$currentRecordFilespec" || exit 3
+    LC_NUMERIC=C acceptStatus 4 99 truncateDir --first --numeric-sort --count $recordCount --remove --force -- "$recordDirspec"/*.record
+
+    local currentLinesFilespec
+    if [ "$isAll" ]; then
+	currentLinesFilespec="${currentFilespec}.lines"
+	: >"$currentLinesFilespec" || exit 3
+	LC_NUMERIC=C acceptStatus 4 99 truncateDir --first --numeric-sort --count $recordCount --remove --force -- "$recordDirspec"/*.lines
+    fi
+
+    local resetFilespec
+    if [ "$isResetAfterPrint" ]; then
+	resetFilespec="$(mktemp --tmpdir "$(basename -- "$0")-XXXXXX" 2>/dev/null || echo "${TMPDIR:-/tmp}/$(basename -- "$0").$$$RANDOM")"
+	[ "${DEBUG:-}" ] || trap 'rm -f -- "$resetFilespec" 2>/dev/null' EXIT
+    fi
+
+    awk \
+	-v "takeCount=$takeCount" \
+	-v "grepPattern=${grepPattern//\/\\}" \
+	-v "vgrepPattern=${vgrepPattern//\/\\}" \
+	-v "skipPattern=${skipPattern//\/\\}" \
+	-v "matchPattern=${matchPattern//\/\\}" \
+	-v "resetFilespec=${resetFilespec//\\/\\\\}" \
+	-v "currentRecordFilespec=${currentRecordFilespec//\\/\\\\}" \
+	-v "currentLinesFilespec=${currentLinesFilespec//\\/\\\\}" \
+'
+function setRecord(record, source) {
+    if (! (record in records && source in records[record])) {
+	records[record][source] = 1
+    }
+}
+
+function renderDate(epoch, nanos) {
+    return strftime(gensub("%N", nanos, "g", dateFormat), epoch)
+}
+
+function surroundText(prefix, text, suffix) {
+    return (text == "" ? "" : prefix text suffix)
+}
+
+function setLine(record, line, epoch, nanos,      timestamp, renderedDate) {
+    timestamp = epoch "." nanos
+    if (record == line) {
+	occurrences[record][timestamp] += 1
+    } else {
+	renderedDate = renderDate(epoch, nanos)
+	lines[record] = lines[record] (lines[record] == "" ? "" : "\n") \
+		surroundText( \
+		    ENVIRON["CONGLOMERATEDLINESFROM_COLOR_HISTORY_DATE"], \
+		    renderedDate, \
+		    ENVIRON["CONGLOMERATEDLINESFROM_COLOR_RESET"] ENVIRON["CONGLOMERATEDLINESFROM_COLOR_DATE_LINE_SEPARATOR"] dateLineSeparator ENVIRON["CONGLOMERATEDLINESFROM_COLOR_RESET"] \
+		)\
+		ENVIRON["CONGLOMERATEDLINESFROM_COLOR_HISTORY_LINE"] line ENVIRON["CONGLOMERATEDLINESFROM_COLOR_RESET"]
+    }
+}
+
+function printWithHistory(filespec, record, currentLine,      output, timestamp, timestampParts, count) {
+    if (record in lines) {
+	print ENVIRON["CONGLOMERATEDLINESFROM_HISTORY_PREFIX"] lines[record] ENVIRON["CONGLOMERATEDLINESFROM_HISTORY_SUFFIX"]
+	delete lines[record]
+    }
+
+    print \
+	(record == currentLine ? "" : currentLineIndent) \
+	ENVIRON["CONGLOMERATEDLINESFROM_CURRENT_LINE_PREFIX"] \
+	    ENVIRON["CONGLOMERATEDLINESFROM_COLOR_CURRENT_LINE"] \
+		currentLine \
+	    ENVIRON["CONGLOMERATEDLINESFROM_COLOR_RESET"] \
+	ENVIRON["CONGLOMERATEDLINESFROM_CURRENT_LINE_SUFFIX"]
+
+    if (record in occurrences) {
+	output = ""
+	for (timestamp in occurrences[record]) {
+	    if (split(timestamp, timestampParts, /\./) != 2) {
+		print "ASSERT: Invalid timestamp; not <epoch>.<nanos>: " + timestamp > "/dev/stderr"
+		exit 3
+	    }
+	    count = occurrences[record][timestamp]
+	    output = output (output == "" ? "" : dateDateSeparator) renderDate(timestampParts[1], timestampParts[2]) (count > 1 ? " (" count ")" : "")
+	}
+
+	print \
+	    ENVIRON["CONGLOMERATEDLINESFROM_COLOR_PREVIOUS_DATES"] \
+		previousDatesPrefix \
+		    output \
+		previousDatesSuffix \
+	    ENVIRON["CONGLOMERATEDLINESFROM_COLOR_RESET"]
+
+	delete occurrences[record]
+    }
+}
+
+BEGIN {
+    PROCINFO["sorted_in"] = "@ind_str_asc"  # For sorting of timestamps in occurrences.
+    SUBSEP = "\n"   # Records cannot contain inner newlines.
+
+    dateFormat = ("CONGLOMERATEDLINESFROM_DATE_FORMAT" in ENVIRON ? ENVIRON["CONGLOMERATEDLINESFROM_DATE_FORMAT"] : "%x %X.%N")
+    dateDateSeparator = ("CONGLOMERATEDLINESFROM_DATE_DATE_SEPARATOR" in ENVIRON ? ENVIRON["CONGLOMERATEDLINESFROM_DATE_DATE_SEPARATOR"] : ", ")
+    dateLineSeparator = ("CONGLOMERATEDLINESFROM_DATE_LINE_SEPARATOR" in ENVIRON ? ENVIRON["CONGLOMERATEDLINESFROM_DATE_LINE_SEPARATOR"] : "\t")
+    previousDatesPrefix = ("CONGLOMERATEDLINESFROM_PREVIOUS_DATES_PREFIX" in ENVIRON ? ENVIRON["CONGLOMERATEDLINESFROM_PREVIOUS_DATES_PREFIX"] : "Previously at ")
+    previousDatesSuffix = ("CONGLOMERATEDLINESFROM_PREVIOUS_DATES_SUFFIX" in ENVIRON ? ENVIRON["CONGLOMERATEDLINESFROM_PREVIOUS_DATES_SUFFIX"] : "")
+    skipPlaceholder = ("CONGLOMERATEDLINESFROM_SKIP_PLACEHOLDER" in ENVIRON ? ENVIRON["CONGLOMERATEDLINESFROM_SKIP_PLACEHOLDER"] : "\x00")
+    if (! ("CONGLOMERATEDLINESFROM_CURRENT_LINE_PREFIX" in ENVIRON)) {
+	# By default, render with indent to align with history lines above.
+	currentLineIndent = surroundText("", gensub(/[^\t]/, " ", "g", renderDate(systime(), "000000000")), dateLineSeparator)
+    }
+}
+
+ARGIND < (ARGC - 1) {
+    filespec = ARGV[ARGIND]
+    if (match(filespec, /([0-9]+)\.([0-9]+)\.(lines|record)$/, filenameParts)) {
+	epoch = filenameParts[1]
+	nanos = filenameParts[2]
+	fileextension = filenameParts[3]
+	switch (fileextension) {
+	    case "record":
+		setRecord($0, ARGIND)
+		break
+	    case "lines":
+		record = $0
+		if (getline <= 0) {
+		    printf("ASSERT: Existing line after record: %s\n", filespec) > "/dev/stderr"
+		    exit 3
+		}
+		setLine(record, $0, epoch, nanos)
+		break
+	    default: {
+		printf("ASSERT: Invalid record file extension \"%s\" in %s\n", fileextension, filespec) > "/dev/stderr"
+		exit 3
+	    }
+	}
+    } else {
+	printf("ASSERT: Unexpected record file: %s\n", filespec) > "/dev/stderr"
+	exit 3
+    }
+}
+ARGIND == ARGC - 1 {
+    if (vgrepPattern != "" && $0 ~ vgrepPattern) next
+    if (grepPattern != "" && $0 !~ grepPattern) next
+
+    record = $0
+    if (skipPattern != "") {
+	record = gensub(skipPattern, skipPlaceholder, "g", record)
+    }
+    if (matchPattern != "") {
+	matchCnt = patsplit(record, matches, matchPattern)
+	record = ""
+	for (i = 1; i <= matchCnt; ++i) {
+	    record = record (i == 1 ? "" : skipPlaceholder) matches[i]
+	}
+    }
+    isPartial = (record == $0 ? 0 : 1)
+
+    if (! (record in currentRecords)) {
+	setRecord(record, ARGIND)
+	currentRecords[record] = 1
+	print record > currentRecordFilespec
+    }
+
+    if (currentLinesFilespec != "") {
+	printf("%s\n%s\n", record, $0) > currentLinesFilespec
+    }
+
+    if (length(records[record]) >= takeCount) {
+	if (currentLinesFilespec != "") {
+	    printWithHistory(ARGV[ARGIND], record, $0)
+	} else {
+	    print
+	}
+	if (resetFilespec != "") {
+	    print record > resetFilespec
+	}
+    }
+}
+' "$recordDirspec"/* -; local status=$?
+
+    if [ -n "$resetFilespec" ]; then
+	pipethrough --exec \
+	    acceptStatus 0 1 \
+		grep --text --invert-match --fixed-strings --line-regexp --file "$resetFilespec" \
+	    \; -- "$recordDirspec"/*.record || exit 3
+    fi
+
+    return $status
+}
+
+if [ -n "$commands" ]; then
+    if [ "$isSuccessfulOnly" ]; then
+	eval "commandOutput=\"\$({ $commands; } ${redirPrefix})\" ${redirSuffix}"; exitStatus=$?
+	[ $exitStatus -eq 0 ] \
+	    && processor=conglomerate \
+	    || processor=''
+	    eval 'printf %s\\n "$commandOutput"' "${processor:+|}${processor} ${redirSuffix}" || exit 3
+	exit $exitStatus
+    else
+	eval "{ $commands; } ${redirPrefix} | conglomerate ${redirSuffix}; typeset -a states=(\"\${PIPESTATUS[@]}\")"
+	[ ${states[1]} -eq 0 ] || exit 3
+	exit ${states[0]}
+    fi
+elif [ -z "$commandId" ]; then
+    echo >&2 'ERROR: No ID and no COMMAND(s) specified; need to pass -i|--id ID for standard input, or -c|--command "COMMANDLINE", or --exec SIMPLECOMMAND [...] ; or SIMPLECOMMAND.'
+    echo >&2
+    printUsage >&2 "$0"
+    exit 2
+else
+    conglomerate || exit 3
+fi
