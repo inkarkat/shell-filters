@@ -9,7 +9,7 @@ shopt -qs nullglob
 : ${CONGLOMERATEDLINESFROM_COLOR_DATE_LINE_SEPARATOR=}
 : ${CONGLOMERATEDLINESFROM_COLOR_PREVIOUS_DATES='[3m'}
 : ${CONGLOMERATEDLINESFROM_COLOR_RESET='[0m'}
-# CONGLOMERATEDLINESFROM_CURRENT_LINE_PREFIX
+# CONGLOMERATEDLINESFROM_CURRENT_LINE_PREFIX	Empty value means indent like the previous historical dates.
 # CONGLOMERATEDLINESFROM_CURRENT_LINE_SUFFIX
 # CONGLOMERATEDLINESFROM_DATE_DATE_SEPARATOR
 # CONGLOMERATEDLINESFROM_DATE_LINE_SEPARATOR
@@ -45,25 +45,27 @@ ${takeCount:?} executions of the last ${recordCount:?} recorded executions.
 No deduplication happens for the current COMMAND's output.
 Lines and/or parts of the lines can be prevented from getting recorded via
 positive and/or negative filters.
-Useful to reduce the noise on cron jobs or CI/CD runs.
+Useful to reduce the noise on cron jobs or CI/CD runs by suppressing one-off
+occasional hiccups, while still getting informed about regular, persistent
+issues (albeit now with a bit of delay).
 HELPDESCRIPTION
     echo
     printShortUsage "$1"
     echo
     cat <<HELPTEXT
     --successful-only|-S
-			Skip recording for failed commands and directly print
+			Skip recording for a failed COMMAND and directly print
 			all of its output.
-    --stdout|-1         Only record standard output.
-    --stderr|-2         Only record error output.
+    --stdout|-1         Only record standard output, errors are passed through.
+    --stderr|-2         Only record error output, pass through regular output.
     --record|-r M	Consider the last M (default: ${recordCount}) executions of COMMAND
 			(including this one).
     --take|-t N		Print those lines from the current output of COMMAND
 			that have been seen N times in the last M executions of
 			COMMAND (default: ${takeCount} of ${recordCount}).
     --grep|-e PATTERN	Only record lines that match PATTERN. Other lines (and
-			those that also match --vgrep PATTERN) are printed
-			directly.
+			those that also match --vgrep PATTERN) are passed
+			through.
     --vgrep|-v PATTERN	Directly print and do not record lines that match
 			PATTERN.
     --skip|-s PATTERN	Ignore the parts of a line that match PATTERN (e.g.
@@ -79,10 +81,10 @@ HELPDESCRIPTION
 			current execution of COMMAND.
     --reset-after-print|-R
 			After printing a line that has been seen N times, don't
-			immediately report the line on the next run again if it
+			immediately print the line on the next run again if it
 			appears again, but instead wait until N new occurrences
-			have been spotted. Lines are included in -all histories,
-			though.
+			have been spotted. Lines are included in histories from
+			--all, though.
     --id|-i ID          Identifier for the running COMMAND. If omitted, will use
 			COMMAND itself. Pass this if the command is different
 			(but equivalent) on invocations. Mandatory when no
@@ -91,21 +93,12 @@ HELPDESCRIPTION
     --exec CMD [...] ${CONGLOMERATEDLINESFROM_EXEC_END}	Execute CMD; all following arguments are taken to be
 			arguments to the CMD until an argument consisting of
 			'${CONGLOMERATEDLINESFROM_EXEC_END}' is encountered.
-SEE ALSO:
-- (Commands offering complementary functionality, or commands using this command.)
-
-RELATED COMMANDS:
-- (Alternatives from other authors, other approaches, references not used here.)
-
 EXIT STATUS:
     0	Complete success.
     2	Bad invocation, wrong or missing command-line arguments.
     3	Internal error or failed assertion.
     *   any exit status from COMMAND(s)
-
-Example:
 HELPTEXT
-    printf '%q %s\n' "$(basename "$1")" '--foo bar /tmp/foobar' # TODO
 }
 
 isColor=; [ -t 1 ] && isColor=t
@@ -226,7 +219,6 @@ conglomerate()
 	[ "${DEBUG:-}" ] || trap 'rm -f -- "$resetFilespec" 2>/dev/null' EXIT
     fi
 
-    # DUMPARGS_SINK='&3' dump-args -- "$recordDirspec"/*
     awk \
 	-v "takeCount=$takeCount" \
 	-v "grepPattern=${grepPattern//\/\\}" \
