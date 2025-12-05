@@ -81,14 +81,14 @@ runAllAnimalVowels()
     runAnimals --all --match '[aeiou]' "$@"
 }
 
-@test "all animal vowel reporting" {
-    NOW=1764858240.000000000 runAllAnimalVowels
+@test "all animal vowel reporting with custom no indent for current" {
+    CONGLOMERATEDLINESFROM_CURRENT_LINE_PREFIX='' NOW=1764858240.000000000 runAllAnimalVowels
     assert_output ''
 
-    NOW=1764858241.000000000 runAllAnimalVowels
+    CONGLOMERATEDLINESFROM_CURRENT_LINE_PREFIX='' NOW=1764858241.000000000 runAllAnimalVowels
     assert_output ''
 
-    NOW=1764858242.000000000 runAllAnimalVowels
+    CONGLOMERATEDLINESFROM_CURRENT_LINE_PREFIX='' NOW=1764858242.000000000 runAllAnimalVowels
     assert_output - <<'EOF'
 14:24:00	dog
 14:24:01	dog
@@ -97,7 +97,7 @@ fox
 dog
 EOF
 
-    NOW=1764858243.000000000 runAllAnimalVowels
+    CONGLOMERATEDLINESFROM_CURRENT_LINE_PREFIX='' NOW=1764858243.000000000 runAllAnimalVowels
     assert_output - <<'EOF'
 14:24:00	cat
 14:24:01	cat
@@ -110,7 +110,7 @@ cat
 dog
 EOF
 
-    NOW=1764858244.000000000 runAllAnimalVowels
+    CONGLOMERATEDLINESFROM_CURRENT_LINE_PREFIX='' NOW=1764858244.000000000 runAllAnimalVowels
     assert_output - <<'EOF'
 14:24:01	dog
 14:24:01	dog
@@ -120,7 +120,7 @@ EOF
 fox
 EOF
 
-    NOW=1764858245.000000000 runAllAnimalVowels
+    CONGLOMERATEDLINESFROM_CURRENT_LINE_PREFIX='' NOW=1764858245.000000000 runAllAnimalVowels
     assert_output - <<'EOF'
 14:24:02	fox
 14:24:02	dog
@@ -129,7 +129,7 @@ EOF
 fox
 EOF
 
-    NOW=1764858246.000000000 runAllAnimalVowels
+    CONGLOMERATEDLINESFROM_CURRENT_LINE_PREFIX='' NOW=1764858246.000000000 runAllAnimalVowels
     assert_output - <<'EOF'
 14:24:03	aardvark
 14:24:05	aardvark
@@ -141,14 +141,14 @@ dog
 EOF
 }
 
-@test "all animal vowel reporting with current lines indented" {
-    CONGLOMERATEDLINESFROM_CURRENT_LINE_PREFIX='' NOW=1764858240.000000000 runAllAnimalVowels
+@test "all animal vowel reporting with current lines indented by default" {
+    NOW=1764858240.000000000 runAllAnimalVowels
     assert_output ''
 
-    CONGLOMERATEDLINESFROM_CURRENT_LINE_PREFIX='' NOW=1764858241.000000000 runAllAnimalVowels
+    NOW=1764858241.000000000 runAllAnimalVowels
     assert_output ''
 
-    CONGLOMERATEDLINESFROM_CURRENT_LINE_PREFIX='' NOW=1764858242.000000000 runAllAnimalVowels
+    NOW=1764858242.000000000 runAllAnimalVowels
     assert_output - <<'EOF'
 14:24:00	dog
 14:24:01	dog
@@ -157,7 +157,7 @@ EOF
         	dog
 EOF
 
-    CONGLOMERATEDLINESFROM_CURRENT_LINE_PREFIX='' NOW=1764858243.000000000 runAllAnimalVowels
+    NOW=1764858243.000000000 runAllAnimalVowels
     assert_output - <<'EOF'
 14:24:00	cat
 14:24:01	cat
@@ -177,13 +177,13 @@ EOF
     export CONGLOMERATEDLINESFROM_HISTORY_PREFIX=$',--- history ---\n'
     export CONGLOMERATEDLINESFROM_HISTORY_SUFFIX=$'\n`---------------'
 
-    NOW=1764858240.000000000 runAllAnimalVowels
+    CONGLOMERATEDLINESFROM_CURRENT_LINE_PREFIX='' NOW=1764858240.000000000 runAllAnimalVowels
     assert_output ''
 
-    NOW=1764858241.000000000 runAllAnimalVowels
+    CONGLOMERATEDLINESFROM_CURRENT_LINE_PREFIX='' NOW=1764858241.000000000 runAllAnimalVowels
     assert_output ''
 
-    NOW=1764858242.000000000 runAllAnimalVowels
+    CONGLOMERATEDLINESFROM_CURRENT_LINE_PREFIX='' NOW=1764858242.000000000 runAllAnimalVowels
     assert_output - <<'EOF'
 ,--- history ---
 |14:24:00 dog
@@ -194,7 +194,7 @@ fox
 dog
 EOF
 
-    NOW=1764858243.000000000 runAllAnimalVowels
+    CONGLOMERATEDLINESFROM_CURRENT_LINE_PREFIX='' NOW=1764858243.000000000 runAllAnimalVowels
     assert_output - <<'EOF'
 ,--- history ---
 |14:24:00 cat
@@ -224,20 +224,20 @@ EOF
 [3;37m14:24:00[0m	[0m[37mdog[0m
 [3;37m14:24:01[0m	[0m[37mdog[0m
 [3;37m14:24:01[0m	[0m[37mdog[0m
-fox[0m
-dog[0m
+        	fox[0m
+        	dog[0m
 EOF
 
     NOW=1764858243.000000000 runAllAnimalVowels --color=always
     assert_output - <<'EOF'
 [3;37m14:24:00[0m	[0m[37mcat[0m
 [3;37m14:24:01[0m	[0m[37mcat[0m
-cat[0m
+        	cat[0m
 [3;37m14:24:00[0m	[0m[37mdog[0m
 [3;37m14:24:01[0m	[0m[37mdog[0m
 [3;37m14:24:01[0m	[0m[37mdog[0m
 [3;37m14:24:02[0m	[0m[37mfox[0m
 [3;37m14:24:02[0m	[0m[37mdog[0m
-dog[0m
+        	dog[0m
 EOF
 }

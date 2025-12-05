@@ -9,7 +9,7 @@ shopt -qs nullglob
 : ${CONGLOMERATEDLINESFROM_COLOR_DATE_LINE_SEPARATOR=}
 : ${CONGLOMERATEDLINESFROM_COLOR_PREVIOUS_DATES='[3m'}
 : ${CONGLOMERATEDLINESFROM_COLOR_RESET='[0m'}
-# CONGLOMERATEDLINESFROM_CURRENT_LINE_PREFIX	Empty value means indent like the previous historical dates.
+# CONGLOMERATEDLINESFROM_CURRENT_LINE_PREFIX	By default indents like the previous historical dates; set to empty to disable that.
 # CONGLOMERATEDLINESFROM_CURRENT_LINE_SUFFIX
 # CONGLOMERATEDLINESFROM_DATE_DATE_SEPARATOR
 # CONGLOMERATEDLINESFROM_DATE_LINE_SEPARATOR
@@ -305,10 +305,9 @@ BEGIN {
     previousDatesPrefix = ("CONGLOMERATEDLINESFROM_PREVIOUS_DATES_PREFIX" in ENVIRON ? ENVIRON["CONGLOMERATEDLINESFROM_PREVIOUS_DATES_PREFIX"] : "Previously at ")
     previousDatesSuffix = ("CONGLOMERATEDLINESFROM_PREVIOUS_DATES_SUFFIX" in ENVIRON ? ENVIRON["CONGLOMERATEDLINESFROM_PREVIOUS_DATES_SUFFIX"] : "")
     skipPlaceholder = ("CONGLOMERATEDLINESFROM_SKIP_PLACEHOLDER" in ENVIRON ? ENVIRON["CONGLOMERATEDLINESFROM_SKIP_PLACEHOLDER"] : "\x00")
-    if ("CONGLOMERATEDLINESFROM_CURRENT_LINE_PREFIX" in ENVIRON && ENVIRON["CONGLOMERATEDLINESFROM_CURRENT_LINE_PREFIX"] == "") {
-	# DWIM: Defined but empty prefix renders with indent to align with history lines
-	# above.
-	currentLineIndent = gensub(/[^\t]/, " ", "g", renderDate(systime(), "000000000")) dateLineSeparator
+    if (! ("CONGLOMERATEDLINESFROM_CURRENT_LINE_PREFIX" in ENVIRON)) {
+	# By default, render with indent to align with history lines above.
+	currentLineIndent = surroundText("", gensub(/[^\t]/, " ", "g", renderDate(systime(), "000000000")), dateLineSeparator)
     }
 }
 

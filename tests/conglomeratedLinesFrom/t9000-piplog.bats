@@ -4,12 +4,11 @@ load fixture
 
 runPipLog()
 {
-    CONGLOMERATEDLINESFROM_CURRENT_LINE_PREFIX='' \
-	run "$@" conglomeratedLinesFrom --take 3 --record 10 --all --reset-after-print \
-	    --skip '(Retry([^)]+))' --match '^WARNING: Retrying \x00 after connection broken by' \
-	    --match '^fatal: unable to access ' \
-	    --match '^Note: Cannot validate URL due to network unavailability:' \
-	    -- dishOutSections --basedir "$BATS_TEST_TMPDIR" -- "${BATS_TEST_DIRNAME}/piplog.txt"
+    run "$@" conglomeratedLinesFrom --take 3 --record 10 --all --reset-after-print \
+	--skip '(Retry([^)]+))' --match '^WARNING: Retrying \x00 after connection broken by' \
+	--match '^fatal: unable to access ' \
+	--match '^Note: Cannot validate URL due to network unavailability:' \
+	-- dishOutSections --basedir "$BATS_TEST_TMPDIR" -- "${BATS_TEST_DIRNAME}/piplog.txt"
 }
 
 @test "remove hiccups from pip log" {

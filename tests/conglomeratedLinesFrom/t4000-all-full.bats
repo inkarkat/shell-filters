@@ -3,6 +3,7 @@
 load fixture
 
 export CONGLOMERATEDLINESFROM_DATE_FORMAT='%T'
+export CONGLOMERATEDLINESFROM_CURRENT_LINE_PREFIX=''
 
 runAllAnimals()
 {
