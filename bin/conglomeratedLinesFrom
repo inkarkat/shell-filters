@@ -358,6 +358,8 @@ ARGIND == ARGC - 1 {
 	}
     }
 
+    if (record ~ /^\s*$/) { print; next; }
+
     if (! (record in currentRecords)) {
 	setRecord(record, ARGIND)
 	currentRecords[record] = 1
