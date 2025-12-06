@@ -340,8 +340,8 @@ ARGIND < (ARGC - 1) {
     }
 }
 ARGIND == ARGC - 1 {
-    if (vgrepPattern != "" && $0 ~ vgrepPattern) next
-    if (grepPattern != "" && $0 !~ grepPattern) next
+    if (vgrepPattern != "" && $0 ~ vgrepPattern) { print; next; }
+    if (grepPattern != "" && $0 !~ grepPattern) { print; next; }
 
     record = $0
     if (skipPattern != "") {
@@ -349,12 +349,14 @@ ARGIND == ARGC - 1 {
     }
     if (matchPattern != "") {
 	matchCnt = patsplit(record, matches, matchPattern)
-	record = ""
+	matchedRecord = ""
 	for (i = 1; i <= matchCnt; ++i) {
-	    record = record (i == 1 ? "" : skipPlaceholder) matches[i]
+	    matchedRecord = matchedRecord (i == 1 ? "" : skipPlaceholder) matches[i]
+	}
+	if (matchedRecord != "") {
+	    record = matchedRecord
 	}
     }
-    isPartial = (record == $0 ? 0 : 1)
 
     if (! (record in currentRecords)) {
 	setRecord(record, ARGIND)
