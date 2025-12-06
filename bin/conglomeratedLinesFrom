@@ -24,7 +24,7 @@ printShortUsage()
 {
     # Note: short followed by long option; if the user knows the short one, they can
     # skim the long one.
-    printf 'Usage: %q %s\n' "$(basename "$1")" "[--color=(always|auto|never)|--no-color] [-S|--successful-only] [-1|--stdout|-2|--stderr] [-r|--record M] [-t|--take N] [-e|--grep PATTERN [-e ...]] [-v|--vgrep PATTERN [-v ...]] [-s|--skip PATTERN [-s ...]] [-m|--match PATTERN [-m ...]] [-a|--all] [-i|--id ID] -c|--command \"COMMANDLINE\" [-c ...] | --exec SIMPLECOMMAND [...] ${CONGLOMERATEDLINESFROM_EXEC_END} [--exec ...] | [--] SIMPLECOMMAND [...] [-?|-h|--help]"
+    printf 'Usage: %q %s\n' "$(basename "$1")" "[--color=(always|auto|never)|--no-color] [-S|--successful-only] [-1|--stdout|-2|--stderr] [-r|--record M] [-t|--take N] [-e|--grep PATTERN [-e ...]] [-v|--vgrep PATTERN [-v ...]] [-P|--only-partials] [-s|--skip PATTERN [-s ...]] [-m|--match PATTERN [-m ...]] [-a|--all] [-i|--id ID] -c|--command \"COMMANDLINE\" [-c ...] | --exec SIMPLECOMMAND [...] ${CONGLOMERATEDLINESFROM_EXEC_END} [--exec ...] | [--] SIMPLECOMMAND [...] [-?|-h|--help]"
     echo
     printf 'Usage: cat FILE [...] | %q %s\n' "$(basename "$1")" '... -i|--id ID'
 }
@@ -68,6 +68,11 @@ HELPDESCRIPTION
 			through.
     --vgrep|-v PATTERN	Directly print and do not record lines that match
 			PATTERN.
+    --only-partials|-P	Only record lines that have partial matches via --skip
+			or --match. Lines that don't match any PATTERN are
+			directly printed. This avoids having to pass both --grep
+			and --match with duplicate or overlapping PATTERNs when
+			working on parts of selected lines.
     --skip|-s PATTERN	Ignore the parts of a line that match PATTERN (e.g.
 			timestamps or filenames) when considering occurrences.
     --match|-m PATTERN	Only consider the parts of a line that match PATTERN
@@ -109,6 +114,7 @@ recordCount=4
 takeCount=3
 grepPattern=
 vgrepPattern=
+isOnlyPartials=
 skipPattern=
 matchPattern=
 isAll=
@@ -143,6 +149,8 @@ do
 	--take|-t)	shift; takeCount="${1:?}"; shift;;
 	--grep|-e)	shift; grepPattern+="${grepPattern:+|}${1:?}"; shift;;
 	--vgrep|-v)	shift; vgrepPattern+="${vgrepPattern:+|}${1:?}"; shift;;
+	--only-partials|-P)
+			shift; isOnlyPartials=t;;
 	--skip|-s)	shift; skipPattern+="${skipPattern:+|}${1:?}"; shift;;
 	--match|-m)	shift; matchPattern+="${matchPattern:+|}${1:?}"; shift;;
 	--all|-a)	shift; isAll=t;;
@@ -223,6 +231,7 @@ conglomerate()
 	-v "takeCount=$takeCount" \
 	-v "grepPattern=${grepPattern//\/\\}" \
 	-v "vgrepPattern=${vgrepPattern//\/\\}" \
+	-v "isOnlyPartials=$isOnlyPartials" \
 	-v "skipPattern=${skipPattern//\/\\}" \
 	-v "matchPattern=${matchPattern//\/\\}" \
 	-v "resetFilespec=${resetFilespec//\\/\\\\}" \
@@ -343,9 +352,11 @@ ARGIND == ARGC - 1 {
     if (vgrepPattern != "" && $0 ~ vgrepPattern) { print; next; }
     if (grepPattern != "" && $0 !~ grepPattern) { print; next; }
 
+    isPartial = 0
     record = $0
     if (skipPattern != "") {
 	record = gensub(skipPattern, skipPlaceholder, "g", record)
+	if (record != $0) isPartial = 1
     }
     if (matchPattern != "") {
 	matchCnt = patsplit(record, matches, matchPattern)
@@ -355,10 +366,12 @@ ARGIND == ARGC - 1 {
 	}
 	if (matchedRecord != "") {
 	    record = matchedRecord
+	    isPartial = 1
 	}
     }
 
     if (record ~ /^\s*$/) { print; next; }
+    if (isOnlyPartials && ! isPartial) { print; next; }
 
     if (! (record in currentRecords)) {
 	setRecord(record, ARGIND)
