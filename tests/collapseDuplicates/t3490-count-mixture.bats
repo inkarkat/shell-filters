@@ -1,7 +1,9 @@
 #!/usr/bin/env bats
 
+load fixture
+
 @test "counting of all separate / accumulated regexp / matches, " {
-    run collapseDuplicates --as count --regexp 'repeat' --accumulate 'sentence' --match '^\w+ly\.$' --match-accumulated '^Not .*$' <<-'EOF'
+    run -0 collapseDuplicates --as count --regexp 'repeat' --accumulate 'sentence' --match '^\w+ly\.$' --match-accumulated '^Not .*$' <<-'EOF'
 Some sentence starts it off.
 This will occur once more.
 This will occur once more.
@@ -28,7 +30,8 @@ Another repeat yet again.
 Not here.
 Some sentence at the end.
 EOF
-    [ "$output" = "Some sentence starts it off.
+    assert_output - <<'EOF'
+Some sentence starts it off.
 This will occur once more.
 This will occur once more.
 Seriously. (2)
@@ -43,11 +46,12 @@ Seriously. (3)
 End of interlude.
 Another repeat from what we've seen. (2)
 Not here.
-Some sentence at the end. (3)" ]
+Some sentence at the end. (3)
+EOF
 }
 
 @test "counting precedence with match before accumulated matches " {
-    run collapseDuplicates --as count --match '^\w+ly\.$' --match-accumulated '^[NST]' <<-'EOF'
+    run -0 collapseDuplicates --as count --match '^\w+ly\.$' --match-accumulated '^[NST]' <<-'EOF'
 Some sentence starts it off.
 This will occur once more.
 This will occur once more.
@@ -74,7 +78,8 @@ Another repeat yet again.
 Not here.
 Some sentence at the end.
 EOF
-    [ "$output" = "Some sentence starts it off.
+    assert_output - <<'EOF'
+Some sentence starts it off.
 This will occur once more. (2)
 Seriously. (2)
 Precariously.
@@ -89,11 +94,12 @@ End of interlude.
 Another repeat from what we've seen.
 Another repeat yet again.
 Not here. (3)
-Some sentence at the end. (3)" ]
+Some sentence at the end. (3)
+EOF
 }
 
 @test "counting precedence with accumulated matches before match " {
-    run collapseDuplicates --as count --match-accumulated '^[NST]' --match '^\w+ly\.$' <<-'EOF'
+    run -0 collapseDuplicates --as count --match-accumulated '^[NST]' --match '^\w+ly\.$' <<-'EOF'
 Some sentence starts it off.
 This will occur once more.
 This will occur once more.
@@ -120,7 +126,8 @@ Another repeat yet again.
 Not here.
 Some sentence at the end.
 EOF
-    [ "$output" = "Some sentence starts it off.
+    assert_output - <<'EOF'
+Some sentence starts it off.
 This will occur once more. (2)
 Seriously. (3)
 Precariously.
@@ -133,11 +140,12 @@ End of interlude.
 Another repeat from what we've seen.
 Another repeat yet again.
 Not here. (3)
-Some sentence at the end. (9)" ]
+Some sentence at the end. (9)
+EOF
 }
 
 @test "counting precedence with matching vs. exact" {
-    run collapseDuplicates --as count --regexp '^[NST]' --match '^\w+ly\.$' <<-'EOF'
+    run -0 collapseDuplicates --as count --regexp '^[NST]' --match '^\w+ly\.$' <<-'EOF'
 Some sentence starts it off.
 This will occur once more.
 This will occur once more.
@@ -164,7 +172,8 @@ Another repeat yet again.
 Not here.
 Some sentence at the end.
 EOF
-    [ "$output" = "Some sentence starts it off. (5)
+    assert_output - <<'EOF'
+Some sentence starts it off. (5)
 Precariously.
 This will repeat. (3)
 A unique statement.
@@ -174,11 +183,12 @@ Seriously. (5)
 End of interlude.
 Another repeat from what we've seen.
 Another repeat yet again.
-Not here. (2)" ]
+Not here. (2)
+EOF
 }
 
 @test "counting precedence with exact vs. matching" {
-    run collapseDuplicates --as count --match '^\w+ly\.$' --regexp '^[NST]' <<-'EOF'
+    run -0 collapseDuplicates --as count --match '^\w+ly\.$' --regexp '^[NST]' <<-'EOF'
 Some sentence starts it off.
 This will occur once more.
 This will occur once more.
@@ -205,7 +215,8 @@ Another repeat yet again.
 Not here.
 Some sentence at the end.
 EOF
-    [ "$output" = "Some sentence starts it off. (3)
+    assert_output - <<'EOF'
+Some sentence starts it off. (3)
 Seriously. (2)
 Precariously.
 This will repeat. (3)
@@ -218,6 +229,6 @@ Seriously. (3)
 End of interlude.
 Another repeat from what we've seen.
 Another repeat yet again.
-Not here. (2)" ]
+Not here. (2)
+EOF
 }
-

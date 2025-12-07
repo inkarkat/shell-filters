@@ -1,12 +1,16 @@
 #!/usr/bin/env bats
 
+load fixture
+
 @test "unique input is not modified" {
-    run collapseDuplicates <<-'EOF'
+    run -0 collapseDuplicates <<-'EOF'
 Just some text.
 All unique lines.
 Seriously.
 EOF
-    [ "$output" = "Just some text.
+    assert_output - <<'EOF'
+Just some text.
 All unique lines.
-Seriously." ]
+Seriously.
+EOF
 }

@@ -1,7 +1,9 @@
 #!/usr/bin/env bats
 
+load fixture
+
 @test "three duplicate lines are omitted via --match argument" {
-    run collapseDuplicates --match '.*' <<-'EOF'
+    run -0 collapseDuplicates --match '.*' <<-'EOF'
 Just some text.
 This repeats once.
 This repeats once.
@@ -9,7 +11,9 @@ This repeats once.
 This repeats once.
 Seriously.
 EOF
-    [ "$output" = "Just some text.
+    assert_output - <<'EOF'
+Just some text.
 This repeats once.
-Seriously." ]
+Seriously.
+EOF
 }
