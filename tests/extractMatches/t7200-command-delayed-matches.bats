@@ -1,14 +1,15 @@
 #!/usr/bin/env bats
 
 export EXTRACTMATCHES_COMMAND_UPDATE_DELAY=-3
+
 load command
 
 @test "single matches in a line are passed to command every 3 lines and at the end" {
-    run extractMatches --to command --regexp 'foo[0-9]+' <<<"$DELAY_INPUT"
-    [ "$output" = "$DELAY_INPUT" ]
+    run -0 extractMatches --to command --regexp 'foo[0-9]+' <<<"$DELAY_INPUT"
+    assert_output "$DELAY_INPUT"
     assert_runs "foo3
 foo6
-foo8" ]
+foo8"
 }
 
 @test "a match on last line 6 is not passed to command again" {
@@ -18,8 +19,8 @@ All foo3.
 More foo4 here.
 That foo5.
 Last foo6."
-    run extractMatches --to command --regexp 'foo[0-9]+' <<<"$input"
-    [ "$output" = "$input" ]
+    run -0 extractMatches --to command --regexp 'foo[0-9]+' <<<"$input"
+    assert_output "$input"
     assert_runs "foo3
-foo6" ]
+foo6"
 }

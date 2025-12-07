@@ -1,5 +1,7 @@
 #!/bin/bash
 
+load fixture
+
 export EXTRACTMATCHES_SINK=/dev/stdout
 
 readonly R='[s[1;1H[37;44m['

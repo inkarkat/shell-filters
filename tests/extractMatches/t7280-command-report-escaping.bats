@@ -1,10 +1,11 @@
 #!/usr/bin/env bats
 
 export EXTRACTMATCHES_COMMAND_UPDATE_DELAY=0
+
 load command
 
 @test "matches with special characters are passed to command with proper escaping" {
-    run extractMatches --to command --regexp '\<note.*' <<-'EOF'
+    run -0 extractMatches --to command --regexp '\<note.*' <<-'EOF'
 Please note that this is simple.
 This note should send $$$
 A note for Patrick O'Brian.

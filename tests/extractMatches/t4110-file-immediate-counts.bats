@@ -2,6 +2,7 @@
 
 export EXTRACTMATCHES_FILE_UPDATE_MATCH_DELAY=0
 export EXTRACTMATCHES_FILE_UPDATE_COUNT_DELAY=0
+
 load log
 
 @test "single counts in a line are written to a file" {
@@ -10,8 +11,8 @@ This has foo in it.
 All simple lines.
 More foo here.
 Seriously."
-    run extractMatches --to "$LOG" --count fo+ <<<"$input"
-    [ "$output" = "$input" ]
+    run -0 extractMatches --to "$LOG" --count fo+ <<<"$input"
+    assert_output "$input"
     assert_log "foo: 1
 foo: 2"
 }
@@ -22,8 +23,8 @@ This has foo, foo and foofoo in it.
 All simple lines.
 More foo here.
 Seriously, why?"
-    run extractMatches --to "$LOG" --count fo+ --global --count 'ex' --count 'y' --global <<<"$input"
-    [ "$output" = "$input" ]
+    run -0 extractMatches --to "$LOG" --count fo+ --global --count 'ex' --count 'y' --global <<<"$input"
+    assert_output "$input"
     assert_log "ex: 1
 y: 1
 foo: 1

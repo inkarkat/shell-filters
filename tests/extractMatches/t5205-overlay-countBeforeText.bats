@@ -12,11 +12,13 @@ This has foo in it.
 All simple lines.
 More foo here.
 Seriously."
-    run extractMatches --to overlay --count fo+ <<<"$input"
-    [ "$output" = "Just some text.
+    run -0 extractMatches --to overlay --count fo+ <<<"$input"
+    assert_output - <<EOF
+Just some text.
 This has foo in it.
 ${R}1:foo${N}All simple lines.
 ${R}1:foo${N}More foo here.
 ${R}2:foo${N}Seriously.
-${R}2:foo${N}" ]
+${R}2:foo${N}
+EOF
 }

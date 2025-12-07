@@ -14,8 +14,8 @@ This has foo in it.
 All simple lines.
 More foo here.
 Seriously."
-    run extractMatches --to "$LOG" --count fo+ <<<"$input"
-    [ "$output" = "$input" ]
+    run -0 extractMatches --to "$LOG" --count fo+ <<<"$input"
+    assert_output "$input"
     assert_log "1:foo
 2:foo"
 }

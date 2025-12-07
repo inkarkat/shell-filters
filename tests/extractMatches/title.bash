@@ -1,5 +1,7 @@
 #!/bin/bash
 
+load fixture
+
 export EXTRACTMATCHES_SINK=/dev/stdout
 
 case "$TERM" in

@@ -1,6 +1,7 @@
 #!/usr/bin/env bats
 
 export EXTRACTMATCHES_CONCATENATED_UPDATE_DELAY=1
+
 load log
 
 @test "single matches in a line are shown as concatenated lines every second and at the end" {

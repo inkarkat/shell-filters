@@ -1,5 +1,7 @@
 #!/usr/bin/env bats
 
+load fixture
+
 export EXTRACTMATCHES_COUNT_BEFORE_TEXT=t
 export EXTRACTMATCHES_COUNT_PREFIX=''
 export EXTRACTMATCHES_COUNT_SUFFIX=':'
@@ -10,12 +12,14 @@ This has foo in it.
 All simple lines.
 More foo here.
 Seriously."
-    run extractMatches --to concatenated --count fo+ <<<"$input"
-    [ "$output" = "Just some text.
+    run -0 extractMatches --to concatenated --count fo+ <<<"$input"
+    assert_output - <<'EOF'
+Just some text.
 This has foo in it.
 extracted matches: 1:foo
 All simple lines.
 More foo here.
 extracted matches: 2:foo
-Seriously." ]
+Seriously.
+EOF
 }
