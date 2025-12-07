@@ -3,9 +3,9 @@
 load fixture
 
 @test "count matching non-empty lines" {
-    runWithCannedInput countLines --match .
-    [ $status -eq 0 ]
-    [ "$output" = "(1) foo
+    runWithCannedInput -0 countLines --match .
+    assert_output - <<'EOF'
+(1) foo
 (2) bar
 (3) baz
 (4) hihi
@@ -17,13 +17,14 @@ load fixture
 
 (9) nothing
 (10) for
-(11) me" ]
+(11) me
+EOF
 }
 
 @test "count matching three- and four-letter lines" {
-    runWithCannedInput countLines --match '^...$' --match '^....$'
-    [ $status -eq 0 ]
-    [ "$output" = "(1) foo
+    runWithCannedInput -0 countLines --match '^...$' --match '^....$'
+    assert_output - <<'EOF'
+(1) foo
 (2) bar
 (3) baz
 (4) hihi
@@ -35,5 +36,6 @@ wrong
 
 nothing
 (6) for
-me" ]
+me
+EOF
 }

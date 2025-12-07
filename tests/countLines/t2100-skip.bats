@@ -3,9 +3,9 @@
 load fixture
 
 @test "count skipping empty lines" {
-    runWithCannedInput countLines --skip '^$'
-    [ $status -eq 0 ]
-    [ "$output" = "(1) foo
+    runWithCannedInput -0 countLines --skip '^$'
+    assert_output - <<'EOF'
+(1) foo
 (2) bar
 (3) baz
 (4) hihi
@@ -17,13 +17,14 @@ load fixture
 
 (9) nothing
 (10) for
-(11) me" ]
+(11) me
+EOF
 }
 
 @test "count skipping of empty and three-letter lines" {
-    runWithCannedInput countLines --skip '^$' --skip '^...$'
-    [ $status -eq 0 ]
-    [ "$output" = "foo
+    runWithCannedInput -0 countLines --skip '^$' --skip '^...$'
+    assert_output - <<'EOF'
+foo
 bar
 baz
 (1) hihi
@@ -35,5 +36,6 @@ baz
 
 (6) nothing
 for
-(7) me" ]
+(7) me
+EOF
 }

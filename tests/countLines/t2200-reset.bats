@@ -3,9 +3,9 @@
 load fixture
 
 @test "count with reset on empty lines" {
-    runWithCannedInput countLines --reset-on '^$'
-    [ $status -eq 0 ]
-    [ "$output" = "(1) foo
+    runWithCannedInput -0 countLines --reset-on '^$'
+    assert_output - <<'EOF'
+(1) foo
 (2) bar
 (3) baz
 (4) hihi
@@ -17,13 +17,14 @@ load fixture
 (1) 
 (2) nothing
 (3) for
-(4) me" ]
+(4) me
+EOF
 }
 
 @test "count with reset on and skipping of empty lines" {
-    runWithCannedInput countLines --skip '^$' --reset-on '^$'
-    [ $status -eq 0 ]
-    [ "$output" = "(1) foo
+    runWithCannedInput -0 countLines --skip '^$' --reset-on '^$'
+    assert_output - <<'EOF'
+(1) foo
 (2) bar
 (3) baz
 (4) hihi
@@ -35,5 +36,6 @@ load fixture
 
 (1) nothing
 (2) for
-(3) me" ]
+(3) me
+EOF
 }

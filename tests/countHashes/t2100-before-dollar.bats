@@ -1,18 +1,22 @@
 #!/usr/bin/env bats
 
+load fixture
+
 @test "input with one hash before dollar sign counts as 1" {
-    run countHashes <<-'EOF'
+    run -0 countHashes <<-'EOF'
 This has #$ here
 Almost a no-op: #$
 Nothing # here or $# here or #@.
 EOF
-    [ "$output" = 'This has 1 here
+    assert_output - <<'EOF'
+This has 1 here
 Almost a no-op: 1
-Nothing # here or $# here or #@.' ]
+Nothing # here or $# here or #@.
+EOF
 }
 
 @test "count 1..9 hashes before dollar sign" {
-    run countHashes <<-'EOF'
+    run -0 countHashes <<-'EOF'
 1 is #$.
 2 is ##$.
 3 is ###$.
@@ -23,7 +27,8 @@ Nothing # here or $# here or #@.' ]
 8 is ########$.
 9 is #########$.
 EOF
-    [ "$output" = "1 is 1.
+    assert_output - <<'EOF'
+1 is 1.
 2 is 2.
 3 is 3.
 4 is 4.
@@ -31,23 +36,28 @@ EOF
 6 is 6.
 7 is 7.
 8 is 8.
-9 is 9." ]
+9 is 9.
+EOF
 }
 
 @test "count hashes before dollar sign multiple times in a line" {
-    run countHashes <<-'EOF'
+    run -0 countHashes <<-'EOF'
 We can count from #$ to ###$.
 As in #$, ##$, ###$. But not #$##$###$.
 EOF
-    [ "$output" = 'We can count from 1 to 3.
-As in 1, 2, 3. But not 123.' ]
+    assert_output - <<'EOF'
+We can count from 1 to 3.
+As in 1, 2, 3. But not 123.
+EOF
 }
 
 @test "count larger hashes before dollar sign" {
-    run countHashes <<-'EOF'
+    run -0 countHashes <<-'EOF'
 Let us get to ##########$, ####################################################################################################$, and even ########################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################$.
 ##########################################$ is the answer.
 EOF
-    [ "$output" = "Let us get to 10, 100, and even 1000.
-42 is the answer." ]
+    assert_output - <<'EOF'
+Let us get to 10, 100, and even 1000.
+42 is the answer.
+EOF
 }

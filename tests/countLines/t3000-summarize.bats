@@ -3,9 +3,9 @@
 load fixture
 
 @test "summarize" {
-    runWithCannedInput countLines --summarize stuff
-    [ $status -eq 0 ]
-    [ "$output" = "(1) foo
+    runWithCannedInput -0 countLines --summarize stuff
+    assert_output - <<'EOF'
+(1) foo
 (2) bar
 (3) baz
 (4) hihi
@@ -18,34 +18,36 @@ load fixture
 (11) nothing
 (12) for
 (13) me
-(13 stuffs in total)" ]
+(13 stuffs in total)
+EOF
 }
 
 @test "summarize singular" {
-    runWithInput foo countLines --summarize entry,entries
-    [ $status -eq 0 ]
-    [ "$output" = "(1) foo
-(1 entry in total)" ]
+    runWithInput -0 foo countLines --summarize entry,entries
+    assert_output - <<'EOF'
+(1) foo
+(1 entry in total)
+EOF
 }
 
 @test "summarize plural" {
-    runWithInput $'foo\nbar' countLines --summarize entry,entries
-    [ $status -eq 0 ]
-    [ "$output" = "(1) foo
+    runWithInput -0 $'foo\nbar' countLines --summarize entry,entries
+    assert_output - <<'EOF'
+(1) foo
 (2) bar
-(2 entries in total)" ]
+(2 entries in total)
+EOF
 }
 
 @test "summarize nothing" {
-    runWithInput '' countLines --summarize entry,entries
-    [ $status -eq 0 ]
-    [ "$output" = "(0 entries in total)" ]
+    runWithInput -0 '' countLines --summarize entry,entries
+    assert_output '(0 entries in total)'
 }
 
 @test "summary only" {
-    runWithCannedInput countLines --summarize stuff --summary-only
-    [ $status -eq 0 ]
-    [ "$output" = "foo
+    runWithCannedInput -0 countLines --summarize stuff --summary-only
+    assert_output - <<'EOF'
+foo
 bar
 baz
 hihi
@@ -58,5 +60,6 @@ here
 nothing
 for
 me
-(13 stuffs in total)" ]
+(13 stuffs in total)
+EOF
 }

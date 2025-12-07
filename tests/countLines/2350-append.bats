@@ -3,9 +3,9 @@
 load fixture
 
 @test "append count" {
-    runWithCannedInput countLines --append thing
-    [ $status -eq 0 ]
-    [ "$output" = "foo (thing 1)
+    runWithCannedInput -0 countLines --append thing
+    assert_output - <<'EOF'
+foo (thing 1)
 bar (thing 2)
 baz (thing 3)
 hihi (thing 4)
@@ -17,5 +17,6 @@ here (thing 9)
  (thing 10)
 nothing (thing 11)
 for (thing 12)
-me (thing 13)" ]
+me (thing 13)
+EOF
 }
