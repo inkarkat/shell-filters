@@ -3,38 +3,33 @@
 load fixture
 
 @test "no input" {
-    runBothCommandsWithInputEOF ''
-    [ $status -eq 0 ]
-    [ "${output%EOF}" = "" ]
+    runBothCommandsWithInputEOF -0 ''
+    output="${output%EOF}" assert_output ''
 }
 
 @test "single empty line" {
-    runBothCommandsWithInputEOF $'\n'
-    [ $status -eq 0 ]
-    [ "${output%EOF}" = "F:
-" ]
+    runBothCommandsWithInputEOF -0 $'\n'
+    output="${output%EOF}" assert_output "F:
+"
 }
 
 @test "single line" {
-    runBothCommandsWithInputEOF $'one\n'
-    [ $status -eq 0 ]
-    [ "${output%EOF}" = "F:one
-" ]
+    runBothCommandsWithInputEOF -0 $'one\n'
+    output="${output%EOF}" assert_output "F:one
+"
 }
 
 @test "two lines" {
-    runBothCommandsWithInputEOF $'one\ntwo\n'
-    [ $status -eq 0 ]
-    [ "${output%EOF}" = "F:one
+    runBothCommandsWithInputEOF -0 $'one\ntwo\n'
+    output="${output%EOF}" assert_output "F:one
 R:two
-" ]
+"
 }
 
 @test "three lines" {
-    runBothCommandsWithInputEOF $'one\ntwo\nthree\n'
-    [ $status -eq 0 ]
-    [ "${output%EOF}" = "F:one
+    runBothCommandsWithInputEOF -0 $'one\ntwo\nthree\n'
+    output="${output%EOF}" assert_output "F:one
 R:two
 R:three
-" ]
+"
 }
