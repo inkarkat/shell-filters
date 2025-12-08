@@ -1,5 +1,6 @@
 #!/usr/bin/env bats
 
+load fixture
 load data
 
 input="1593871643 foo
@@ -10,40 +11,40 @@ input="1593871643 foo
 1593871853 baz2"
 
 @test "epochs as first field are condensed to the first occurrence after 4 seconds" {
-    run timestampTally --max-difference 3 --max-record-duration 4 <<<"$input"
-
-    [ $status -eq 0 ]
-    [ "$output" = "4 foo
+    run -0 timestampTally --max-difference 3 --max-record-duration 4 <<<"$input"
+    assert_output - <<'EOF'
+4 foo
 0 bar
-3 baz" ]
+3 baz
+EOF
 }
 
 @test "epochs with max record duration of 0 are all separate records and prints a warning" {
-    run timestampTally --max-difference 3 --max-record-duration 0 <<<"$input"
-
-    [ $status -eq 0 ]
-    [ "$output" = "Warning: The smaller maximum record duration of 0 shadows the larger maximum difference 3 between subsequent lines.
+    run -0 timestampTally --max-difference 3 --max-record-duration 0 <<<"$input"
+    assert_output - <<'EOF'
+Warning: The smaller maximum record duration of 0 shadows the larger maximum difference 3 between subsequent lines.
 0 foo
 0 foo2
 0 foo3
 0 bar
 0 baz
-0 baz2" ]
+0 baz2
+EOF
 }
 
 @test "epochs with smaller max record duration than max difference take precedence and prints a warning" {
-    run timestampTally --max-difference 3 --max-record-duration 2 <<<"$input"
-
-    [ $status -eq 0 ]
-    [ "$output" = "Warning: The smaller maximum record duration of 2 shadows the larger maximum difference 3 between subsequent lines.
+    run -0 timestampTally --max-difference 3 --max-record-duration 2 <<<"$input"
+    assert_output - <<'EOF'
+Warning: The smaller maximum record duration of 2 shadows the larger maximum difference 3 between subsequent lines.
 1 foo
 1 foo3
 0 baz
-0 baz2" ]
+0 baz2
+EOF
 }
 
 @test "epochs are condensed to the first occurrence after 25 millis" {
-    run timestampTally --max-difference 10ms --max-record-duration 25ms <<'EOF'
+    run -0 timestampTally --max-difference 10ms --max-record-duration 25ms <<'EOF'
 1593871643,900 foo
 1593871643,910 foo2
 1593871643,920 foo3
@@ -55,30 +56,31 @@ input="1593871643 foo
 1593871644,056 baz
 EOF
 
-    [ $status -eq 0 ]
-    [ "$output" = "0.020 foo
+    assert_output - <<'EOF'
+0.020 foo
 0.025 bar
-0 baz" ]
+0 baz
+EOF
 }
 
 @test "ISO 8601 timestamps are condensed to the first occurrence after one second" {
-    run timestampTally --timestamp-field 3 --max-difference 500ms --max-record-duration 1 --single-entry-duration 1m <<<"$delayedMixedDates"
-
-    [ $status -eq 0 ]
-    [ "$output" = "1593871643 foo 0.001
+    run -0 timestampTally --timestamp-field 3 --max-difference 500ms --max-record-duration 1 --single-entry-duration 1m <<<"$delayedMixedDates"
+    assert_output - <<'EOF'
+1593871643 foo 0.001
 1593871645 foo3 60
 1593871800 bar 60
 1593871810 baz 60
-1593871861 baz2 60" ]
+1593871861 baz2 60
+EOF
 }
 
 @test "close RFC 3339 timestamps are condensed to the first occurrence after one second" {
-    run timestampTally --timestamp-field 3-4 --max-difference 500ms --max-record-duration 1 --single-entry-duration 1m <<<"${delayedMixedDates//T/ }"
-
-    [ $status -eq 0 ]
-    [ "$output" = "1593871643 foo 0.001
+    run -0 timestampTally --timestamp-field 3-4 --max-difference 500ms --max-record-duration 1 --single-entry-duration 1m <<<"${delayedMixedDates//T/ }"
+    assert_output - <<'EOF'
+1593871643 foo 0.001
 1593871645 foo3 60
 1593871800 bar 60
 1593871810 baz 60
-1593871861 baz2 60" ]
+1593871861 baz2 60
+EOF
 }

@@ -1,7 +1,9 @@
 #!/usr/bin/env bats
 
+load fixture
+
 @test "epochs with identical field 3 are summarized" {
-    run timestampTally --summarize 3 <<'EOF'
+    run -0 timestampTally --summarize 3 <<'EOF'
 1594133230 irrelevant FOO
 1594133231 drivel FOO
 1594133232 is FOO
@@ -24,13 +26,14 @@
 1594133333 here MID
 EOF
 
-    [ $status -eq 0 ]
-    [ "$output" = "32 FOO
+    assert_output - <<'EOF'
+32 FOO
 3 BAR
 0 BAZ
 0 QUUX
 4 AAA
 2 ZAP
-0 MID" ]
+0 MID
+EOF
 }
 
