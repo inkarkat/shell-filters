@@ -1,23 +1,26 @@
 #!/usr/bin/env bats
 
+load fixture
+
 @test "Non-matching PATTERN lines are printed" {
-    run prioritizedcat --invert-match '^Un' "${BATS_TEST_DIRNAME}/input.txt"
-    [ $status -eq 0 ]
-    [ "$output" = "It is foobar.
+    run -0 prioritizedcat --invert-match '^Un' "${BATS_TEST_DIRNAME}/input.txt"
+    assert_output - <<'END'
+It is foobar.
 The fox is red.
 A former admiral in a bar.
-EOF" ]
+EOF
+END
 }
 
 @test "Non-matching -e -e lines are printed" {
-    run prioritizedcat -v -e '^Un' --regexp '[Fx]' "${BATS_TEST_DIRNAME}/input.txt"
-    [ $status -eq 0 ]
-    [ "$output" = "It is foobar.
-A former admiral in a bar." ]
+    run -0 prioritizedcat -v -e '^Un' --regexp '[Fx]' "${BATS_TEST_DIRNAME}/input.txt"
+    assert_output - <<'EOF'
+It is foobar.
+A former admiral in a bar.
+EOF
 }
 
 @test "A non-matching inverted pattern prints the entire file" {
-    run prioritizedcat --invert-match doesNotMatch -- "${BATS_TEST_DIRNAME}/input.txt"
-    [ $status -eq 0 ]
-    [ "$output" = "$(cat -- "${BATS_TEST_DIRNAME}/input.txt")" ]
+    run -0 prioritizedcat --invert-match doesNotMatch -- "${BATS_TEST_DIRNAME}/input.txt"
+    assert_output - < "${BATS_TEST_DIRNAME}/input.txt"
 }

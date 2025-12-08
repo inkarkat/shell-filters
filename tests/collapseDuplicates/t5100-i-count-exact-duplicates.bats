@@ -1,19 +1,23 @@
 #!/usr/bin/env bats
 
+load fixture
+
 @test "one interactive duplicate line is counted" {
-    run collapseDuplicates --unbuffered --as count <<-'EOF'
+    run -0 collapseDuplicates --unbuffered --as count <<-'EOF'
 Just some text.
 This repeats once.
 This repeats once.
 Seriously.
 EOF
-    [ "$output" = "Just some text.
+    assert_output - <<'EOF'
+Just some text.
 This repeats once. (2)
-Seriously." ]
+Seriously.
+EOF
 }
 
 @test "three interactive duplicate lines are counted" {
-    run collapseDuplicates --unbuffered --as count <<-'EOF'
+    run -0 collapseDuplicates --unbuffered --as count <<-'EOF'
 Just some text.
 This repeats once.
 This repeats once.
@@ -21,13 +25,15 @@ This repeats once.
 This repeats once.
 Seriously.
 EOF
-    [ "$output" = "Just some text.
+    assert_output - <<'EOF'
+Just some text.
 This repeats once. (2)3)4)
-Seriously." ]
+Seriously.
+EOF
 }
 
 @test "twelve interactive duplicate lines are counted" {
-    run collapseDuplicates --unbuffered --as count <<-'EOF'
+    run -0 collapseDuplicates --unbuffered --as count <<-'EOF'
 Just some text.
 This repeats once.
 This repeats once.
@@ -43,13 +49,15 @@ This repeats once.
 This repeats once.
 Seriously.
 EOF
-    [ "$output" = "Just some text.
+    assert_output - <<'EOF'
+Just some text.
 This repeats once. (2)3)4)5)6)7)8)9)10)11)12)
-Seriously." ]
+Seriously.
+EOF
 }
 
 @test "interactive duplicate counting works multiple times" {
-    run collapseDuplicates --unbuffered --as count <<-'EOF'
+    run -0 collapseDuplicates --unbuffered --as count <<-'EOF'
 This repeats once.
 This repeats once.
 A unique statement.
@@ -59,14 +67,16 @@ Seriously.
 Seriously.
 Seriously.
 EOF
-    [ "$output" = "This repeats once. (2)
+    assert_output - <<'EOF'
+This repeats once. (2)
 A unique statement.
 Not unique. (2)
-Seriously. (2)3)" ]
+Seriously. (2)3)
+EOF
 }
 
 @test "interactive duplicate counting in multiple locations" {
-    run collapseDuplicates --unbuffered --as count <<-'EOF'
+    run -0 collapseDuplicates --unbuffered --as count <<-'EOF'
 This repeats once.
 This repeats once.
 This repeats once.
@@ -75,8 +85,10 @@ End of interlude.
 This repeats once.
 This repeats once.
 EOF
-    [ "$output" = "This repeats once. (2)3)
+    assert_output - <<'EOF'
+This repeats once. (2)3)
 A unique statement.
 End of interlude.
-This repeats once. (2)" ]
+This repeats once. (2)
+EOF
 }

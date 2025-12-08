@@ -1,7 +1,9 @@
 #!/usr/bin/env bats
 
+load fixture
+
 @test "trailing empty line" {
-    run truncate-tail-paragraph <<-'EOF'
+    run -0 truncate-tail-paragraph <<-'EOF'
 One
 first
 paragraph.
@@ -10,13 +12,14 @@ Last
 paragraph.
 
 EOF
-    [ $status -eq 0 ]
-    [ "$output" = "Last
-paragraph." ]
+    assert_output - <<'EOF'
+Last
+paragraph.
+EOF
 }
 
 @test "two trailing empty lines are kept (questionable implementation artifact)" {
-    run truncate-tail-paragraph <<-'EOF'
+    run -0 truncate-tail-paragraph <<-'EOF'
 One
 first
 paragraph.
@@ -26,12 +29,11 @@ paragraph.
 
 
 EOF
-    [ $status -eq 0 ]
-    [ "$output" = "" ]
+    assert_output ''
 }
 
 @test "four trailing empty lines are kept (questionable implementation artifact)" {
-    run truncate-tail-paragraph <<-'EOF'
+    run -0 truncate-tail-paragraph <<-'EOF'
 One
 first
 paragraph.
@@ -43,6 +45,5 @@ paragraph.
 
 
 EOF
-    [ $status -eq 0 ]
-    [ "$output" = "" ]
+    assert_output ''
 }

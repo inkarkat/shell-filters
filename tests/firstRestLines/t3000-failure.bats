@@ -3,22 +3,19 @@
 load fixture
 
 @test "lines with failing first command" {
-    runRestCommandWithInputEOF $'one\ntwo\nthree\n' --first-command false
-    [ $status -eq 1 ]
-    [ "${output%EOF}" = "R:two
+    runRestCommandWithInputEOF -1 $'one\ntwo\nthree\n' --first-command false
+    output="${output%EOF}" assert_output "R:two
 R:three
-" ]
+"
 }
 
 @test "lines with failing rest command" {
-runFirstCommandWithInputEOF $'one\ntwo\nthree\n' --rest-command '(exit 5)'
-    [ $status -eq 5 ]
-    [ "${output%EOF}" = "F:one
-" ]
+    runFirstCommandWithInputEOF -5 $'one\ntwo\nthree\n' --rest-command '(exit 5)'
+    output="${output%EOF}" assert_output "F:one
+"
 }
 
 @test "lines with both commands failing returns failure of first" {
-runWithInputEOF $'one\ntwo\nthree\n' firstRestLines --first-command false --rest-command '(exit 5)'
-    [ $status -eq 1 ]
-    [ "${output%EOF}" = "" ]
+    runWithInputEOF -1 $'one\ntwo\nthree\n' firstRestLines --first-command false --rest-command '(exit 5)'
+    output="${output%EOF}" assert_output ''
 }

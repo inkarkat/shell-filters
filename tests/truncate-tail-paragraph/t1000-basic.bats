@@ -1,31 +1,32 @@
 #!/usr/bin/env bats
 
+load fixture
+
 @test "no output" {
-    run truncate-tail-paragraph <<<""
-    [ $status -eq 0 ]
-    [ "$output" = "" ]
+    run -0 truncate-tail-paragraph <<<""
+    assert_output ''
 }
 
 @test "a single line is kept" {
-    run truncate-tail-paragraph <<-'EOF'
+    run -0 truncate-tail-paragraph <<-'EOF'
 Single line
 EOF
-    [ $status -eq 0 ]
-    [ "$output" = "Single line" ]
+    assert_output 'Single line'
 }
 @test "a single paragraph is kept" {
-    run truncate-tail-paragraph <<-'EOF'
+    run -0 truncate-tail-paragraph <<-'EOF'
 Just one
 first
 paragraph.
 EOF
-    [ $status -eq 0 ]
-    [ "$output" = "Just one
+    assert_output - <<'EOF'
+Just one
 first
-paragraph." ]
+paragraph.
+EOF
 }
 @test "only the last of two paragraphs is kept" {
-    run truncate-tail-paragraph <<-'EOF'
+    run -0 truncate-tail-paragraph <<-'EOF'
 One
 first
 paragraph.
@@ -33,23 +34,23 @@ paragraph.
 Another
 paragraph.
 EOF
-    [ $status -eq 0 ]
-    [ "$output" = "Another
-paragraph." ]
+    assert_output - <<'EOF'
+Another
+paragraph.
+EOF
 }
 @test "a minimal single-line last paragraph is kept" {
-    run truncate-tail-paragraph <<-'EOF'
+    run -0 truncate-tail-paragraph <<-'EOF'
 One
 first
 paragraph.
 
 Another paragraph.
 EOF
-    [ $status -eq 0 ]
-    [ "$output" = "Another paragraph." ]
+    assert_output 'Another paragraph.'
 }
 @test "only the last of four paragraphs is kept" {
-    run truncate-tail-paragraph <<-'EOF'
+    run -0 truncate-tail-paragraph <<-'EOF'
 One
 first
 paragraph.
@@ -67,8 +68,9 @@ The
 last
 paragraph.
 EOF
-    [ $status -eq 0 ]
-    [ "$output" = "The
+    assert_output - <<'EOF'
+The
 last
-paragraph." ]
+paragraph.
+EOF
 }

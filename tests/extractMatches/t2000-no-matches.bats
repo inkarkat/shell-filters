@@ -1,13 +1,16 @@
 #!/usr/bin/env bats
 
+load fixture
+
 @test "non-matching input is not modified and returns 1" {
-    run extractMatches --regexp foo <<-'EOF'
+    run -1 extractMatches --regexp foo <<-'EOF'
 Just some text.
 All simple lines.
 Seriously.
 EOF
-    [ $status -eq 1 ]
-    [ "$output" = "Just some text.
+    assert_output - <<'EOF'
+Just some text.
 All simple lines.
-Seriously." ]
+Seriously.
+EOF
 }

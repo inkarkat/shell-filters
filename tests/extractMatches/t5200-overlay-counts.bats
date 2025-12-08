@@ -8,13 +8,15 @@ This has foo in it.
 All simple lines.
 More foo here.
 Seriously."
-    run extractMatches --to overlay --count fo+ <<<"$input"
-    [ "$output" = "Just some text.
+    run -0 extractMatches --to overlay --count fo+ <<<"$input"
+    assert_output - <<EOF
+Just some text.
 This has foo in it.
 ${R}foo:1${N}All simple lines.
 ${R}foo:1${N}More foo here.
 ${R}foo:2${N}Seriously.
-${R}foo:2${N}" ]
+${R}foo:2${N}
+EOF
 }
 
 @test "three different counts with different single / global are overlaid" {
@@ -23,11 +25,13 @@ This has foo, foo and foofoo in it.
 All simple lines.
 More foo here.
 Seriously, why?"
-    run extractMatches --to overlay --count fo+ --global --count 'ex' --count 'y' --global <<<"$input"
-    [ "$output" = "Just some sexy text.
+    run -0 extractMatches --to overlay --count fo+ --global --count 'ex' --count 'y' --global <<<"$input"
+    assert_output - <<EOF
+Just some sexy text.
 ${R}ex:1|y:1${N}This has foo, foo and foofoo in it.
 ${R}foo:4|ex:1|y:1${N}All simple lines.
 ${R}foo:4|ex:1|y:1${N}More foo here.
 ${R}foo:5|ex:1|y:1${N}Seriously, why?
-${R}foo:5|ex:1|y:3${N}" ]
+${R}foo:5|ex:1|y:3${N}
+EOF
 }

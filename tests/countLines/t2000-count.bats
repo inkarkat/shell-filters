@@ -3,9 +3,9 @@
 load fixture
 
 @test "count all input" {
-    runWithCannedInput countLines
-    [ $status -eq 0 ]
-    [ "$output" = "(1) foo
+    runWithCannedInput -0 countLines
+    assert_output - <<'EOF'
+(1) foo
 (2) bar
 (3) baz
 (4) hihi
@@ -17,5 +17,6 @@ load fixture
 (10) 
 (11) nothing
 (12) for
-(13) me" ]
+(13) me
+EOF
 }

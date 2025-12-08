@@ -1,7 +1,9 @@
 #!/usr/bin/env bats
 
+load fixture
+
 @test "duplicate counting of full line" {
-    run collapseDuplicates --as count --match 'repeats .*$' --match '^.*ly\.$' <<-'EOF'
+    run -0 collapseDuplicates --as count --match 'repeats .*$' --match '^.*ly\.$' <<-'EOF'
 This repeats once.
 This repeats here.
 A unique statement.
@@ -14,18 +16,20 @@ Precariously.
 Precariously.
 Seriously.
 EOF
-    [ "$output" = "This repeats once.
+    assert_output - <<'EOF'
+This repeats once.
 This repeats here.
 A unique statement.
 Not unique.
 Not unique.
 Seriously. (2)
 Precariously. (3)
-Seriously." ]
+Seriously.
+EOF
 }
 
 @test "duplicate counting of partial match" {
-    run collapseDuplicates --as count --match 'repeats' --match 'ly\.$' <<-'EOF'
+    run -0 collapseDuplicates --as count --match 'repeats' --match 'ly\.$' <<-'EOF'
 This repeats once.
 This repeats here.
 A unique statement.
@@ -38,9 +42,11 @@ Precariously.
 Precariously.
 Seriously.
 EOF
-    [ "$output" = "This repeats once. (2)
+    assert_output - <<'EOF'
+This repeats once. (2)
 A unique statement.
 Not unique.
 Not unique.
-Seriously. (6)" ]
+Seriously. (6)
+EOF
 }

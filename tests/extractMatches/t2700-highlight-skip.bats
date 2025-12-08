@@ -1,10 +1,12 @@
 #!/usr/bin/env bats
 
+load fixture
+
 export EXTRACTMATCHES_HIGHLIGHT_PREFIX='['
 export EXTRACTMATCHES_HIGHLIGHT_SUFFIX=']'
 
 @test "matches skipped in whole lines" {
-    run extractMatches --regexp fo+ --skip-lines '[[:upper:]]{3,}' --skip-lines '!$' <<-'EOF'
+    run -0 extractMatches --regexp fo+ --skip-lines '[[:upper:]]{3,}' --skip-lines '!$' <<-'EOF'
 This has foo in it.
 foo is SKIPPED everywhere here foo.
 Some foo.
@@ -12,15 +14,17 @@ foo not counted!
 More foo here.
 EOF
 
-    [ "$output" = "This has [foo] in it.
+    assert_output - <<'EOF'
+This has [foo] in it.
 foo is SKIPPED everywhere here foo.
 Some [foo].
 foo not counted!
-More [foo] here." ]
+More [foo] here.
+EOF
 }
 
 @test "counting skipped in whole lines" {
-    run extractMatches --count fo+ --skip-lines '[[:upper:]]{3,}' --skip-lines '!$' <<-'EOF'
+    run -0 extractMatches --count fo+ --skip-lines '[[:upper:]]{3,}' --skip-lines '!$' <<-'EOF'
 This has foo in it.
 foo is SKIPPED everywhere here foo.
 Some foo.
@@ -28,15 +32,17 @@ foo not counted!
 More foo here.
 EOF
 
-    [ "$output" = "This has [foo (1)] in it.
+    assert_output - <<'EOF'
+This has [foo (1)] in it.
 foo is SKIPPED everywhere here foo.
 Some [foo (2)].
 foo not counted!
-More [foo (3)] here." ]
+More [foo (3)] here.
+EOF
 }
 
 @test "match-counting skipped in whole lines" {
-    run extractMatches --match-count fo+ --skip-lines '[[:upper:]]{3,}' --skip-lines '!$' <<-'EOF'
+    run -0 extractMatches --match-count fo+ --skip-lines '[[:upper:]]{3,}' --skip-lines '!$' <<-'EOF'
 This has foo in it.
 foooo is SKIPPED everywhere here foo.
 Some foooo.
@@ -44,15 +50,17 @@ foo not counted!
 More foooo here.
 EOF
 
-    [ "$output" = "This has [foo (1)] in it.
+    assert_output - <<'EOF'
+This has [foo (1)] in it.
 foooo is SKIPPED everywhere here foo.
 Some [foooo (1)].
 foo not counted!
-More [foooo (2)] here." ]
+More [foooo (2)] here.
+EOF
 }
 
 @test "resetting skipped in whole lines" {
-    run extractMatches --reset-name X --name FOO --count fo+ --global --name FOO --skip-lines '[[:upper:]]{3,}' --skip-lines '!$' <<-'EOF'
+    run -0 extractMatches --reset-name X --name FOO --count fo+ --global --name FOO --skip-lines '[[:upper:]]{3,}' --skip-lines '!$' <<-'EOF'
 This has foo and foo, X, foo in it.
 foo is SKIPPED everywhere here foo.
 Some X foo.
@@ -60,9 +68,11 @@ X not reset!
 More foo here.
 EOF
 
-    [ "$output" = "This has [foo (1)] and [foo (2)], X, [foo (1)] in it.
+    assert_output - <<'EOF'
+This has [foo (1)] and [foo (2)], X, [foo (1)] in it.
 foo is SKIPPED everywhere here foo.
 Some X [foo (1)].
 X not reset!
-More [foo (2)] here." ]
+More [foo (2)] here.
+EOF
 }

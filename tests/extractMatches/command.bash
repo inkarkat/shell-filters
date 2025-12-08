@@ -1,5 +1,7 @@
 #!/bin/bash
 
+load fixture
+
 readonly SIMPLE_INPUT="Just some sexy text.
 This has foo in it.
 All simple lines.
@@ -25,9 +27,5 @@ export EXTRACTMATCHES_COMMANDLINE
 
 assert_runs() {
     local runsContents="$(< "$RUNS")"
-    [ "$runsContents" = "${1?}" ]
-}
-
-dump_runs() {
-    prefix '#' "$RUNS" >&3
+    assert_equal "$runsContents" "${1?}"
 }

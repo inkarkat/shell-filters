@@ -1,5 +1,7 @@
 #!/bin/bash
 
+load fixture
+
 readonly SIMPLE_INPUT="Just some text.
 This has foo in it.
 All simple lines.
@@ -23,9 +25,5 @@ setup() {
 
 assert_log() {
     local logContents="$(< "$LOG")"
-    [ "$logContents" = "${1?}" ]
-}
-
-dump_log() {
-    prefix '#' "$LOG" >&3
+    assert_equal "$logContents" "${1?}"
 }

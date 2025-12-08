@@ -11,15 +11,13 @@ This has foo in it.
 All simple lines.
 More foooo here.
 Seriously."
-    run extractMatches --to overlay --clear --quiet --regexp fo+ --count '\<\w{4}\>' --global --match-count '\<i\w\>' --global <<<"$input"
-    [ $status -eq 0 ]
-    [ "$output" = "${RQ}text:3${NQ}${RQ}This:4|in:1|it:1|foo${NQ}${RQ}This:4|in:1|it:1|foo${NQ}${RQ}here:6|in:1|it:1|foooo${NQ}${RQ}here:6|in:1|it:1|foooo${NQ}[1G[0K" ]
+    run -0 extractMatches --to overlay --clear --quiet --regexp fo+ --count '\<\w{4}\>' --global --match-count '\<i\w\>' --global <<<"$input"
+    assert_output "${RQ}text:3${NQ}${RQ}This:4|in:1|it:1|foo${NQ}${RQ}This:4|in:1|it:1|foo${NQ}${RQ}here:6|in:1|it:1|foooo${NQ}${RQ}here:6|in:1|it:1|foooo${NQ}[1G[0K"
 }
 
 @test "no matches do not clear non-existing overlay" {
     input="Just some text.
 Seriously."
-    run extractMatches --to overlay --clear --quiet --regexp fo+ <<<"$input"
-    [ $status -eq 1 ]
-    [ "$output" = "" ]
+    run -1 extractMatches --to overlay --clear --quiet --regexp fo+ <<<"$input"
+    assert_output ''
 }

@@ -2,10 +2,11 @@
 
 export EXTRACTMATCHES_FILE_UPDATE_MATCH_DELAY=-3
 export EXTRACTMATCHES_FILE_UPDATE_COUNT_DELAY=-3
+
 load log
 
 @test "delayed matches and counts are written with two-line input" {
-    run extractMatches --to "$LOG" --regexp fo+ --count '\<\w{4}\>' --global --match-count '\<i\w\>' --global <<-'EOF'
+    run -0 extractMatches --to "$LOG" --regexp fo+ --count '\<\w{4}\>' --global --match-count '\<i\w\>' --global <<-'EOF'
 Just sexy text.
 Even has foo in it.
 EOF

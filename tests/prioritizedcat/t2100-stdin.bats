@@ -1,5 +1,7 @@
 #!/usr/bin/env bats
 
+load fixture
+
 inputWrapper()
 {
     local input="$1"; shift
@@ -7,25 +9,28 @@ inputWrapper()
 }
 runWithInput()
 {
-    run inputWrapper "$@"
+    typeset -a runArg=()
+    if [ "$1" = '!' ] || [[ "$1" =~ ^-[0-9]+$ ]]; then
+	runArg=("$1"); shift
+    fi
+    run "${runArg[@]}" inputWrapper "$@"
 }
 
 @test "Matching PATTERN line from input are printed" {
-    runWithInput $'my\nfoobar\ngaga' prioritizedcat 'foo'
-    [ $status -eq 0 ]
-    [ "$output" = "foobar" ]
+    runWithInput -0 $'my\nfoobar\ngaga' prioritizedcat 'foo'
+    assert_output 'foobar'
 }
 
 @test "Matching PATTERN line from input are omitted" {
-    runWithInput $'my\nfoobar\ngaga' prioritizedcat --invert-match 'foo'
-    [ $status -eq 0 ]
-    [ "$output" = "my
-gaga" ]
+    runWithInput -0 $'my\nfoobar\ngaga' prioritizedcat --invert-match 'foo'
+    assert_output - <<'EOF'
+my
+gaga
+EOF
 }
 
 @test "A non-matching pattern prints the entire input" {
     INPUT=$'my\nfoobar\ngaga'
-    runWithInput "$INPUT" prioritizedcat doesNotMatch
-    [ $status -eq 0 ]
-    [ "$output" = "$INPUT" ]
+    runWithInput -0 "$INPUT" prioritizedcat doesNotMatch
+    assert_output "$INPUT"
 }

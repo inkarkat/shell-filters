@@ -1,9 +1,11 @@
 #!/usr/bin/env bats
 
+load fixture
+
 readonly LF=$'\r'
 
 @test "interactive duplicate counting of full line" {
-    run collapseDuplicates --unbuffered --as count --match 'repeats .*$' --match '^.*ly\.$' <<-'EOF'
+    run -0 collapseDuplicates --unbuffered --as count --match 'repeats .*$' --match '^.*ly\.$' <<-'EOF'
 This repeats once.
 This repeats here.
 A unique statement.
@@ -16,18 +18,20 @@ Precariously.
 Precariously.
 Seriously.
 EOF
-    [ "$output" = "This repeats once.
+    assert_output - <<'EOF'
+This repeats once.
 This repeats here.
 A unique statement.
 Not unique.
 Not unique.
 Seriously. (2)
 Precariously. (2)3)
-Seriously." ]
+Seriously.
+EOF
 }
 
 @test "interactive duplicate counting of partial match" {
-    run collapseDuplicates --unbuffered --as count --match 'repeats' --match 'ly\.$' <<-'EOF'
+    run -0 collapseDuplicates --unbuffered --as count --match 'repeats' --match 'ly\.$' <<-'EOF'
 This repeats once.
 This repeats here.
 A unique statement.
@@ -40,9 +44,11 @@ Precariously.
 Precariously.
 Seriously.
 EOF
-    [ "$output" = "This repeats once.${LF}This repeats here. (2)
+    assert_output - <<EOF
+This repeats once.${LF}This repeats here. (2)
 A unique statement.
 Not unique.
 Not unique.
-Seriously. (2)${LF}Precariously. (3)4)5)${LF}Seriously. (6)" ]
+Seriously. (2)${LF}Precariously. (3)4)5)${LF}Seriously. (6)
+EOF
 }

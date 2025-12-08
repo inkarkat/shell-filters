@@ -3,9 +3,9 @@
 load fixture
 
 @test "prepend count" {
-    runWithCannedInput countLines --prepend thing
-    [ $status -eq 0 ]
-    [ "$output" = "(thing 1) foo
+    runWithCannedInput -0 countLines --prepend thing
+    assert_output - <<'EOF'
+(thing 1) foo
 (thing 2) bar
 (thing 3) baz
 (thing 4) hihi
@@ -17,5 +17,6 @@ load fixture
 (thing 10) 
 (thing 11) nothing
 (thing 12) for
-(thing 13) me" ]
+(thing 13) me
+EOF
 }

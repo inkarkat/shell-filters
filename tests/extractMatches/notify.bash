@@ -5,6 +5,9 @@ if [ $# -gt 1 ]; then
     printf %s\\n "$*" >> "$RUNS"
     exit 0
 fi
+
+load fixture
+
 export EXTRACTMATCHES_NOTIFY_COMMANDLINE="\"${BASH_SOURCE[0]}\" \"extractMatches {FILENAME}\" -- {}"
 export RUNS="${BATS_TMPDIR}/runs"
 
@@ -32,9 +35,5 @@ setup() {
 
 assert_runs() {
     local runsContents="$(< "$RUNS")"
-    [ "$runsContents" = "${1?}" ]
-}
-
-dump_runs() {
-    prefix '#' "$RUNS" >&3
+    assert_equal "$runsContents" "${1?}"
 }

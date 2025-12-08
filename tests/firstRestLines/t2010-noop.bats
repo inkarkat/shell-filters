@@ -3,38 +3,33 @@
 load fixture
 
 @test "no input without commands" {
-    runWithInputEOF '' firstRestLines
-    [ $status -eq 0 ]
-    [ "${output%EOF}" = "" ]
+    runWithInputEOF -0 '' firstRestLines
+    output="${output%EOF}" assert_output ''
 }
 
 @test "single empty line without commands just passes through" {
-    runWithInputEOF $'\n' firstRestLines
-    [ $status -eq 0 ]
-    [ "${output%EOF}" = "
-" ]
+    runWithInputEOF -0 $'\n' firstRestLines
+    output="${output%EOF}" assert_output "
+"
 }
 
 @test "single line without commands just passes through" {
-    runWithInputEOF $'one\n' firstRestLines
-    [ $status -eq 0 ]
-    [ "${output%EOF}" = "one
-" ]
+    runWithInputEOF -0 $'one\n' firstRestLines
+    output="${output%EOF}" assert_output "one
+"
 }
 
 @test "two lines without commands just passes through" {
-    runWithInputEOF $'one\ntwo\n' firstRestLines
-    [ $status -eq 0 ]
-    [ "${output%EOF}" = "one
+    runWithInputEOF -0 $'one\ntwo\n' firstRestLines
+    output="${output%EOF}" assert_output "one
 two
-" ]
+"
 }
 
 @test "three lines without commands just passes through" {
-    runWithInputEOF $'one\ntwo\nthree\n' firstRestLines
-    [ $status -eq 0 ]
-    [ "${output%EOF}" = "one
+    runWithInputEOF -0 $'one\ntwo\nthree\n' firstRestLines
+    output="${output%EOF}" assert_output "one
 two
 three
-" ]
+"
 }

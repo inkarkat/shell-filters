@@ -2,6 +2,7 @@
 
 export EXTRACTMATCHES_FILE_UPDATE_MATCH_DELAY=0
 export EXTRACTMATCHES_FILE_UPDATE_COUNT_DELAY=0
+
 load log
 
 @test "matches and counts are written to a file with custom static prefix and suffix" {
@@ -9,8 +10,8 @@ load log
     export EXTRACTMATCHES_FILE_PREFIX_EXPR='prefix['
     export EXTRACTMATCHES_FILE_SUFFIX_EXPR=']suffix'
 
-    run extractMatches --to "$LOG" --regexp fo+ --count '\<\w{4}\>' --global --match-count '\<i\w\>' --global <<<"$SIMPLE_INPUT"
-    [ "$output" = "$SIMPLE_INPUT" ]
+    run -0 extractMatches --to "$LOG" --regexp fo+ --count '\<\w{4}\>' --global --match-count '\<i\w\>' --global <<<"$SIMPLE_INPUT"
+    assert_output "$SIMPLE_INPUT"
     assert_log "prefix[Just: 1]suffix
 prefix[some: 2]suffix
 prefix[text: 3]suffix
@@ -31,8 +32,8 @@ prefix[here: 6]suffix"
 
     # Note: Need to use --unbuffered here so that the file is immediately
     # flushed after each line.
-    run extractMatches --unbuffered --to "$LOG" --regexp fo+ --count '\<\w{4}\>' --global --match-count '\<i\w\>' --global <<<"$SIMPLE_INPUT"
-    [ "$output" = "$SIMPLE_INPUT" ]
+    run -0 extractMatches --unbuffered --to "$LOG" --regexp fo+ --count '\<\w{4}\>' --global --match-count '\<i\w\>' --global <<<"$SIMPLE_INPUT"
+    assert_output "$SIMPLE_INPUT"
     assert_log "${USER}[Just: 1]0
 ${USER}[some: 2]1
 ${USER}[text: 3]2
@@ -50,11 +51,11 @@ ${USER}[here: 6]9"
     export EXTRACTMATCHES_FILE_PREFIX_EXPR='$(what?['
     export EXTRACTMATCHES_FILE_SUFFIX_EXPR="]\$(cat /doesnotexist | wc -l)"
 
-    run extractMatches --to "$LOG" --regexp fo+ --count '\<\w{4}\>' --global --match-count '\<i\w\>' --global <<<"$SIMPLE_INPUT"
+    run -0 extractMatches --to "$LOG" --regexp fo+ --count '\<\w{4}\>' --global --match-count '\<i\w\>' --global <<<"$SIMPLE_INPUT"
     [[ "${lines[0]}" = *"Syntax error: Unterminated quoted string"* ]]
-    [ "${lines[1]}" = "cat: /doesnotexist: No such file or directory" ]
+    assert_line -n 1 "cat: /doesnotexist: No such file or directory"
     [[ "${lines[2]}" = *"Syntax error: Unterminated quoted string"* ]]
-    [ "${lines[3]}" = "cat: /doesnotexist: No such file or directory" ]
+    assert_line -n 3 "cat: /doesnotexist: No such file or directory"
 
     assert_log "Just: 1]0
 some: 2]0

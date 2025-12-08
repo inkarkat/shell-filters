@@ -3,38 +3,33 @@
 load fixture
 
 @test "no input through first" {
-    runFirstCommandWithInputEOF ''
-    [ $status -eq 0 ]
-    [ "${output%EOF}" = "" ]
+    runFirstCommandWithInputEOF -0 ''
+    output="${output%EOF}" assert_output ''
 }
 
 @test "single empty line through first" {
-    runFirstCommandWithInputEOF $'\n'
-    [ $status -eq 0 ]
-    [ "${output%EOF}" = "F:
-" ]
+    runFirstCommandWithInputEOF -0 $'\n'
+    output="${output%EOF}" assert_output "F:
+"
 }
 
 @test "single line through first" {
-    runFirstCommandWithInputEOF $'one\n'
-    [ $status -eq 0 ]
-    [ "${output%EOF}" = "F:one
-" ]
+    runFirstCommandWithInputEOF -0 $'one\n'
+    output="${output%EOF}" assert_output "F:one
+"
 }
 
 @test "two lines through first" {
-    runFirstCommandWithInputEOF $'one\ntwo\n'
-    [ $status -eq 0 ]
-    [ "${output%EOF}" = "F:one
+    runFirstCommandWithInputEOF -0 $'one\ntwo\n'
+    output="${output%EOF}" assert_output "F:one
 two
-" ]
+"
 }
 
 @test "three lines through first" {
-    runFirstCommandWithInputEOF $'one\ntwo\nthree\n'
-    [ $status -eq 0 ]
-    [ "${output%EOF}" = "F:one
+    runFirstCommandWithInputEOF -0 $'one\ntwo\nthree\n'
+    output="${output%EOF}" assert_output "F:one
 two
 three
-" ]
+"
 }

@@ -3,9 +3,9 @@
 load fixture
 
 @test "count matching non-empty lines but skipping lines with three letters" {
-    runWithCannedInput countLines --match . --skip '^...$'
-    [ $status -eq 0 ]
-    [ "$output" = "foo
+    runWithCannedInput -0 countLines --match . --skip '^...$'
+    assert_output - <<'EOF'
+foo
 bar
 baz
 (1) hihi
@@ -17,5 +17,6 @@ baz
 
 (6) nothing
 for
-(7) me" ]
+(7) me
+EOF
 }

@@ -1,9 +1,11 @@
 #!/usr/bin/env bats
 
+load fixture
+
 readonly LF=$'\r'
 
 @test "interactive counting of all separate / accumulated regexp / matches, " {
-    run collapseDuplicates --unbuffered --as count --regexp 'repeat' --accumulate 'sentence' --match '^\w+ly\.$' --match-accumulated '^Not .*$' <<-'EOF'
+    run -0 collapseDuplicates --unbuffered --as count --regexp 'repeat' --accumulate 'sentence' --match '^\w+ly\.$' --match-accumulated '^Not .*$' <<-'EOF'
 Some sentence starts it off.
 This will occur once more.
 This will occur once more.
@@ -30,7 +32,8 @@ Another repeat yet again.
 Not here.
 Some sentence at the end.
 EOF
-    [ "$output" = "Some sentence starts it off.
+    assert_output - <<EOF
+Some sentence starts it off.
 This will occur once more.
 This will occur once more.
 Seriously. (2)
@@ -45,11 +48,12 @@ Seriously. (2)3)
 End of interlude.
 Another repeat from what we've seen.${LF}Another repeat yet again. (2)
 Not here.
-Some sentence at the end. (3)" ]
+Some sentence at the end. (3)
+EOF
 }
 
 @test "interactive counting precedence with match before accumulated matches " {
-    run collapseDuplicates --unbuffered --as count --match '^\w+ly\.$' --match-accumulated '^[NST]' <<-'EOF'
+    run -0 collapseDuplicates --unbuffered --as count --match '^\w+ly\.$' --match-accumulated '^[NST]' <<-'EOF'
 Some sentence starts it off.
 This will occur once more.
 This will occur once more.
@@ -76,7 +80,8 @@ Another repeat yet again.
 Not here.
 Some sentence at the end.
 EOF
-    [ "$output" = "Some sentence starts it off.
+    assert_output - <<EOF
+Some sentence starts it off.
 This will occur once more. (2)
 Seriously. (2)
 Precariously.
@@ -91,11 +96,12 @@ End of interlude.
 Another repeat from what we've seen.
 Another repeat yet again.
 Not here. (3)
-Some sentence at the end. (3)" ]
+Some sentence at the end. (3)
+EOF
 }
 
 @test "interactive counting precedence with accumulated matches before match " {
-    run collapseDuplicates --unbuffered --as count --match-accumulated '^[NST]' --match '^\w+ly\.$' <<-'EOF'
+    run -0 collapseDuplicates --unbuffered --as count --match-accumulated '^[NST]' --match '^\w+ly\.$' <<-'EOF'
 Some sentence starts it off.
 This will occur once more.
 This will occur once more.
@@ -122,7 +128,8 @@ Another repeat yet again.
 Not here.
 Some sentence at the end.
 EOF
-    [ "$output" = "Some sentence starts it off.
+    assert_output - <<EOF
+Some sentence starts it off.
 This will occur once more. (2)
 Seriously. (2)3)
 Precariously.
@@ -135,11 +142,12 @@ End of interlude.
 Another repeat from what we've seen.
 Another repeat yet again.
 Not here. (3)
-Some sentence at the end. (9)" ]
+Some sentence at the end. (9)
+EOF
 }
 
 @test "interactive counting precedence with matching vs. exact" {
-    run collapseDuplicates --unbuffered --as count --regexp '^[NST]' --match '^\w+ly\.$' <<-'EOF'
+    run -0 collapseDuplicates --unbuffered --as count --regexp '^[NST]' --match '^\w+ly\.$' <<-'EOF'
 Some sentence starts it off.
 This will occur once more.
 This will occur once more.
@@ -166,7 +174,8 @@ Another repeat yet again.
 Not here.
 Some sentence at the end.
 EOF
-    [ "$output" = "Some sentence starts it off.${LF}This will occur once more. (2)${LF}This will occur once more. (3)${LF}Seriously. (4)${LF}Seriously. (5)
+    assert_output - <<EOF
+Some sentence starts it off.${LF}This will occur once more. (2)${LF}This will occur once more. (3)${LF}Seriously. (4)${LF}Seriously. (5)
 Precariously.
 This will repeat.${LF}This is the repeat. (2)${LF}That is the last repeat in the first location. (3)
 A unique statement.
@@ -176,11 +185,12 @@ Seriously.${LF}Some sentence in the middle. (2)3)4)5)
 End of interlude.
 Another repeat from what we've seen.
 Another repeat yet again.
-Not here.${LF}Some sentence at the end. (2)" ]
+Not here.${LF}Some sentence at the end. (2)
+EOF
 }
 
 @test "interactive counting precedence with exact vs. matching" {
-    run collapseDuplicates --unbuffered --as count --match '^\w+ly\.$' --regexp '^[NST]' <<-'EOF'
+    run -0 collapseDuplicates --unbuffered --as count --match '^\w+ly\.$' --regexp '^[NST]' <<-'EOF'
 Some sentence starts it off.
 This will occur once more.
 This will occur once more.
@@ -207,7 +217,8 @@ Another repeat yet again.
 Not here.
 Some sentence at the end.
 EOF
-    [ "$output" = "Some sentence starts it off.${LF}This will occur once more. (2)${LF}This will occur once more. (3)
+    assert_output - <<EOF
+Some sentence starts it off.${LF}This will occur once more. (2)${LF}This will occur once more. (3)
 Seriously. (2)
 Precariously.
 This will repeat.${LF}This is the repeat. (2)${LF}That is the last repeat in the first location. (3)
@@ -220,6 +231,7 @@ Seriously. (2)3)
 End of interlude.
 Another repeat from what we've seen.
 Another repeat yet again.
-Not here.${LF}Some sentence at the end. (2)" ]
+Not here.${LF}Some sentence at the end. (2)
+EOF
 }
 
