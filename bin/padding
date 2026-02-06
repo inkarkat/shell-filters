@@ -37,8 +37,8 @@ while [ $# -ne 0 ]
 do
     case "$1" in
 	--help|-h|-\?)	    shift; printLongUsage "$0"; exit 0;;
-	--before|-b)	    shift; escapedLine="${1//\\/\\\\}"; before="${freshPreLines}${freshPreLines:+\\$NL}${escapedLine//${NL}/\\$NL}"; shift;;
-	--after|-a)	    shift; escapedLine="${1//\\/\\\\}"; after="${freshPostLines}${freshPostLines:+\\$NL}${escapedLine//${NL}/\\$NL}"; shift;;
+	--before|-b)	    shift; escapedLine="${1//\\/\\\\}"; before="${escapedLine//${NL}/\\$NL}"; shift;;
+	--after|-a)	    shift; escapedLine="${1//\\/\\\\}"; after="${escapedLine//${NL}/\\$NL}"; shift;;
 	--)		    shift; break;;
 	-*)		    { echo "ERROR: Unknown option \"$1\"!"; echo; printUsage "$0"; } >&2; exit 2;;
 	*)		    break;;
