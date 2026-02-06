@@ -4,7 +4,7 @@ printShortUsage()
 {
     # Note: short followed by long option; if the user knows the short one, she can
     # skim the long one.
-    printf 'Usage: %q %s\n' "$(basename "$1")" '[-b|--before TEXT] [-a|--after TEXT] [--] [FILE ...] [-?|-h|--help]'
+    printf 'Usage: %q %s\n' "$(basename "$1")" '[-b|--before TEXT|""] [-a|--after TEXT|""] [--] [FILE ...] [-?|-h|--help]'
     echo
     printf 'Usage: cat FILE [...] | %q %s\n' "$(basename "$1")" '[...]'
 }
@@ -28,24 +28,28 @@ HELPDESCRIPTION
     echo
     cat <<HELPTEXT
     --before|-b TEXT	Use TEXT before the input instead of an empty line.
+    --before|-b ""	Do not insert anything before the input.
     --after|-a TEXT	Use TEXT after the input instead of an empty line.
+    --after|-a ""	Do not insert anything after the input.
 HELPTEXT
 }
 
+before=
+after=
 readonly NL=$'\n'
 while [ $# -ne 0 ]
 do
     case "$1" in
 	--help|-h|-\?)	    shift; printLongUsage "$0"; exit 0;;
-	--before|-b)	    shift; escapedLine="${1//\\/\\\\}"; before="${escapedLine//${NL}/\\$NL}"; shift;;
-	--after|-a)	    shift; escapedLine="${1//\\/\\\\}"; after="${escapedLine//${NL}/\\$NL}"; shift;;
+	--before|-b)	    shift; if [ -n "${1?}" ]; then escapedLine="${1//\\/\\\\}"; before="${escapedLine//${NL}/\\$NL}"; else unset before; fi; shift;;
+	--after|-a)	    shift; if [ -n "${1?}" ]; then escapedLine="${1//\\/\\\\}"; after="${escapedLine//${NL}/\\$NL}";  else unset after; fi; shift;;
 	--)		    shift; break;;
 	-*)		    { echo "ERROR: Unknown option \"$1\"!"; echo; printUsage "$0"; } >&2; exit 2;;
 	*)		    break;;
     esac
 done
 
-exec sed -e "1i\\
-$before
-\$a\\
-$after" "$@"
+exec sed -e "${before:+1i\\
+$before}
+${after:+\$a\\
+$after}" "$@"
