@@ -24,17 +24,18 @@ file can even be removed if nothing changed its contents.
 HELPDESCRIPTION
     echo
     printShortUsage "$1"
+    echo
     cat <<HELPTEXT
---verbose|-v		Show detailed results for each file.
---verbose-color		Same, but with different colors depending on action taken.
---consider ADDRESS	If the FILE does not match ADDRESS (which often is a sed
+    --verbose|-v	Show detailed results for each file.
+    --verbose-color	Same, but with different colors depending on action taken.
+    --consider ADDRESS	If the FILE does not match ADDRESS (which often is a sed
 			/PATTERN/), it is skipped.
---match ADDRESS	SED-EXPR
+    --match ADDRESS SED-EXPR
 			Execute the following SED-EXPR if ADDRESS matches
 			anywhere in the FILE.
---else SED-EXPR		Execute SED-EXPR if none of the --match ADDRESS actually
+    --else SED-EXPR	Execute SED-EXPR if none of the --match ADDRESS actually
 			changed the FILE.
---else-delete		Remove the FILE if none of the --match ADDRESS (and
+    --else-delete	Remove the FILE if none of the --match ADDRESS (and
 			neither a --else) actually changed the FILE.
 Example:
 This searches all files that have lines starting with a year. It only keeps
