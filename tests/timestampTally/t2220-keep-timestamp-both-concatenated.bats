@@ -20,6 +20,7 @@ EOF
 1593871648 1593871648 0 baz 2020-07-04T16:07:24,100
 EOF
 }
+
 @test "identical ISO 8601 timestamps as third field explicitly specified with kept both concatenated timestamps" {
     run -0 timestampTally --timestamp-field 3 --keep-timestamp both-concatenated <<<"$identicalMixedDates"
     assert_output - <<'EOF'
@@ -37,6 +38,3 @@ EOF
 1593871648 baz 2020-07-04 16:07:24,100 2020-07-04 16:07:24,100 0
 EOF
 }
-
-
-

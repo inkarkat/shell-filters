@@ -77,4 +77,3 @@ EOF
 0  quux
 EOF
 }
-
