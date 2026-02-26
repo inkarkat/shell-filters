@@ -35,5 +35,13 @@ foo10
 ex: 3
 y: 2
 foo13
+y: 4" \
+	|| assert_log "foo5
+ex: 1
+y: 1
+foo10
+foo13
+ex: 3
 y: 4"
+
 }
