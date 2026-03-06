@@ -12,7 +12,7 @@ Empty input / FILE(s) will stay empty.
 HELPTEXT
     echo
     printf 'Usage: %q %s\n' "$(basename "$1")" '[-i[SUFFIX]|--in-place[=SUFFIX]] FILE [...] [-?|-h|--help]'
-    printf 'Usage: cat FILE [...] %q %s\n' "$(basename "$1")" '[...] [-?|-h|--help]'
+    printf 'Usage: cat FILE [...] %q\n' "$(basename "$1")"
 }
 typeset -a sedArgs=()
 while [ $# -ne 0 ]

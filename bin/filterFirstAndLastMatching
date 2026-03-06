@@ -4,9 +4,9 @@ printShortUsage()
 {
     # Note: short followed by long option; if the user knows the short one, she can
     # skim the long one.
-    printf 'Usage: %q %s\n' "$(basename "$1")" '-m|--match PATTERN [-M|--no-match-separated] [-v|--verbose] [-c|--count N|-s|--start-count N|-e|--end-count N] FILE [...] [-?|-h|--help]'
-    echo
-    printf 'Usage: cat FILE [...] | %q %s\n' "$(basename "$1")" '[...] [-?|-h|--help]'
+    printf 'Usage: %q %s\n' "$(basename "$1")" '-m|--match PATTERN [-M|--no-match-separated] [-v|--verbose] [-c|--count N|-s|--start-count N|-e|--end-count N] [-?|-h|--help] ...'
+    printf 'Usage: %q %s\n' "$(basename "$1")" '... FILE [...]'
+    printf 'Usage: cat FILE [...] | %q %s\n' "$(basename "$1")" '...'
 }
 printUsage()
 {

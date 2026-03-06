@@ -6,8 +6,9 @@ printUsage()
 Remove the final newline (<EOL>) at the end of the input / passed FILE(s).
 With -s|--single-line, do this only for text that consists of a single line.
 HELPTEXT
-    printf 'Usage: %q %s\n' "$(basename "$1")" '[-s|--single-line] FILE [...] [-?|-h|--help]'
-    printf 'Usage: cat FILE [...] %q %s\n' "$(basename "$1")" '[...] [-?|-h|--help]'
+    printf 'Usage: %q %s\n' "$(basename "$1")" '[-s|--single-line] [-?|-h|--help] ...'
+    printf 'Usage: %q %s\n' "$(basename "$1")" '... FILE [...]'
+    printf 'Usage: cat FILE [...] %q %s\n' "$(basename "$1")" '...'
 }
 isSingleLineLimitation=
 case "$1" in
