@@ -7,11 +7,13 @@ printShortUsage()
 {
     # Note: short followed by long option; if the user knows the short one, she can
     # skim the long one.
-    printf 'Usage: %q %s\n' "$(basename "$1")" '[-w|--enforce-whitespace|-W|--remove-whitespace] [-i|--ignore-trailing-whitespace|-R|--remove-trailing-whitespace] [-f|--first-only|-l|--last-only] [--] SUFFIX FILE [...] [-?|-h|--help]'
+    printf 'Usage: %q %s\n' "$(basename "$1")" '[-w|--enforce-whitespace|-W|--remove-whitespace] [-i|--ignore-trailing-whitespace|-R|--remove-trailing-whitespace] [-f|--first-only|-l|--last-only] [-?|-h|--help] ...'
     echo
-    printf 'Usage: %q %s\n' "$(basename "$1")" "[...] -c|--command \"COMMANDLINE\" [-c ...] | --exec SIMPLECOMMAND ... $UNSUFFIX_EXEC_END [--exec ...] [--] SUFFIX"
+    printf 'Usage: %q %s\n' "$(basename "$1")" "... -c|--command \"COMMANDLINE\" [-c ...] | --exec SIMPLECOMMAND ... $UNSUFFIX_EXEC_END [--exec ...] [--] SUFFIX"
     echo
-    printf 'Usage: cat FILE [...] | %q %s\n' "$(basename "$1")" '[...] [--] SUFFIX'
+    printf 'Usage: %q %s\n' "$(basename "$1")" '... [--] SUFFIX FILE'
+    echo
+    printf 'Usage: cat FILE [...] | %q %s\n' "$(basename "$1")" '... [--] SUFFIX'
 }
 printUsage()
 {

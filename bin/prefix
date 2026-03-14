@@ -7,11 +7,13 @@ printShortUsage()
 {
     # Note: short followed by long option; if the user knows the short one, she can
     # skim the long one.
-    printf 'Usage: %q %s\n' "$(basename "$1")" '[-k|--keep-indent] [-s|--skip-empty] [-f|--first-then-indent] [--] PREFIX FILE [...] [-?|-h|--help]'
+    printf 'Usage: %q %s\n' "$(basename "$1")" '[-k|--keep-indent] [-s|--skip-empty] [-f|--first-then-indent] [-?|-h|--help] ...'
     echo
-    printf 'Usage: %q %s\n' "$(basename "$1")" "[...] -c|--command \"COMMANDLINE\" [-c ...] | --exec SIMPLECOMMAND ... $PREFIX_EXEC_END [--exec ...] [--] PREFIX"
+    printf 'Usage: %q %s\n' "$(basename "$1")" "... -c|--command \"COMMANDLINE\" [-c ...] | --exec SIMPLECOMMAND ... $PREFIX_EXEC_END [--exec ...] [--] PREFIX"
     echo
-    printf 'Usage: cat FILE [...] | %q %s\n' "$(basename "$1")" '[...] [--] PREFIX'
+    printf 'Usage: %q %s\n' "$(basename "$1")" '... [--] PREFIX FILE'
+    echo
+    printf 'Usage: cat FILE [...] | %q %s\n' "$(basename "$1")" '... [--] PREFIX'
 }
 printUsage()
 {

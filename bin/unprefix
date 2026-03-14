@@ -7,11 +7,13 @@ printShortUsage()
 {
     # Note: short followed by long option; if the user knows the short one, she can
     # skim the long one.
-    printf 'Usage: %q %s\n' "$(basename "$1")" '[-w|--enforce-whitespace|-W|--remove-whitespace] [-i|--ignore-indent|-R|--remove-indent] [-f|--first-only|-l|--last-only] [--] PREFIX FILE [...] [-?|-h|--help]'
+    printf 'Usage: %q %s\n' "$(basename "$1")" '[-w|--enforce-whitespace|-W|--remove-whitespace] [-i|--ignore-indent|-R|--remove-indent] [-f|--first-only|-l|--last-only] [-?|-h|--help] ...'
     echo
-    printf 'Usage: %q %s\n' "$(basename "$1")" "[...] -c|--command \"COMMANDLINE\" [-c ...] | --exec SIMPLECOMMAND ... $UNPREFIX_EXEC_END [--exec ...] [--] PREFIX"
+    printf 'Usage: %q %s\n' "$(basename "$1")" "... -c|--command \"COMMANDLINE\" [-c ...] | --exec SIMPLECOMMAND ... $UNPREFIX_EXEC_END [--exec ...] [--] PREFIX"
     echo
-    printf 'Usage: cat FILE [...] | %q %s\n' "$(basename "$1")" '[...] [--] PREFIX'
+    printf 'Usage: %q %s\n' "$(basename "$1")" '... [--] PREFIX FILE'
+    echo
+    printf 'Usage: cat FILE [...] | %q %s\n' "$(basename "$1")" '... [--] PREFIX'
 }
 printUsage()
 {
