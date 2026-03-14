@@ -1,0 +1,12 @@
+#!/bin/sed -uf
+
+## Remove any lines from the output that are then overwritten via carriage returns.
+## Does not consider cursor positioning, line clearing, or any remainder from
+## previous writes, only full updates of lines.
+##
+## Usage: nooverwrittenlines FILE [...]
+## Usage: cat FILE [...] | nooverwrittenlines
+
+:loop
+s#\(^\|\n\)[^\n]*\r\([^\n]\+\)$#\2#
+/\r[^\n]\+/b loop
