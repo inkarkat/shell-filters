@@ -3,8 +3,8 @@
 load fixture
 
 @test "including files with zero length" {
-    runWithEOF -0 separatedcat --separator $'\n---\n' --truncate-empty-lines -- "${BATS_TEST_DIRNAME}/zero-length"/*
-    output="${output%EOF}" assert_output '# My old (DSA) work identity
+    runWithFullOutput -0 separatedcat --separator $'\n---\n' --truncate-empty-lines -- "${BATS_TEST_DIRNAME}/zero-length"/*
+    assert_output '# My old (DSA) work identity
 IdentityFile ~/.ssh/id_dsa
 ---
 # two leading empty lines

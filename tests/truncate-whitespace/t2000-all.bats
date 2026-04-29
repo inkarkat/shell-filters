@@ -3,7 +3,7 @@
 load fixture
 
 @test "truncate all" {
-    runWithInputFileEOF -0 "${BATS_TEST_DIRNAME}/input.txt" truncate-whitespace --all
+    runWithFullOutput -0 truncate-whitespace --all < "${BATS_TEST_DIRNAME}/input.txt"
     output="${output%EOF}" assert_output "foo
 here
 
@@ -13,7 +13,7 @@ bar
 }
 
 @test "truncate all whitespace" {
-    runWithInputFileEOF -0 "${BATS_TEST_DIRNAME}/input.txt" truncate-whitespace --all --whitespace
+    runWithFullOutput -0 truncate-whitespace --all --whitespace < "${BATS_TEST_DIRNAME}/input.txt"
     output="${output%EOF}" assert_output "
 
 foo
@@ -27,7 +27,7 @@ bar
 }
 
 @test "truncate all blank lines" {
-    runWithInputFileEOF -0 "${BATS_TEST_DIRNAME}/input.txt" truncate-whitespace --all --blank-lines
+    runWithFullOutput -0 truncate-whitespace --all --blank-lines < "${BATS_TEST_DIRNAME}/input.txt"
     output="${output%EOF}" assert_output "foo
   here  
 
@@ -37,7 +37,7 @@ bar
 }
 
 @test "truncate all empty lines" {
-    runWithInputFileEOF -0 "${BATS_TEST_DIRNAME}/input.txt" truncate-whitespace --all --empty-lines
+    runWithFullOutput -0 truncate-whitespace --all --empty-lines < "${BATS_TEST_DIRNAME}/input.txt"
     output="${output%EOF}" assert_output "   
 foo
   here  

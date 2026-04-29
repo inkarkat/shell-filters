@@ -2,22 +2,28 @@
 
 load fixture
 
-wrapper()
+runneeWrapper()
 {
-    local status
-    "$@"; status=$?
-    printf EOF	# " Use "${output%EOF}" in assertions.
+    "$@"
+    local status=$?
+    printf '$'
     return $status
 }
-runWithEOF()
+runWithFullOutput()
 {
-    run wrapper "$@"
+    typeset -a runArg=()
+    if [ "$1" = '!' ] || [[ "$1" =~ ^-[0-9]+$ ]]; then
+	runArg=("$1"); shift
+    fi
+
+    run "${runArg[@]}" runneeWrapper "$@"
+    output="${output%\$}"
 }
 
 runCatsAndDogsElseSedExpr()
 {
     local sedExpr="${1:?}"; shift
-    runWithEOF conglomeratedLinesFrom -- \
+    runWithFullOutput conglomeratedLinesFrom -- \
 	pipelineBuilder \
 	    --exec dishOutSections --wrap --basedir "$BATS_TEST_TMPDIR" -- "${BATS_TEST_DIRNAME}/animals.txt" \; \
 	    --exec sed -e '/^cat$/b' -e '/^dog$/b' -e "$sedExpr" \;
@@ -33,46 +39,46 @@ runCatsAndDogsAmongWhitespace()
 
 @test "cat and dog among empty lines reporting prints empty lines immediately" {
     runCatsAndDogsAmongEmptyLines
-    output="${output%EOF}" assert_output $'\n\n'
+    assert_output $'\n\n'
 
     runCatsAndDogsAmongEmptyLines
-    output="${output%EOF}" assert_output $'\n'
+    assert_output $'\n'
 
     runCatsAndDogsAmongEmptyLines
-    output="${output%EOF}" assert_output $'\n\ndog\n'
+    assert_output $'\n\ndog\n'
 
     runCatsAndDogsAmongEmptyLines
-    output="${output%EOF}" assert_output $'cat\n\ndog\n\n'
+    assert_output $'cat\n\ndog\n\n'
 
     runCatsAndDogsAmongEmptyLines
-    output="${output%EOF}" assert_output $'\n\n\n\n\n'
+    assert_output $'\n\n\n\n\n'
 
     runCatsAndDogsAmongEmptyLines
-    output="${output%EOF}" assert_output $'\n\n\n'
+    assert_output $'\n\n\n'
 
     runCatsAndDogsAmongEmptyLines
-    output="${output%EOF}" assert_output $'\n\n'
+    assert_output $'\n\n'
 }
 
 @test "cat and dog among whitespace reporting prints whitespace immediately" {
     runCatsAndDogsAmongWhitespace
-    output="${output%EOF}" assert_output $'        \n    \n'
+    assert_output $'        \n    \n'
 
     runCatsAndDogsAmongWhitespace
-    output="${output%EOF}" assert_output $'        \n'
+    assert_output $'        \n'
 
     runCatsAndDogsAmongWhitespace
-    output="${output%EOF}" assert_output $'   \n    \ndog\n'
+    assert_output $'   \n    \ndog\n'
 
     runCatsAndDogsAmongWhitespace
-    output="${output%EOF}" assert_output $'cat\n       \ndog\n        \n'
+    assert_output $'cat\n       \ndog\n        \n'
 
     runCatsAndDogsAmongWhitespace
-    output="${output%EOF}" assert_output $'        \n   \n     \n      \n         \n'
+    assert_output $'        \n   \n     \n      \n         \n'
 
     runCatsAndDogsAmongWhitespace
-    output="${output%EOF}" assert_output $'        \n    \n   \n'
+    assert_output $'        \n    \n   \n'
 
     runCatsAndDogsAmongWhitespace
-    output="${output%EOF}" assert_output $'        \n        \n'
+    assert_output $'        \n        \n'
 }

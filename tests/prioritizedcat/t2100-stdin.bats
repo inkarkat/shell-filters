@@ -2,27 +2,13 @@
 
 load fixture
 
-inputWrapper()
-{
-    local input="$1"; shift
-    printf "%s${input:+\n}" "$input" | "$@"
-}
-runWithInput()
-{
-    typeset -a runArg=()
-    if [ "$1" = '!' ] || [[ "$1" =~ ^-[0-9]+$ ]]; then
-	runArg=("$1"); shift
-    fi
-    run "${runArg[@]}" inputWrapper "$@"
-}
-
 @test "Matching PATTERN line from input are printed" {
-    runWithInput -0 $'my\nfoobar\ngaga' prioritizedcat 'foo'
+    run -0 prioritizedcat 'foo' <<<$'my\nfoobar\ngaga'
     assert_output 'foobar'
 }
 
 @test "Matching PATTERN line from input are omitted" {
-    runWithInput -0 $'my\nfoobar\ngaga' prioritizedcat --invert-match 'foo'
+    run -0 prioritizedcat --invert-match 'foo' <<<$'my\nfoobar\ngaga'
     assert_output - <<'EOF'
 my
 gaga
@@ -31,6 +17,6 @@ EOF
 
 @test "A non-matching pattern prints the entire input" {
     INPUT=$'my\nfoobar\ngaga'
-    runWithInput -0 "$INPUT" prioritizedcat doesNotMatch
+    run -0 prioritizedcat doesNotMatch <<<"$INPUT"
     assert_output "$INPUT"
 }

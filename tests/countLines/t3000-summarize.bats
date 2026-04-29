@@ -23,7 +23,7 @@ EOF
 }
 
 @test "summarize singular" {
-    runWithInput -0 foo countLines --summarize entry,entries
+    run -0 countLines --summarize entry,entries <<<'foo'
     assert_output - <<'EOF'
 (1) foo
 (1 entry in total)
@@ -31,7 +31,7 @@ EOF
 }
 
 @test "summarize plural" {
-    runWithInput -0 $'foo\nbar' countLines --summarize entry,entries
+    run -0 countLines --summarize entry,entries <<<$'foo\nbar'
     assert_output - <<'EOF'
 (1) foo
 (2) bar
@@ -40,7 +40,7 @@ EOF
 }
 
 @test "summarize nothing" {
-    runWithInput -0 '' countLines --summarize entry,entries
+    run -0 countLines --summarize entry,entries </dev/null
     assert_output '(0 entries in total)'
 }
 
