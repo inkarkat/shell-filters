@@ -11,7 +11,7 @@ printShortUsage()
 {
     # Note: short followed by long option; if the user knows the short one, she can
     # skim the long one.
-    printf 'Usage: %q %s\n' "$(basename "$1")" '[--prefer-clock] [-x|--factor N] [-W|--workday] [--precision|-p WIDTH|[U|Z][.N](w|d|h|m|s)] [-w|--width [+]WIDTH] [--] SECONDS [...] [-?|-h|--help]'
+    printf 'Usage: %q %s\n' "$(basename "$1")" '[--prefer-clock] [-x|--factor N] [-W|--workday] [--precision|-p N|[U|Z][.N](w|d|h|m|s) | --precision-width|-P WIDTH] [-w|--width [+]WIDTH] [--] SECONDS [...] [-?|-h|--help]'
     echo
     printf 'Usage: cat FILE [...] | %q %s\n' "$(basename "$1")" '[...] [-u|--unbuffered] [-s|--skip SKIP&PATTERN [...]] [-m|--match MATCH&PATTERN [...]]'
 }
@@ -46,16 +46,19 @@ HELPDESCRIPTION
 			    \$WORKDAY_SECONDS, \$WORKWEEK_SECONDS,
 			    \$WORKMONTH_SECONDS, \$WORKYEAR_SECONDS,
 			    \$WORKGENERATION_SECONDS; prefix is \$WORK_PREFIX.
-    --precision|-p WIDTH    Remove smaller units so that the result will fit
-			    WIDTH; for example "01:02:03" will be rendered as
-			    "1h 2m", with "3s" removed to fit a width of 7.
-			    For human-readable output, use 7 (or 8 if you prefer
-			    "01:02:03" over "1h 2m").
+    --precision N	    No more than N units will be used in expressing the
+			    duration.
     --precision|-p [U|Z][.N](g|y|mo|w|d|h|m|s)
 			    Render purely as the passed unit [with N digits
 			    right of the decimal point]. A "U" sigil rounds up,
 			    a "Z" down towards zero; default is to nearest, ties
 			    to even.
+    --precision-width|-P WIDTH
+			    Remove smaller units so that the result will fit
+			    WIDTH; for example "01:02:03" will be rendered as
+			    "1h 2m", with "3s" removed to fit a width of 7.
+			    For human-readable output, use 7 (or 8 if you prefer
+			    "01:02:03" over "1h 2m").
     --width|-w WIDTH	    Ensure a fixed width of WIDTH or the width of the
 			    original integer and preceding spaces, whatever is
 			    larger (so that alignment is not disturbed) by
@@ -83,6 +86,7 @@ skipPattern=
 matchPattern=
 width=
 precision=
+precisionWidth=
 factor=1
 isWorkDay=
 while [ $# -ne 0 ]
@@ -96,6 +100,8 @@ do
 	--match|-m)	shift; matchPattern+="${matchPattern:+|}${1:?}"; shift;;
 	--width|-w)	shift; width="$1"; shift;;
 	--precision|-p)	shift; precision="$1"; shift;;
+	--precision-width|-P)
+			shift; precisionWidth="$1"; shift;;
 	--factor|-x)	shift; factor="${1:?}"; shift;;
 	--workday|-W)	shift; isWorkDay=t;;
 	--)		break;;
@@ -103,6 +109,10 @@ do
 	*)		break;;
     esac
 done
+if [ -n "$precision" -a -n "$precisionWidth" ]; then
+    echo 'ERROR: Cannot use both --precision and --precision-width.'; echo; printUsage "$0" >&2
+    exit 2
+fi
 
 awk -F $'\n' \
     --bignum \
@@ -112,6 +122,7 @@ awk -F $'\n' \
     -v "matchPattern=${matchPattern//\\/\\\\}" \
     -v "widthArg=$width" \
     -v "precision=$precision" \
+    -v "precisionWidth=$precisionWidth" \
     -v "factor=$factor" \
     -v "isWorkDay=$isWorkDay" \
 '
@@ -129,7 +140,7 @@ function getWidth(seconds)
 	return max(widthArg, length(seconds))
     }
 }
-function convert(integer,      seconds, hours, minutes, days, weeks, months, years, generations, renderedDuration)
+function convert(integer, isPreferClock,      seconds, hours, minutes, days, weeks, months, years, generations, renderedDuration)
 {
     seconds = integer
 
@@ -154,7 +165,7 @@ function convert(integer,      seconds, hours, minutes, days, weeks, months, yea
     minutes = int(seconds / 60)
     seconds = seconds - (60 * minutes)
 
-    if ((minutes == 0 || seconds == 0) && ! isPreferClock) {
+    if ((hours == 0 || minutes == 0 || seconds == 0) && ! isPreferClock) {
 	renderedDuration = gensub(\
 		/ $/, "", 1, \
 		(generations > 0 ? generations workDayPrefix "g " : "") \
@@ -194,10 +205,18 @@ function repeat(text, count,      tmp, i)
     for (i = 1; i <= count; ++i) tmp = tmp text
     return tmp
 }
-function format(integer, width, precision, isSpacePadded,      precisionParse, precisionSigil, duration, rounder, c)
+function hasPrecisionUnitCount(duration)
+{
+    return (gsub(/[ :]/, "&", duration) + 1 > int(precision))
+}
+function hasPrecisionWidth(duration)
+{
+    return (length(duration) > precisionWidth)
+}
+function format(integer, width, isSpacePadded,      precisionParse, precisionSigil, duration, c)
 {
     integer *= factor
-    duration = convert(integer)
+    duration = convert(integer, isPreferClock)
 
     if (match(precision, /^([UZ])?(\.([0-9]+))?(mo|[smhdwyg])$/, precisionParse)) {
 	precisionSigil = precisionParse[4]
@@ -206,18 +225,22 @@ function format(integer, width, precision, isSpacePadded,      precisionParse, p
 	}
 	duration = sprintf("%." precisionParse[3] "f%s", integer / dividers[precisionSigil], workDayPrefix precisionSigil)
     } else if (int(precision) > 0) {
-	rounder[1] = 60
-	rounder[2] = 3600
-	rounder[3] = DAY_IN_SECONDS
-	rounder[4] = WEEK_IN_SECONDS
-	rounder[5] = MONTH_IN_SECONDS
-	rounder[6] = YEAR_IN_SECONDS
-	rounder[7] = GENERATION_IN_SECONDS
-
-	for (c = 1; c <= length(rounder) + 1 && length(duration) > precision; ++c) {
-	    duration = rounder[c] \
-		    ? convert(int(integer / rounder[c] + 0.5) * rounder[c]) \
-		    : repeat("#", precision)
+	for (c = 0; c <= length(rounder) && hasPrecisionUnitCount(duration); ++c) {
+	    duration = convert(int(integer / rounder[c] + 0.5) * rounder[c], isPreferClock)
+	    if (isPreferClock && hasPrecisionUnitCount(duration)) {
+		duration = convert(int(integer / rounder[c] + 0.5) * rounder[c], 0)
+	    }
+	}
+    } else if (int(precisionWidth) > 0) {
+	for (c = 0; c <= length(rounder) + 1 && hasPrecisionWidth(duration); ++c) {
+	    if (rounder[c]) {
+		duration = convert(int(integer / rounder[c] + 0.5) * rounder[c], isPreferClock)
+		if (isPreferClock && hasPrecisionWidth(duration)) {
+		    duration = convert(int(integer / rounder[c] + 0.5) * rounder[c], 0)
+		}
+	    } else {
+		duration = repeat("#", precisionWidth)
+	    }
 	}
     } else if (precision != "") {
 	printf("Invalid precision: %s\n", precision) > "/dev/stderr"
@@ -247,11 +270,20 @@ BEGIN {
     dividers["y"] = YEAR_IN_SECONDS
     dividers["g"] = GENERATION_IN_SECONDS
 
+    rounder[0] = 1
+    rounder[1] = 60
+    rounder[2] = 3600
+    rounder[3] = DAY_IN_SECONDS
+    rounder[4] = WEEK_IN_SECONDS
+    rounder[5] = MONTH_IN_SECONDS
+    rounder[6] = YEAR_IN_SECONDS
+    rounder[7] = GENERATION_IN_SECONDS
+
     if (ARGC > 1) {
 	i = 1
 	if (ARGV[1] == "--" ) ++i
 	for (; i < ARGC; ++i) {
-	    print format(ARGV[i], getWidth(ARGV[i]), precision, 0)
+	    print format(ARGV[i], getWidth(ARGV[i]), 0)
 	}
 	exit 0
     }
@@ -267,7 +299,7 @@ BEGIN {
 	    if (matchPattern != "" && testJoin !~ matchPattern) continue
 	}
 
-	numbers[i] = format(numbers[i], getWidth(numbers[i]), precision, (numbers[i] ~ /^ /))
+	numbers[i] = format(numbers[i], getWidth(numbers[i]), (numbers[i] ~ /^ /))
     }
 
     $0 = join(n, rest, numbers)
