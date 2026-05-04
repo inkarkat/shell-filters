@@ -140,30 +140,34 @@ function getWidth(seconds)
 	return max(widthArg, length(seconds))
     }
 }
-function convert(integer, isPreferClock,      seconds, hours, minutes, days, weeks, months, years, generations, renderedDuration)
+function round(integer, rounder)
 {
-    seconds = integer
+    return (rounder == 1 ? integer : int(integer / rounder + 0.5) * rounder)
+}
+function convert(integer, rounder, isPreferClock,      seconds, hours, minutes, days, weeks, months, years, generations, renderedDuration)
+{
+    seconds = round(integer, rounder)
 
     generations = int(seconds / GENERATION_IN_SECONDS)
-    seconds = seconds - (GENERATION_IN_SECONDS * generations)
+    seconds = round(seconds - (GENERATION_IN_SECONDS * generations), rounder)
 
     years = int(seconds / YEAR_IN_SECONDS)
-    seconds = seconds - (YEAR_IN_SECONDS * years)
+    seconds = round(seconds - (YEAR_IN_SECONDS * years), rounder)
 
     months = int(seconds / MONTH_IN_SECONDS)
-    seconds = seconds - (MONTH_IN_SECONDS * months)
+    seconds = round(seconds - (MONTH_IN_SECONDS * months), rounder)
 
     weeks = int(seconds / WEEK_IN_SECONDS)
-    seconds = seconds - (WEEK_IN_SECONDS * weeks)
+    seconds = round(seconds - (WEEK_IN_SECONDS * weeks), rounder)
 
     days = int(seconds / DAY_IN_SECONDS)
-    seconds = seconds - (DAY_IN_SECONDS * days)
+    seconds = round(seconds - (DAY_IN_SECONDS * days), rounder)
 
     hours = int(seconds / 3600)
-    seconds = seconds - (3600 * hours)
+    seconds = round(seconds - (3600 * hours), rounder)
 
     minutes = int(seconds / 60)
-    seconds = seconds - (60 * minutes)
+    seconds = round(seconds - (60 * minutes), rounder)
 
     if ((hours == 0 || minutes == 0 || seconds == 0) && ! isPreferClock) {
 	renderedDuration = gensub(\
@@ -216,7 +220,7 @@ function hasPrecisionWidth(duration)
 function format(integer, width, isSpacePadded,      precisionParse, precisionSigil, duration, c)
 {
     integer *= factor
-    duration = convert(integer, isPreferClock)
+    duration = convert(integer, 1, isPreferClock)
 
     if (match(precision, /^([UZ])?(\.([0-9]+))?(mo|[smhdwyg])$/, precisionParse)) {
 	precisionSigil = precisionParse[4]
@@ -226,17 +230,17 @@ function format(integer, width, isSpacePadded,      precisionParse, precisionSig
 	duration = sprintf("%." precisionParse[3] "f%s", integer / dividers[precisionSigil], workDayPrefix precisionSigil)
     } else if (int(precision) > 0) {
 	for (c = 0; c <= length(rounder) && hasPrecisionUnitCount(duration); ++c) {
-	    duration = convert(int(integer / rounder[c] + 0.5) * rounder[c], isPreferClock)
+	    duration = convert(integer, rounder[c], isPreferClock)
 	    if (isPreferClock && hasPrecisionUnitCount(duration)) {
-		duration = convert(int(integer / rounder[c] + 0.5) * rounder[c], 0)
+		duration = convert(integer, rounder[c], 0)
 	    }
 	}
     } else if (int(precisionWidth) > 0) {
 	for (c = 0; c <= length(rounder) + 1 && hasPrecisionWidth(duration); ++c) {
 	    if (rounder[c]) {
-		duration = convert(int(integer / rounder[c] + 0.5) * rounder[c], isPreferClock)
+		duration = convert(integer, rounder[c], isPreferClock)
 		if (isPreferClock && hasPrecisionWidth(duration)) {
-		    duration = convert(int(integer / rounder[c] + 0.5) * rounder[c], 0)
+		    duration = convert(integer, rounder[c], 0)
 		}
 	    } else {
 		duration = repeat("#", precisionWidth)
