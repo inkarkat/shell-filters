@@ -11,7 +11,7 @@ printShortUsage()
 {
     # Note: short followed by long option; if the user knows the short one, she can
     # skim the long one.
-    printf 'Usage: %q %s\n' "$(basename "$1")" '[--prefer-clock] [-x|--factor N] [-W|--workday] [--precision|-p [U|Z][.N](w|d|h|m|s) | --precision-width|-P WIDTH] [-w|--width [+]WIDTH] [--] SECONDS [...] [-?|-h|--help]'
+    printf 'Usage: %q %s\n' "$(basename "$1")" '[--prefer-clock] [-x|--factor N] [-W|--workday] [--precision|-p N|[U|Z][.N](w|d|h|m|s) | --precision-width|-P WIDTH] [-w|--width [+]WIDTH] [--] SECONDS [...] [-?|-h|--help]'
     echo
     printf 'Usage: cat FILE [...] | %q %s\n' "$(basename "$1")" '[...] [-u|--unbuffered] [-s|--skip SKIP&PATTERN [...]] [-m|--match MATCH&PATTERN [...]]'
 }
@@ -46,6 +46,8 @@ HELPDESCRIPTION
 			    \$WORKDAY_SECONDS, \$WORKWEEK_SECONDS,
 			    \$WORKMONTH_SECONDS, \$WORKYEAR_SECONDS,
 			    \$WORKGENERATION_SECONDS; prefix is \$WORK_PREFIX.
+    --precision N	    No more than N units will be used in expressing the
+			    duration.
     --precision|-p [U|Z][.N](g|y|mo|w|d|h|m|s)
 			    Render purely as the passed unit [with N digits
 			    right of the decimal point]. A "U" sigil rounds up,
@@ -203,6 +205,10 @@ function repeat(text, count,      tmp, i)
     for (i = 1; i <= count; ++i) tmp = tmp text
     return tmp
 }
+function hasPrecisionUnitCount(duration)
+{
+    return (gsub(/[ :]/, "&", duration) + 1 > int(precision))
+}
 function hasPrecisionWidth(duration)
 {
     return (length(duration) > precisionWidth)
@@ -218,6 +224,13 @@ function format(integer, width, isSpacePadded,      precisionParse, precisionSig
 	    ROUNDMODE = precisionParse[1]
 	}
 	duration = sprintf("%." precisionParse[3] "f%s", integer / dividers[precisionSigil], workDayPrefix precisionSigil)
+    } else if (int(precision) > 0) {
+	for (c = 0; c <= length(rounder) && hasPrecisionUnitCount(duration); ++c) {
+	    duration = convert(int(integer / rounder[c] + 0.5) * rounder[c], isPreferClock)
+	    if (isPreferClock && hasPrecisionUnitCount(duration)) {
+		duration = convert(int(integer / rounder[c] + 0.5) * rounder[c], 0)
+	    }
+	}
     } else if (int(precisionWidth) > 0) {
 	for (c = 0; c <= length(rounder) + 1 && hasPrecisionWidth(duration); ++c) {
 	    if (rounder[c]) {
