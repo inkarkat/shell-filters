@@ -138,7 +138,7 @@ function getWidth(seconds)
 	return max(widthArg, length(seconds))
     }
 }
-function convert(integer,      seconds, hours, minutes, days, weeks, months, years, generations, renderedDuration)
+function convert(integer, isPreferClock,      seconds, hours, minutes, days, weeks, months, years, generations, renderedDuration)
 {
     seconds = integer
 
@@ -163,7 +163,7 @@ function convert(integer,      seconds, hours, minutes, days, weeks, months, yea
     minutes = int(seconds / 60)
     seconds = seconds - (60 * minutes)
 
-    if ((minutes == 0 || seconds == 0) && ! isPreferClock) {
+    if ((hours == 0 || minutes == 0 || seconds == 0) && ! isPreferClock) {
 	renderedDuration = gensub(\
 		/ $/, "", 1, \
 		(generations > 0 ? generations workDayPrefix "g " : "") \
@@ -203,10 +203,14 @@ function repeat(text, count,      tmp, i)
     for (i = 1; i <= count; ++i) tmp = tmp text
     return tmp
 }
-function format(integer, width, isSpacePadded,      precisionParse, precisionSigil, duration, rounder, c)
+function hasPrecisionWidth(duration)
+{
+    return (length(duration) > precisionWidth)
+}
+function format(integer, width, isSpacePadded,      precisionParse, precisionSigil, duration, c)
 {
     integer *= factor
-    duration = convert(integer)
+    duration = convert(integer, isPreferClock)
 
     if (match(precision, /^([UZ])?(\.([0-9]+))?(mo|[smhdwyg])$/, precisionParse)) {
 	precisionSigil = precisionParse[4]
@@ -215,18 +219,15 @@ function format(integer, width, isSpacePadded,      precisionParse, precisionSig
 	}
 	duration = sprintf("%." precisionParse[3] "f%s", integer / dividers[precisionSigil], workDayPrefix precisionSigil)
     } else if (int(precisionWidth) > 0) {
-	rounder[1] = 60
-	rounder[2] = 3600
-	rounder[3] = DAY_IN_SECONDS
-	rounder[4] = WEEK_IN_SECONDS
-	rounder[5] = MONTH_IN_SECONDS
-	rounder[6] = YEAR_IN_SECONDS
-	rounder[7] = GENERATION_IN_SECONDS
-
-	for (c = 1; c <= length(rounder) + 1 && length(duration) > precisionWidth; ++c) {
-	    duration = rounder[c] \
-		    ? convert(int(integer / rounder[c] + 0.5) * rounder[c]) \
-		    : repeat("#", precisionWidth)
+	for (c = 0; c <= length(rounder) + 1 && hasPrecisionWidth(duration); ++c) {
+	    if (rounder[c]) {
+		duration = convert(int(integer / rounder[c] + 0.5) * rounder[c], isPreferClock)
+		if (isPreferClock && hasPrecisionWidth(duration)) {
+		    duration = convert(int(integer / rounder[c] + 0.5) * rounder[c], 0)
+		}
+	    } else {
+		duration = repeat("#", precisionWidth)
+	    }
 	}
     } else if (precision != "") {
 	printf("Invalid precision: %s\n", precision) > "/dev/stderr"
@@ -255,6 +256,15 @@ BEGIN {
     dividers["mo"] = MONTH_IN_SECONDS
     dividers["y"] = YEAR_IN_SECONDS
     dividers["g"] = GENERATION_IN_SECONDS
+
+    rounder[0] = 1
+    rounder[1] = 60
+    rounder[2] = 3600
+    rounder[3] = DAY_IN_SECONDS
+    rounder[4] = WEEK_IN_SECONDS
+    rounder[5] = MONTH_IN_SECONDS
+    rounder[6] = YEAR_IN_SECONDS
+    rounder[7] = GENERATION_IN_SECONDS
 
     if (ARGC > 1) {
 	i = 1
