@@ -11,7 +11,7 @@ printShortUsage()
 {
     # Note: short followed by long option; if the user knows the short one, she can
     # skim the long one.
-    printf 'Usage: %q %s\n' "$(basename "$1")" '[--prefer-clock] [-x|--factor N] [-W|--workday] [--precision|-p N|[U|Z][.N](w|d|h|m|s) | --precision-width|-P WIDTH] [-w|--width [+]WIDTH] [--] SECONDS [...] [-?|-h|--help]'
+    printf 'Usage: %q %s\n' "$(basename "$1")" '[--prefer-clock] [-x|--factor N] [-W|--workday] [--long-units] [--precision|-p N|[U|Z][.N](w|d|h|m|s) | --precision-width|-P WIDTH] [-w|--width [+]WIDTH] [--] SECONDS [...] [-?|-h|--help]'
     echo
     printf 'Usage: cat FILE [...] | %q %s\n' "$(basename "$1")" '[...] [-u|--unbuffered] [-s|--skip SKIP&PATTERN [...]] [-m|--match MATCH&PATTERN [...]]'
 }
@@ -46,6 +46,7 @@ HELPDESCRIPTION
 			    \$WORKDAY_SECONDS, \$WORKWEEK_SECONDS,
 			    \$WORKMONTH_SECONDS, \$WORKYEAR_SECONDS,
 			    \$WORKGENERATION_SECONDS; prefix is \$WORK_PREFIX.
+    --long-units	    Use "2 minutes" instead of "2m".
     --precision N	    No more than N units will be used in expressing the
 			    duration.
     --precision|-p [U|Z][.N](g|y|mo|w|d|h|m|s)
@@ -89,6 +90,7 @@ precision=
 precisionWidth=
 factor=1
 isWorkDay=
+isShortUnits=t
 while [ $# -ne 0 ]
 do
     case "$1" in
@@ -104,6 +106,7 @@ do
 			shift; precisionWidth="$1"; shift;;
 	--factor|-x)	shift; factor="${1:?}"; shift;;
 	--workday|-W)	shift; isWorkDay=t;;
+	--long-units)	shift; isShortUnits=;;
 	--)		break;;
 	-*)		{ echo "ERROR: Unknown option \"$1\"!"; echo; printUsage "$0"; } >&2; exit 2;;
 	*)		break;;
@@ -125,10 +128,14 @@ awk -F $'\n' \
     -v "precisionWidth=$precisionWidth" \
     -v "factor=$factor" \
     -v "isWorkDay=$isWorkDay" \
+    -v "isShortUnits=$isShortUnits" \
 '
 function max(n1, n2)
 {
     return n1 > n2 ? n1 : n2
+}
+function plural(count, what, pluralEnding, singularPadding) {
+    return what (count == 1 ? singularPadding : (pluralEnding == "" ? "s" : pluralEnding))
 }
 function getWidth(seconds)
 {
@@ -144,7 +151,7 @@ function round(integer, rounder)
 {
     return (rounder == 1 ? integer : int(integer / rounder + 0.5) * rounder)
 }
-function convert(integer, rounder, isPreferClock,      seconds, hours, minutes, days, weeks, months, years, generations, renderedDuration)
+function convert(integer, rounder, isPreferClock,      seconds, hours, minutes, days, weeks, months, years, generations, renderedDuration, secondUnit, hourUnit, minuteUnit, dayUnit, weekUnit, monthUnit, yearUnit, generationUnit)
 {
     seconds = round(integer, rounder)
 
@@ -169,24 +176,36 @@ function convert(integer, rounder, isPreferClock,      seconds, hours, minutes, 
     minutes = int(seconds / 60)
     seconds = round(seconds - (60 * minutes), rounder)
 
+    # Cannot use a space between the number and the unit yet, because the
+    # precision counting relies on each unit being a single word; the
+    # tempUnitSeparator will be replaced with a space in the end.
+    generationUnit = (isShortUnits ? workdayPrefix "g" : tempUnitSeparator workdayPrefix plural(generations, "generation"))
+    yearUnit = (isShortUnits ? workdayPrefix "y" : tempUnitSeparator workdayPrefix plural(years, "year"))
+    monthUnit = (isShortUnits ? workdayPrefix "mo" : tempUnitSeparator workdayPrefix plural(months, "month"))
+    weekUnit = (isShortUnits ? workdayPrefix "w" : tempUnitSeparator workdayPrefix plural(weeks, "week"))
+    dayUnit = (isShortUnits ? workdayPrefix "d" : tempUnitSeparator workdayPrefix plural(days, "day"))
+    hourUnit = (isShortUnits ? "h" : tempUnitSeparator plural(hours, "hour"))
+    minuteUnit = (isShortUnits ? "m" : tempUnitSeparator plural(minutes, "minute"))
+    secondUnit = (isShortUnits ? "s" : tempUnitSeparator plural(seconds, "second"))
+
     if ((hours == 0 || minutes == 0 || seconds == 0) && ! isPreferClock) {
 	renderedDuration = gensub(\
 		/ $/, "", 1, \
-		(generations > 0 ? generations workDayPrefix "g " : "") \
-		    (years > 0 ? years workDayPrefix "y " : "") \
-		    (months > 0 ? months workDayPrefix "mo " : "") \
-		    (weeks > 0 ? weeks workDayPrefix "w " : "") \
-		    (days > 0 ? days workDayPrefix "d " : "") \
-		    (hours > 0 ? hours "h " : "") \
-		    (minutes > 0 ? minutes "m " : "") \
-		    (seconds > 0 ? seconds "s " : ""))
-	return (renderedDuration == "" ? "0s" : renderedDuration)
+		(generations > 0 ? generations generationUnit " " : "") \
+		    (years > 0 ? years yearUnit " " : "") \
+		    (months > 0 ? months monthUnit " " : "") \
+		    (weeks > 0 ? weeks weekUnit " " : "") \
+		    (days > 0 ? days dayUnit " " : "") \
+		    (hours > 0 ? hours hourUnit" " : "") \
+		    (minutes > 0 ? minutes minuteUnit " " : "") \
+		    (seconds > 0 ? seconds secondUnit " " : ""))
+	return (renderedDuration == "" ? "0" secondUnit : renderedDuration)
     } else {
-	return (generations > 0 ? generations workDayPrefix "g " : "") \
-		(years > 0 ? years workDayPrefix "y " : "") \
-		(months > 0 ? months workDayPrefix "mo " : "") \
-		(weeks > 0 ? weeks workDayPrefix "w " : "") \
-		(days > 0 ? days workDayPrefix "d " : "") \
+	return (generations > 0 ? generations generationUnit " " : "") \
+		(years > 0 ? years yearUnit " " : "") \
+		(months > 0 ? months monthUnit " " : "") \
+		(weeks > 0 ? weeks weekUnit " " : "") \
+		(days > 0 ? days dayUnit " " : "") \
 		(generations > 0 || years > 0 || months > 0 || weeks > 0 || days > 0 || hours > 0 ? sprintf("%02d", hours) ":" : "") \
 		(generations > 0 || years > 0 || months > 0 || weeks > 0 || days > 0 || hours > 0 || minutes > 0 ? sprintf("%02d", minutes) ":" : "") \
 		(generations > 0 || years > 0 || months > 0 || weeks > 0 || days > 0 || hours > 0 || minutes > 0 ? sprintf("%02d", seconds) : sprintf("00:%02d", seconds))
@@ -251,6 +270,8 @@ function format(integer, width, isSpacePadded,      precisionParse, precisionSig
 	exit 2
     }
 
+    duration = gensub(tempUnitSeparator, " ", "g", duration)
+
     if (isSpacePadded) duration = " " duration	# Ensure that there will be at least one space in front to maintain separation of preceding text.
 
     if (width == "" || length(duration) == width) return duration
@@ -282,6 +303,8 @@ BEGIN {
     rounder[5] = MONTH_IN_SECONDS
     rounder[6] = YEAR_IN_SECONDS
     rounder[7] = GENERATION_IN_SECONDS
+
+    tempUnitSeparator = "_"
 
     if (ARGC > 1) {
 	i = 1
