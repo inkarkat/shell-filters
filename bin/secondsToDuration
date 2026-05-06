@@ -151,6 +151,10 @@ function round(integer, rounder)
 {
     return (rounder == 1 ? integer : int(integer / rounder + 0.5) * rounder)
 }
+function makeUnit(value, shortUnit, longUnit)
+{
+    return (isShortUnits ? workdayPrefix shortUnit " " : tempUnitSeparator workdayPrefix plural(value,longUnit) ", ")
+}
 function convert(integer, rounder, isPreferClock,      seconds, hours, minutes, days, weeks, months, years, generations, renderedDuration, secondUnit, hourUnit, minuteUnit, dayUnit, weekUnit, monthUnit, yearUnit, generationUnit)
 {
     seconds = round(integer, rounder)
@@ -179,36 +183,39 @@ function convert(integer, rounder, isPreferClock,      seconds, hours, minutes, 
     # Cannot use a space between the number and the unit yet, because the
     # precision counting relies on each unit being a single word; the
     # tempUnitSeparator will be replaced with a space in the end.
-    generationUnit = (isShortUnits ? workdayPrefix "g" : tempUnitSeparator workdayPrefix plural(generations, "generation"))
-    yearUnit = (isShortUnits ? workdayPrefix "y" : tempUnitSeparator workdayPrefix plural(years, "year"))
-    monthUnit = (isShortUnits ? workdayPrefix "mo" : tempUnitSeparator workdayPrefix plural(months, "month"))
-    weekUnit = (isShortUnits ? workdayPrefix "w" : tempUnitSeparator workdayPrefix plural(weeks, "week"))
-    dayUnit = (isShortUnits ? workdayPrefix "d" : tempUnitSeparator workdayPrefix plural(days, "day"))
-    hourUnit = (isShortUnits ? "h" : tempUnitSeparator plural(hours, "hour"))
-    minuteUnit = (isShortUnits ? "m" : tempUnitSeparator plural(minutes, "minute"))
-    secondUnit = (isShortUnits ? "s" : tempUnitSeparator plural(seconds, "second"))
+    generationUnit = makeUnit(generations, "g", "generation")
+    yearUnit = makeUnit(years, "y", "year")
+    monthUnit = makeUnit(months, "mo", "month")
+    weekUnit = makeUnit(weeks, "w", "week")
+    dayUnit = makeUnit(days, "d", "day")
+    hourUnit = makeUnit(hours, "h", "hour")
+    minuteUnit = makeUnit(minutes, "m", "minute")
+    secondUnit = makeUnit(seconds, "s", "second")
 
     if ((hours == 0 || minutes == 0 || seconds == 0) && ! isPreferClock) {
-	renderedDuration = gensub(\
-		/ $/, "", 1, \
-		(generations > 0 ? generations generationUnit " " : "") \
-		    (years > 0 ? years yearUnit " " : "") \
-		    (months > 0 ? months monthUnit " " : "") \
-		    (weeks > 0 ? weeks weekUnit " " : "") \
-		    (days > 0 ? days dayUnit " " : "") \
-		    (hours > 0 ? hours hourUnit" " : "") \
-		    (minutes > 0 ? minutes minuteUnit " " : "") \
-		    (seconds > 0 ? seconds secondUnit " " : ""))
-	return (renderedDuration == "" ? "0" secondUnit : renderedDuration)
+	renderedDuration = \
+	    (generations > 0 ? generations generationUnit : "") \
+	    (years > 0 ? years yearUnit : "") \
+	    (months > 0 ? months monthUnit : "") \
+	    (weeks > 0 ? weeks weekUnit : "") \
+	    (days > 0 ? days dayUnit : "") \
+	    (hours > 0 ? hours hourUnit : "") \
+	    (minutes > 0 ? minutes minuteUnit : "") \
+	    (seconds > 0 ? seconds secondUnit : "")
+	renderedDuration = (renderedDuration == "" ? "0" secondUnit : renderedDuration)
+	renderedDuration = gensub(/,? $/, "", 1, renderedDuration)
+	renderedDuration = gensub(/, ([^,]+)$/, "_and \\1", 1, renderedDuration)
+	return renderedDuration
     } else {
-	return (generations > 0 ? generations generationUnit " " : "") \
-		(years > 0 ? years yearUnit " " : "") \
-		(months > 0 ? months monthUnit " " : "") \
-		(weeks > 0 ? weeks weekUnit " " : "") \
-		(days > 0 ? days dayUnit " " : "") \
-		(generations > 0 || years > 0 || months > 0 || weeks > 0 || days > 0 || hours > 0 ? sprintf("%02d", hours) ":" : "") \
-		(generations > 0 || years > 0 || months > 0 || weeks > 0 || days > 0 || hours > 0 || minutes > 0 ? sprintf("%02d", minutes) ":" : "") \
-		(generations > 0 || years > 0 || months > 0 || weeks > 0 || days > 0 || hours > 0 || minutes > 0 ? sprintf("%02d", seconds) : sprintf("00:%02d", seconds))
+	return \
+	    (generations > 0 ? generations generationUnit : "") \
+	    (years > 0 ? years yearUnit : "") \
+	    (months > 0 ? months monthUnit : "") \
+	    (weeks > 0 ? weeks weekUnit : "") \
+	    (days > 0 ? days dayUnit : "") \
+	    (generations > 0 || years > 0 || months > 0 || weeks > 0 || days > 0 || hours > 0 ? sprintf("%02d", hours) ":" : "") \
+	    (generations > 0 || years > 0 || months > 0 || weeks > 0 || days > 0 || hours > 0 || minutes > 0 ? sprintf("%02d", minutes) ":" : "") \
+	    (generations > 0 || years > 0 || months > 0 || weeks > 0 || days > 0 || hours > 0 || minutes > 0 ? sprintf("%02d", seconds) : sprintf("00:%02d", seconds))
     }
 }
 function shallowclone(target, source,      e)
