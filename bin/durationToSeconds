@@ -5,7 +5,7 @@
 : ${WORKMONTH_SECONDS:=$((WORKWEEK_SECONDS * 4))}; export WORKMONTH_SECONDS
 : ${WORKYEAR_SECONDS:=$((WORKMONTH_SECONDS * 12))}; export WORKYEAR_SECONDS
 : ${WORKGENERATION_SECONDS:=$((WORKYEAR_SECONDS * 38))}; export WORKGENERATION_SECONDS
-: ${WORK_PREFIX:=w}; export WORK_PREFIX
+: ${WORK_PREFIX=w}; export WORK_PREFIX
 
 readonly formatParameterTemplate="\"${DURATIONTOSECONDS_ACCEPT_SIGN:+[+-]}${DURATIONTOSECONDS_ACCEPT_NEGATIVE:+[-]}[G_g ][Y_y ][MO_mo ][W_w ]([D_d ]([HH:]MM:SS|[Hh ][Mm ][Ss]))|D-[HH:]MM:SS\""
 readonly formatParameter="${formatParameterTemplate//_/${WORK_PREFIX:+[}${WORK_PREFIX}${WORK_PREFIX:+]}}"
@@ -93,7 +93,7 @@ function convert(duration,      calendar, n, c, cc, clock, result, hasMatch)
     }
 
     for (cc = 1; cc <= c; ++cc) {
-	if (calendar[cc] ~ "^[[:digit:]]+" ENVIRON["WORK_PREFIX"] "g$") {
+	if (WP != "" && calendar[cc] ~ "^[[:digit:]]+" WP "g$") {
 	    result += substr(calendar[cc], 1, length(calendar[cc]) - 1) * ENVIRON["WORKGENERATION_SECONDS"]
 	    hasMatch = 1
 	    continue
@@ -103,7 +103,7 @@ function convert(duration,      calendar, n, c, cc, clock, result, hasMatch)
 	    hasMatch = 1
 	    continue
 	}
-	if (calendar[cc] ~ "^[[:digit:]]+" ENVIRON["WORK_PREFIX"] "y$") {
+	if (WP != "" && calendar[cc] ~ "^[[:digit:]]+" WP "y$") {
 	    result += substr(calendar[cc], 1, length(calendar[cc]) - 1) * ENVIRON["WORKYEAR_SECONDS"]
 	    hasMatch = 1
 	    continue
@@ -113,7 +113,7 @@ function convert(duration,      calendar, n, c, cc, clock, result, hasMatch)
 	    hasMatch = 1
 	    continue
 	}
-	if (calendar[cc] ~ "^[[:digit:]]+" ENVIRON["WORK_PREFIX"] "mo$") {
+	if (WP != "" && calendar[cc] ~ "^[[:digit:]]+" WP "mo$") {
 	    result += substr(calendar[cc], 1, length(calendar[cc]) - 1) * ENVIRON["WORKMONTH_SECONDS"]
 	    hasMatch = 1
 	    continue
@@ -123,7 +123,7 @@ function convert(duration,      calendar, n, c, cc, clock, result, hasMatch)
 	    hasMatch = 1
 	    continue
 	}
-	if (calendar[cc] ~ "^[[:digit:]]+" ENVIRON["WORK_PREFIX"] "w$") {
+	if (WP != "" && calendar[cc] ~ "^[[:digit:]]+" WP "w$") {
 	    result += substr(calendar[cc], 1, length(calendar[cc]) - 1) * ENVIRON["WORKWEEK_SECONDS"]
 	    hasMatch = 1
 	    continue
@@ -138,7 +138,7 @@ function convert(duration,      calendar, n, c, cc, clock, result, hasMatch)
 	    hasMatch = 1
 	    continue
 	}
-	if (calendar[cc] ~ "^[[:digit:]]+" ENVIRON["WORK_PREFIX"] "d$") {
+	if (WP != "" && calendar[cc] ~ "^[[:digit:]]+" WP "d$") {
 	    result += substr(calendar[cc], 1, length(calendar[cc]) - 1) * ENVIRON["WORKDAY_SECONDS"]
 	    hasMatch = 1
 	    continue
@@ -182,13 +182,15 @@ function join(n, list, seps,      i, result) {
     return result
 }
 BEGIN {
-    DIGITS_WORK = "[[:digit:]]+(" ENVIRON["WORK_PREFIX"] ")?"
+    WP = ENVIRON["WORK_PREFIX"]
+    WP_OPTIONAL = (WP == "" ? "" : "(" WP ")?")
+    DIGITS_WORK = "[[:digit:]]+" WP_OPTIONAL
     WEEK_AND_LONGER_PATTERN = "(" DIGITS_WORK "g )?(" DIGITS_WORK "y )?(" DIGITS_WORK "mo )?" DIGITS_WORK "w"
     WEEK_AND_LONGER_PATTERN = WEEK_AND_LONGER_PATTERN "|(" DIGITS_WORK "g )?(" DIGITS_WORK "y )?" DIGITS_WORK "mo"
     WEEK_AND_LONGER_PATTERN = WEEK_AND_LONGER_PATTERN "|(" DIGITS_WORK "g )?" DIGITS_WORK "y"
     WEEK_AND_LONGER_PATTERN = WEEK_AND_LONGER_PATTERN "|" DIGITS_WORK "g"
     DAY_PATTERN = DIGITS_WORK "d"
-    DAY_AND_TIME_PATTERN = "([[:digit:]]+((" ENVIRON["WORK_PREFIX"] ")?d |-))?[[:digit:]]+(:[[:digit:]]{2}){1,2}"
+    DAY_AND_TIME_PATTERN = "([[:digit:]]+(" WP_OPTIONAL "d |-))?[[:digit:]]+(:[[:digit:]]{2}){1,2}"
     HMS_PATTERN = "([[:digit:]]+h )?([[:digit:]]+m )?([[:digit:]]+s)"
     HM_PATTERN = "([[:digit:]]+h )?([[:digit:]]+m)"
     H_PATTERN = "([[:digit:]]+h)"
