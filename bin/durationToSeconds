@@ -7,7 +7,8 @@
 : ${WORKGENERATION_SECONDS:=$((WORKYEAR_SECONDS * 38))}; export WORKGENERATION_SECONDS
 : ${WORK_PREFIX:=w}; export WORK_PREFIX
 
-readonly formatParameter='"[-][Gg ][Yy ][Mmo ][Ww ][Dd |D-][HH:]MM:SS|[-][Gg ][Yy ][Mmo ][W[w]w ][D[w]d] [Hh] [Mm] [Ss]|[-]S"'
+readonly formatParameterTemplate='"[-][G_g ][Y_y ][MO_mo ][W_w ]([D_d ]([HH:]MM:SS|[Hh ][Mm ][Ss]))|D-[HH:]MM:SS"'
+readonly formatParameter="${formatParameterTemplate//_/${WORK_PREFIX:+[}${WORK_PREFIX}${WORK_PREFIX:+]}}"
 getShortUsage()
 {
     case "$1" in
@@ -35,10 +36,13 @@ printLongUsage()
     # This is the long "man page" when launched with the help argument.
     # It is printed to stdout to allow paging with 'more'.
     cat <<HELPDESCRIPTION
-Convert matches of [Gg ][Yy ][MOmo ][Ww ][Dd |D-][HH:]MM:SS into seconds.
+Convert passed / matches of enumerations of N g(enerations) / y(ears) / mo(nths)
+/ d(ays) / h(ours) / m(inutes) / s(econds) ${WORK_PREFIX:+(units optionally prefixed with '$WORK_PREFIX'
+for work-times, e.g. '${WORK_PREFIX}d' for working days) }or [Dd |D-][HH:]MM:SS into seconds.
 HELPDESCRIPTION
     echo
     printShortUsage "$1"
+    echo
     cat <<HELPTEXT
     --unbuffered|-u	    Immediately output each read line.
     --skip|-s SKIP&PATTERN  Do not convert if the text around the duration (with
