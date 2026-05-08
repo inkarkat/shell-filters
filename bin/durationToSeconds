@@ -7,11 +7,20 @@
 : ${WORKGENERATION_SECONDS:=$((WORKYEAR_SECONDS * 38))}; export WORKGENERATION_SECONDS
 : ${WORK_PREFIX:=w}; export WORK_PREFIX
 
+readonly formatParameter='"[Ww ][Dd |D-][HH:]MM:SS|[W[w]w ][D[w]d] [Hh] [Mm] [Ss]|S"'
+getShortUsage()
+{
+    case "$1" in
+	format)
+	    printf %s "$formatParameter";;
+	*)  echo "ERROR: Unknown short usage topic \"$1\"!" >&2; exit 2;;
+    esac
+}
 printShortUsage()
 {
     # Note: short followed by long option; if the user knows the short one, she can
     # skim the long one.
-    printf 'Usage: %q %s\n' "$(basename "$1")" '"[Ww ][Dd |D-][HH:]MM:SS|[W[w]w ][D[w]d] [Hh] [Mm] [Ss]|S" [...] [-?|-h|--help]'
+    printf 'Usage: %q %s\n' "$(basename "$1")" "$formatParameter [...] [-?|-h|--help]"
     printf 'Usage: cat FILE [...] | %q %s\n' "$(basename "$1")" '[-u|--unbuffered] [-s|--skip SKIP&PATTERN [...]] [-m|--match MATCH&PATTERN [...]]'
 }
 printUsage()
@@ -51,6 +60,9 @@ while [ $# -ne 0 ]
 do
     case "$1" in
 	--help|-h|-\?)	shift; printLongUsage "$0"; exit 0;;
+	--get-short-usage)
+			shift; getShortUsage "$@"; exit 0;;
+
 	--unbuffered|-u)
 			shift; isBuffered=;;
 	--skip|-s)	shift; skipPattern+="${skipPattern:+|}${1:?}"; shift;;
