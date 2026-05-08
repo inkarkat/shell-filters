@@ -7,7 +7,7 @@
 : ${WORKGENERATION_SECONDS:=$((WORKYEAR_SECONDS * 38))}; export WORKGENERATION_SECONDS
 : ${WORK_PREFIX:=w}; export WORK_PREFIX
 
-readonly formatParameter='"[-][Ww ][Dd |D-][HH:]MM:SS|[-][W[w]w ][D[w]d] [Hh] [Mm] [Ss]|[-]S"'
+readonly formatParameter='"[-][Gg ][Yy ][Mmo ][Ww ][Dd |D-][HH:]MM:SS|[-][Gg ][Yy ][Mmo ][W[w]w ][D[w]d] [Hh] [Mm] [Ss]|[-]S"'
 getShortUsage()
 {
     case "$1" in
