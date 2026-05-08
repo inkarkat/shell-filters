@@ -188,8 +188,8 @@ BEGIN {
     HM_PATTERN = "([[:digit:]]+h )?([[:digit:]]+m)"
     H_PATTERN = "([[:digit:]]+h)"
 
-    DURATION_PATTERN = "\\<((" WEEK_AND_LONGER_PATTERN ") )?(" DAY_AND_TIME_PATTERN "|(" DAY_PATTERN " )?" HMS_PATTERN "|(" DAY_PATTERN " )?" HM_PATTERN "|(" DAY_PATTERN " )?" H_PATTERN "|(" DAY_PATTERN "))\\>"
-    DURATION_PATTERN = DURATION_PATTERN "|\\<(" WEEK_AND_LONGER_PATTERN ")\\>"
+    DURATION_PATTERN = "((" WEEK_AND_LONGER_PATTERN ") )?(" DAY_AND_TIME_PATTERN "|(" DAY_PATTERN " )?" HMS_PATTERN "|(" DAY_PATTERN " )?" HM_PATTERN "|(" DAY_PATTERN " )?" H_PATTERN "|(" DAY_PATTERN "))"
+    DURATION_PATTERN = "(" DURATION_PATTERN "|" WEEK_AND_LONGER_PATTERN ")"
 
     if (ARGC > 1) {
 	for (i = 1; i < ARGC; ++i) {
@@ -204,7 +204,7 @@ BEGIN {
     }
 }
 {
-    n = split($0, rest, DURATION_PATTERN, durations)
+    n = split($0, rest, "\\<" DURATION_PATTERN "\\>", durations)
 
     for (i = 1; i < n; ++i) {
 	if (skipPattern != "" || matchPattern != "") {
