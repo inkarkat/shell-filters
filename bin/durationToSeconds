@@ -7,7 +7,7 @@
 : ${WORKGENERATION_SECONDS:=$((WORKYEAR_SECONDS * 38))}; export WORKGENERATION_SECONDS
 : ${WORK_PREFIX:=w}; export WORK_PREFIX
 
-readonly formatParameterTemplate='"[+-][G_g ][Y_y ][MO_mo ][W_w ]([D_d ]([HH:]MM:SS|[Hh ][Mm ][Ss]))|D-[HH:]MM:SS"'
+readonly formatParameterTemplate="\"${DURATIONTOSECONDS_ACCEPT_SIGN:+[+-]}${DURATIONTOSECONDS_ACCEPT_NEGATIVE:+[-]}[G_g ][Y_y ][MO_mo ][W_w ]([D_d ]([HH:]MM:SS|[Hh ][Mm ][Ss]))|D-[HH:]MM:SS\""
 readonly formatParameter="${formatParameterTemplate//_/${WORK_PREFIX:+[}${WORK_PREFIX}${WORK_PREFIX:+]}}"
 getShortUsage()
 {
@@ -21,7 +21,7 @@ printShortUsage()
 {
     # Note: short followed by long option; if the user knows the short one, she can
     # skim the long one.
-    printf 'Usage: %q %s\n' "$(basename "$1")" "$formatParameter [...] [-?|-h|--help]"
+    printf 'Usage: [DURATIONTOSECONDS_ACCEPT_NEGATIVE=1|t|true|DURATIONTOSECONDS_ACCEPT_SIGN=1|t|true] %q %s\n' "$(basename "$1")" "$formatParameter [...] [-?|-h|--help]"
     printf 'Usage: cat FILE [...] | %q %s\n' "$(basename "$1")" '[-u|--unbuffered] [-s|--skip SKIP&PATTERN [...]] [-m|--match MATCH&PATTERN [...]]'
 }
 printUsage()
@@ -81,6 +81,7 @@ awk -F $'\n' \
     -v "isBuffered=$isBuffered" \
     -v "skipPattern=${skipPattern//\\/\\\\}" \
     -v "matchPattern=${matchPattern//\\/\\\\}" \
+    -v "signPattern=${DURATIONTOSECONDS_ACCEPT_SIGN:+[+-]}${DURATIONTOSECONDS_ACCEPT_NEGATIVE:+-}" \
 '
 function convert(duration,      calendar, n, c, cc, clock, result, hasMatch)
 {
@@ -199,9 +200,9 @@ BEGIN {
 	for (i = 1; i < ARGC; ++i) {
 	    if (ARGV[i] ~ "^" DURATION_PATTERN "$")
 		print convert(ARGV[i])
-	    else if (match(ARGV[i], "^([+-])" DURATION_PATTERN "$", submatches))
+	    else if ( signPattern != "" && match(ARGV[i], "^(" signPattern ")" DURATION_PATTERN "$", submatches))
 		print submatches[1] convert(substr(ARGV[i], 2))
-	    else if (ARGV[i] ~ /^([+-])?[[:digit:]]+$/)
+	    else if (ARGV[i] ~ "^" (signPattern == "" ? "" : signPattern "?") "[[:digit:]]+$")
 		print ARGV[i]
 	    else
 		status = 1
