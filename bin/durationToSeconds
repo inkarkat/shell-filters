@@ -7,7 +7,7 @@
 : ${WORKGENERATION_SECONDS:=$((WORKYEAR_SECONDS * 38))}; export WORKGENERATION_SECONDS
 : ${WORK_PREFIX:=w}; export WORK_PREFIX
 
-readonly formatParameter='"[Ww ][Dd |D-][HH:]MM:SS|[W[w]w ][D[w]d] [Hh] [Mm] [Ss]|S"'
+readonly formatParameter='"[-][Ww ][Dd |D-][HH:]MM:SS|[-][W[w]w ][D[w]d] [Hh] [Mm] [Ss]|[-]S"'
 getShortUsage()
 {
     case "$1" in
@@ -195,7 +195,9 @@ BEGIN {
 	for (i = 1; i < ARGC; ++i) {
 	    if (ARGV[i] ~ "^" DURATION_PATTERN "$")
 		print convert(ARGV[i])
-	    else if (ARGV[i] ~ /^[[:digit:]]+$/)
+	    else if (ARGV[i] ~ "^-" DURATION_PATTERN "$")
+		print "-" convert(substr(ARGV[i], 2))
+	    else if (ARGV[i] ~ /^-?[[:digit:]]+$/)
 		print ARGV[i]
 	    else
 		status = 1
