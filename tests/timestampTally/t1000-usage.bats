@@ -15,7 +15,7 @@ load fixture
 
 @test "invalid max difference value prints message" {
     run -2 timestampTally --max-difference notADuration
-    assert_output 'ERROR: Illegal duration: notADuration'
+    assert_output 'ERROR: Illegal TIMESPAN: notADuration'
 }
 
 @test "invalid --keep-timestamp prints message and usage instructions" {
