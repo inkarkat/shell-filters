@@ -1,0 +1,18 @@
+#!/usr/bin/env bats
+
+load fixture
+
+@test "signed durations are rejected by default" {
+    run -1 durationToSeconds -- '+1h 15m 30s'
+    assert_output ''
+}
+
+@test "signed durations are rejected when negative is accepted" {
+    DURATIONTOSECONDS_ACCEPT_NEGATIVE=t run -1 durationToSeconds -- '+1h 15m 30s'
+    assert_output ''
+}
+
+@test "signed durations are converted when sign is accepted" {
+    DURATIONTOSECONDS_ACCEPT_SIGN=t run -0 durationToSeconds -- '+1h 15m 30s'
+    assert_output '+4530'
+}
