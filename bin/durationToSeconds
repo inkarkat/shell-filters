@@ -7,7 +7,7 @@
 : ${WORKGENERATION_SECONDS:=$((WORKYEAR_SECONDS * 38))}; export WORKGENERATION_SECONDS
 : ${WORK_PREFIX=w}; export WORK_PREFIX
 
-readonly formatParameterTemplate="\"${DURATIONTOSECONDS_ACCEPT_SIGN:+[+-]}${DURATIONTOSECONDS_ACCEPT_NEGATIVE:+[-]}[G_g ][Y_y ][MO_mo ][W_w ]([D_d ]([HH:]MM:SS|[Hh ][Mm ][Ss${DURATIONTOSECONDS_ACCEPT_FRACTIONAL:+ }]${DURATIONTOSECONDS_ACCEPT_FRACTIONAL:+[MSms]}))|D-[HH:]MM:SS${DURATIONTOSECONDS_ACCEPT_FRACTIONAL:+[.MS]}\""
+readonly formatParameterTemplate="\"${DURATIONTOSECONDS_ACCEPT_SIGN:+[+-]}${DURATIONTOSECONDS_ACCEPT_NEGATIVE:+[-]}[G_g ][Y_y ][MO_mo ][W_w ]([D_d ]([HH:]MM:SS|[Hh ][Mm ][Ss${DURATIONTOSECONDS_ACCEPT_FRACTIONAL:+ }]${DURATIONTOSECONDS_ACCEPT_FRACTIONAL:+[MSms]}))|D-[HH:]MM:SS${DURATIONTOSECONDS_ACCEPT_FRACTIONAL:+[.F]}|S${DURATIONTOSECONDS_ACCEPT_FRACTIONAL:+[.F]}\""
 readonly formatParameter="${formatParameterTemplate//_/${WORK_PREFIX:+[}${WORK_PREFIX}${WORK_PREFIX:+]}}"
 getShortUsage()
 {
@@ -235,7 +235,8 @@ BEGIN {
     WEEK_AND_LONGER_PATTERN = WEEK_AND_LONGER_PATTERN "|(" DIGITS_WORK "g )?" DIGITS_WORK "y"
     WEEK_AND_LONGER_PATTERN = WEEK_AND_LONGER_PATTERN "|" DIGITS_WORK "g"
     DAY_PATTERN = DIGITS_WORK "d"
-    DAY_AND_TIME_PATTERN = "([[:digit:]]+(" WP_OPTIONAL "d |-))?[[:digit:]]+(:[[:digit:]]{2}){1,2}" (isFractional ? "(\\.[[:digit:]]{1,3})?" : "")
+    FRACTION_PATTERN = (isFractional ? "(\\.[[:digit:]]+)?" : "")
+    DAY_AND_TIME_PATTERN = "([[:digit:]]+(" WP_OPTIONAL "d |-))?[[:digit:]]+(:[[:digit:]]{2}){1,2}" FRACTION_PATTERN
     HMSMS_PATTERN = "([[:digit:]]+h )?([[:digit:]]+m )?([[:digit:]]+s )?([[:digit:]]+ms)"
     HMS_PATTERN = "([[:digit:]]+h )?([[:digit:]]+m )?([[:digit:]]+s)"
     HM_PATTERN = "([[:digit:]]+h )?([[:digit:]]+m)"
@@ -255,8 +256,8 @@ BEGIN {
 		print convert(ARGV[i])
 	    else if ( signPattern != "" && match(ARGV[i], "^(" signPattern ")" DURATION_PATTERN "$", submatches))
 		print submatches[1] convert(substr(ARGV[i], 2))
-	    else if (ARGV[i] ~ "^" (signPattern == "" ? "" : signPattern "?") "[[:digit:]]+$")
-		print ARGV[i]
+	    else if (match(ARGV[i], "^(" (signPattern == "" ? "" : signPattern "?") ")([[:digit:]]+)" FRACTION_PATTERN "$", submatches))
+		print formatParse(submatches[1] submatches[2], substr(submatches[3], 2))
 	    else
 		status = 1
 	}

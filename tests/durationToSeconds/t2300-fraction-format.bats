@@ -9,6 +9,8 @@ load fixture
 
 @test "force millisecond format on integer durations" {
     typeset -A durations=(
+	[1]=1.000
+	[123]=123.000
 	[2h 30m]=9000.000
 	[02:30]=150.000
 	[1h 15m 30s]=4530.000
@@ -26,6 +28,11 @@ load fixture
 
 @test "force millisecond format on fractional durations" {
     typeset -A durations=(
+	[1.0]=1.000
+	[1.1]=1.100
+	[1.03]=1.030
+	[1.123456]=1.123
+	[1.111999]=1.112
 	[1ms]=0.001
 	[500ms]=0.500
 	[1000ms]=1.000
