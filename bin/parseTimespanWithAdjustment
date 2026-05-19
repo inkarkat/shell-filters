@@ -1,0 +1,92 @@
+#!/bin/bash
+
+readonly formatParameter='TIMESPAN [(+-)ADJUSTMENT-TIMESPAN|N%]'
+getShortUsage()
+{
+    case "$1" in
+	format)
+	    printf %s "$formatParameter";;
+	*)  echo "ERROR: Unknown short usage topic \"$1\"!" >&2; exit 2;;
+    esac
+}
+getLongUsage()
+{
+    local optionName="${1:?}"; shift
+    local action="$1"; shift
+    local timespanFormat="$(durationToSeconds --get-short-usage format 2>/dev/null)"
+    cat <<HELPTEXT
+    $optionName $formatParameter
+			${action:-Parse the passed TIMESPAN into seconds}
+    $timespanFormat
+			An optional ADJUSTMENT can change the original value
+			after every iteration. It starts with either + or -,
+			followed by another TIMESPAN or a percentage change N%.
+			For example, "10m + 30s" starts with 10 minutes and then
+			increases that by 30 seconds on every iteration. 10-5%
+			starts with 10 seconds and then continually decreases
+			that by 5 percent.
+HELPTEXT
+}
+
+printShortUsage()
+{
+    # Note: short followed by long option; if the user knows the short one, they can
+    # skim the long one.
+    printf 'Usage: %q %s\n' "[PARSETIMESPANWITHADJUSTMENT_ACCEPT_FRACTIONAL=1|t|true] $(basename "$1")" "$formatParameter [-?|-h|--help]"
+}
+printUsage()
+{
+    # This is the short help when launched with no or incorrect arguments.
+    # It is printed to stderr to avoid accidental processing.
+    printShortUsage "$1" >&2
+    printf >&2 '\nTry %q --help for more information.\n' "$(basename "$1")"
+}
+printLongUsage()
+{
+    # This is the long "man page" when launched with the help argument.
+    # It is printed to stdout to allow paging with 'more'.
+    cat <<HELPDESCRIPTION
+Parse the passed TIMESPAN and optional ADJUSTMENT into seconds.
+HELPDESCRIPTION
+    echo
+    printShortUsage "$1"
+}
+
+while [ $# -ne 0 ]
+do
+    case "$1" in
+	--help|-h|-\?)	shift; printLongUsage "$0"; exit 0;;
+	--get-short-usage)
+			shift; getShortUsage "$@"; exit 0;;
+	--get-long-usage)
+			shift; getLongUsage "$@"; exit 0;;
+	--)		shift; break;;
+	-*)		{ echo "ERROR: Unknown option \"$1\"!"; echo; printUsage "$0"; } >&2; exit 2;;
+	*)		break;;
+    esac
+done
+if [ $# -ne 1 ]; then
+    printUsage "$0" >&2
+    exit 2
+fi
+
+export DURATIONTOSECONDS_ACCEPT_FRACTIONAL="$PARSETIMESPANWITHADJUSTMENT_ACCEPT_FRACTIONAL"
+
+adjustment=
+rawAdjustment=
+if [[ "$1" =~ ^(.*[^[:space:]])[[:space:]]*([+-])([[:space:]]*([0-9]+%)|[[:space:]]*([^[:space:]].*))$ ]]; then
+    rawTimespan="${BASH_REMATCH[1]}"
+    if [ -n "${BASH_REMATCH[4]}" ]; then
+	adjustment="${BASH_REMATCH[2]}${BASH_REMATCH[4]}"
+    else
+	rawAdjustment="${BASH_REMATCH[2]}${BASH_REMATCH[5]}"
+    fi
+else
+    rawTimespan="$1"
+fi
+timespan=$(durationToSeconds -- "${rawTimespan:?}") || { status=$?; printf >&2 'ERROR: Illegal TIMESPAN: %s\n' "$rawTimespan"; exit $status; }
+[ -z "$rawAdjustment" ] || adjustment=$(DURATIONTOSECONDS_ACCEPT_SIGN=t durationToSeconds -- "$rawAdjustment") || { status=$?; printf >&2 'ERROR: Illegal ADJUSTMENT-TIMESPAN: %s\n' "$rawAdjustment"; exit $status; }
+
+[ -n "$adjustment" ] \
+    && printf '%s\t%s\n' "$timespan" "$adjustment" \
+    || printf '%s\n' "$timespan"
