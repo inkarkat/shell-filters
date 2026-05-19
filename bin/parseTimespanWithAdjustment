@@ -70,19 +70,20 @@ if [ $# -ne 1 ]; then
     exit 2
 fi
 
+adjustment=
+rawAdjustment=
 if [[ "$1" =~ ^(.*[^[:space:]])[[:space:]]*([+-])([[:space:]]*([0-9]+%)|[[:space:]]*([^[:space:]].*))$ ]]; then
-    timespan="${BASH_REMATCH[1]}"
+    rawTimespan="${BASH_REMATCH[1]}"
     if [ -n "${BASH_REMATCH[4]}" ]; then
 	adjustment="${BASH_REMATCH[2]}${BASH_REMATCH[4]}"
     else
-	adjustmentSeconds=$(durationToSeconds -- "${BASH_REMATCH[5]}") || { status=$?; printf >&2 'ERROR: Illegal ADJUSTMENT-TIMESPAN: %s\n' "${BASH_REMATCH[5]}"; exit $status; }
-	adjustment="${BASH_REMATCH[2]}${adjustmentSeconds}"
+	rawAdjustment="${BASH_REMATCH[2]}${BASH_REMATCH[5]}"
     fi
 else
-    timespan="$1"
-    adjustment=''
+    rawTimespan="$1"
 fi
-timespan=$(durationToSeconds -- "$timespan") || { status=$?; printf >&2 'ERROR: Illegal TIMESPAN: %s\n' "$1"; exit $status; }
+timespan=$(durationToSeconds -- "${rawTimespan:?}") || { status=$?; printf >&2 'ERROR: Illegal TIMESPAN: %s\n' "$rawTimespan"; exit $status; }
+[ -z "$rawAdjustment" ] || adjustment=$(DURATIONTOSECONDS_ACCEPT_SIGN=t durationToSeconds -- "$rawAdjustment") || { status=$?; printf >&2 'ERROR: Illegal ADJUSTMENT-TIMESPAN: %s\n' "$rawAdjustment"; exit $status; }
 
 [ -n "$adjustment" ] \
     && printf '%s\t%s\n' "$timespan" "$adjustment" \

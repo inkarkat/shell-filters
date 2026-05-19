@@ -24,14 +24,14 @@ load fixture
 
 @test "invalid adjustments exit 1 and print error message" {
     typeset -A notAdjustments=(
-	[1s+notAnAdjustment%]='notAnAdjustment%'
-	[1s +not a duration%]='not a duration%'
-	[1s+1x%]='1x%'
-	[1h + what%]='what%'
-	[1h -x%]='x%'
-	[1h + 15x%]='15x%'
-	[1h + 15 %]='15 %'
-	[1h + 0.15%]='0.15%'
+	[1s+notAnAdjustment%]='+notAnAdjustment%'
+	[1s +not a duration%]='+not a duration%'
+	[1s+1x%]='+1x%'
+	[1h + what%]='+what%'
+	[1h -x%]='-x%'
+	[1h + 15x%]='+15x%'
+	[1h + 15 %]='+15 %'
+	[1h + 0.15%]='+0.15%'
     )
 
     for notAnAdjustment in "${!notAdjustments[@]}"
