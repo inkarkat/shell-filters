@@ -21,7 +21,7 @@ printShortUsage()
 {
     # Note: short followed by long option; if the user knows the short one, she can
     # skim the long one.
-    printf 'Usage: [DURATIONTOSECONDS_ACCEPT_NEGATIVE=1|t|true|DURATIONTOSECONDS_ACCEPT_SIGN=1|t|true] [DURATIONTOSECONDS_ACCEPT_FRACTIONAL=1|t|true] %q %s\n' "$(basename "$1")" "$formatParameter [...] [-?|-h|--help]"
+    printf 'Usage: [DURATIONTOSECONDS_ACCEPT_NEGATIVE=1|t|true|DURATIONTOSECONDS_ACCEPT_SIGN=1|t|true] [DURATIONTOSECONDS_ACCEPT_FRACTIONAL=1|t|true] [DURATIONTOSECONDS_FORMAT=ms] %q %s\n' "$(basename "$1")" "$formatParameter [...] [-?|-h|--help]"
     printf 'Usage: cat FILE [...] | %q %s\n' "$(basename "$1")" '[-u|--unbuffered] [-s|--skip SKIP&PATTERN [...]] [-m|--match MATCH&PATTERN [...]]'
 }
 printUsage()
@@ -78,12 +78,13 @@ do
     esac
 done
 
-awk -F $'\n' \
+exec awk -F $'\n' \
     -v "isBuffered=$isBuffered" \
     -v "skipPattern=${skipPattern//\\/\\\\}" \
     -v "matchPattern=${matchPattern//\\/\\\\}" \
     -v "signPattern=${DURATIONTOSECONDS_ACCEPT_SIGN:+[+-]}${DURATIONTOSECONDS_ACCEPT_NEGATIVE:+-}" \
     -v "isFractional=$DURATIONTOSECONDS_ACCEPT_FRACTIONAL" \
+    -v "format=${DURATIONTOSECONDS_FORMAT//\\/\\\\}" \
 '
 function convert(duration,      calendar, n, c, cc, clock, v, seconds, fractionalSeconds, hasMatch)
 {
@@ -188,7 +189,27 @@ function convert(duration,      calendar, n, c, cc, clock, v, seconds, fractiona
 	hasMatch = 1
     }
 
-    return (hasMatch ? seconds (fractionalSeconds ~ /^\.0+$/ ? "" : fractionalSeconds) : duration)
+    if (hasMatch) {
+	switch (format) {
+	    case "ms":
+		if (fractionalSeconds == "") {
+		    fractionalSeconds = ".000"
+		}
+		break
+	    case "":
+		if (fractionalSeconds ~ /^\.0+$/) {
+		    fractionalSeconds = ""
+		}
+		break
+	    default:
+		printf("ERROR: Invalid DURATIONTOSECONDS_FORMAT: %s\n", format) > "/dev/stderr"
+		exit 2
+	}
+
+	return seconds fractionalSeconds
+    } else {
+	return duration
+    }
 }
 function shallowclone(target, source,      e)
 {
