@@ -33,7 +33,7 @@ printShortUsage()
 {
     # Note: short followed by long option; if the user knows the short one, they can
     # skim the long one.
-    printf 'Usage: %q %s\n' "[DURATIONWITHADJUSTMENTTOSECONDS_ACCEPT_FRACTIONAL=1|t|true] $(basename "$1")" "$formatParameter [-?|-h|--help]"
+    printf 'Usage: %q %s\n' "[DURATIONWITHADJUSTMENTTOSECONDS_ACCEPT_FRACTIONAL=1|t|true] $(basename "$1")" "$formatParameter [...] [-?|-h|--help]"
 }
 printUsage()
 {
@@ -67,10 +67,6 @@ do
 	*)		break;;
     esac
 done
-if [ $# -ne 1 ]; then
-    printUsage "$0" >&2
-    exit 2
-fi
 
 calculate()
 {
@@ -111,8 +107,8 @@ convert()
     else
 	local rawTimespan="$durationAndOptionalAdjustment"
     fi
-    [ -z "$rawTimespan" ] || timespan=$(durationToSeconds -- "${rawTimespan:?}") || { status=$?; printf >&2 'ERROR: Illegal TIMESPAN: %s\n' "$rawTimespan"; exit $status; }
-    [ -z "$rawAdjustment" ] || adjustment=$(DURATIONTOSECONDS_ACCEPT_SIGN=t durationToSeconds -- "$rawAdjustment") || { status=$?; printf >&2 'ERROR: Illegal ADJUSTMENT-TIMESPAN: %s\n' "$rawAdjustment"; exit $status; }
+    [ -z "$rawTimespan" ] || timespan=$(durationToSeconds -- "${rawTimespan:?}") || { status=$?; printf >&2 'ERROR: Illegal TIMESPAN: %s\n' "$rawTimespan"; return $status; }
+    [ -z "$rawAdjustment" ] || adjustment=$(DURATIONTOSECONDS_ACCEPT_SIGN=t durationToSeconds -- "$rawAdjustment") || { status=$?; printf >&2 'ERROR: Illegal ADJUSTMENT-TIMESPAN: %s\n' "$rawAdjustment"; return $status; }
 
     if [ -n "$adjustment" ]; then
 	calculate "$adjustment"
@@ -121,4 +117,14 @@ convert()
     fi
 }
 
-convert "${1:?}"
+status=0
+if [ $# -eq 0 ]; then
+    printUsage "$0" >&2
+    exit 2
+else
+    for arg
+    do
+	convert "$arg" || status=$?
+    done
+fi
+exit $status
