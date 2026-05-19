@@ -20,7 +20,7 @@ load fixture
     )
     for duration in "${!durations[@]}"
     do
-	run -1 parseTimespanWithAdjustment "$duration" \
+	run -1 durationWithAdjustmentToSeconds "$duration" \
 	    && assert_output "ERROR: Illegal TIMESPAN: ${durations["$duration"]}" \
 	    || fail "${duration@Q}"
     done
@@ -34,7 +34,7 @@ load fixture
 
     for duration in "${!fractionalAdjustments[@]}"
     do
-	run -1 parseTimespanWithAdjustment "$duration" \
+	run -1 durationWithAdjustmentToSeconds "$duration" \
 	    && assert_output "ERROR: Illegal ADJUSTMENT-TIMESPAN: ${fractionalAdjustments["$duration"]}" \
 	    || fail "${duration@Q}"
     done
@@ -42,29 +42,29 @@ load fixture
 
 @test "millisecond durations are converted when fractions are accepted" {
     typeset -A durations=(
-	[1ms + 100%]=$'0.001\t+100%'
-	[21ms+1s]=$'0.021\t+1'
-	[500ms+1]=$'0.5\t+1'
-	[1001ms-10%]=$'1.001\t-10%'
-	[1s 1ms + 1s]=$'1.001\t+1'
-	[00:01.001+1s]=$'1.001\t+1'
-	[20ms + 0.1]=$'0.02\t+0.1'
-	[1.10 + 0.05]=$'1.10\t+0.05'
+	[1ms + 100%]=0.002
+	[21ms+1s]=1.021
+	[500ms+1]=1.5
+	[1001ms-10%]=0.9009
+	[1s 1ms + 1s]=2.001
+	[00:01.001+1s]=2.001
+	[20ms + 0.1]=0.12
+	[1.10 + 0.05]=1.15
 
-	[21s-1ms]=$'21\t-0.001'
-	[1m 1s + 100ms]=$'61\t+0.1'
-	[00:01+100ms]=$'1\t+0.1'
-	[1m+3600000ms]=$'60\t+3600'
+	[21s-1ms]=20.999
+	[1m 1s + 100ms]=61.1
+	[00:01+100ms]=1.1
+	[1m+3600000ms]=3660
 
-	[21ms-1ms]=$'0.021\t-0.001'
-	[1s 1ms + 100ms]=$'1.001\t+0.1'
-	[00:01.001+100ms]=$'1.001\t+0.1'
-	[1m 3600003ms+3600000ms]=$'3660.003\t+3600'
+	[21ms-1ms]=0.02
+	[1s 1ms + 100ms]=1.101
+	[00:01.001+100ms]=1.101
+	[1m 3600003ms+3600000ms]=7260.003
     )
 
     for duration in "${!durations[@]}"
     do
-	PARSETIMESPANWITHADJUSTMENT_ACCEPT_FRACTIONAL=t run -0 parseTimespanWithAdjustment "$duration" \
+	DURATIONWITHADJUSTMENTTOSECONDS_ACCEPT_FRACTIONAL=t run -0 durationWithAdjustmentToSeconds "$duration" \
 	    && assert_output "${durations["$duration"]}" \
 	    || fail "${duration@Q}"
     done

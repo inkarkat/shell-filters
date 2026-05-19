@@ -2,23 +2,46 @@
 
 load fixture
 
-@test "passed durations and timespans are converted to seconds and adjustment" {
+@test "passed durations and timespans are converted to adjusted seconds" {
     typeset -A durations=(
-	[1s+1]=$'1\t+1'
-	[1s+1s]=$'1\t+1'
-	[1s+1m]=$'1\t+60'
-	[1s + 1m 11s]=$'1\t+71'
-	[1s +01:11]=$'1\t+71'
-	[2m 30s - 0m 15s]=$'150\t-15'
-	[02:30-01:11]=$'150\t-71'
-	[02:30+01:02:03]=$'150\t+3723'
-	[2w 3d -1d 2h 3m 4s]=$'1468800\t-93784'
+	[1s+1]=2
+	[1s+1s]=2
+	[1s+1m]=61
+	[1s + 1m 11s]=72
+	[1s +01:11]=72
+	[2m 30s - 0m 15s]=135
+	[02:30-01:11]=79
+	[02:30+01:02:03]=3873
+	[2w 3d -1d 2h 3m 4s]=1375016
     )
 
     for duration in "${!durations[@]}"
     do
-	run -0 parseTimespanWithAdjustment -- "$duration" \
+	run -0 durationWithAdjustmentToSeconds -- "$duration" \
 	    && assert_output "${durations["$duration"]}" \
+	    || fail "${duration@Q}"
+    done
+}
+
+@test "negative adjusted timespans do not go below zero" {
+    typeset -a belowZeroDurations=(
+	'1s-1'
+	'1s-2s'
+	'1h-1h'
+	'1h-2h'
+	'1h-60m'
+	'1h-99m'
+	'1h-3600'
+	'1h-9999'
+	'77 - 1h 17m'
+	'2m 30s - 02:30'
+	'2m 30s - 02:31'
+    )
+
+    for duration in "${belowZeroDurations[@]}"
+    do
+	run -0 durationWithAdjustmentToSeconds -- "$duration" \
+	    && assert_output '0' \
 	    || fail "$duration"
     done
 }
@@ -39,7 +62,7 @@ load fixture
 
     for notAnAdjustment in "${!notAdjustments[@]}"
     do
-	run -1 parseTimespanWithAdjustment -- "$notAnAdjustment" \
+	run -1 durationWithAdjustmentToSeconds -- "$notAnAdjustment" \
 	    && assert_output "ERROR: Illegal ADJUSTMENT-TIMESPAN: ${notAdjustments["$notAnAdjustment"]}" \
 	    || fail "${notAnAdjustment@Q}"
     done

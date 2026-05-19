@@ -26,7 +26,7 @@ load fixture
 
     for duration in "${!durations[@]}"
     do
-	run -0 parseTimespanWithAdjustment "$duration" \
+	run -0 durationWithAdjustmentToSeconds "$duration" \
 	    && assert_output "${durations["$duration"]}" \
 	    || fail "$duration"
     done
@@ -49,7 +49,7 @@ load fixture
 
     for notADuration in "${notDurations[@]}"
     do
-	run -1 parseTimespanWithAdjustment "$notADuration" \
+	run -1 durationWithAdjustmentToSeconds "$notADuration" \
 	    && assert_output "ERROR: Illegal TIMESPAN: $notADuration" \
 	    || fail "$notADuration"
     done

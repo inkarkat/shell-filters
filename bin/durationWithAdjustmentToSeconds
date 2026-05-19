@@ -1,4 +1,5 @@
 #!/bin/bash
+shopt -qs extglob
 
 readonly formatParameter='TIMESPAN [(+-)ADJUSTMENT-TIMESPAN|N%]'
 getShortUsage()
@@ -32,7 +33,7 @@ printShortUsage()
 {
     # Note: short followed by long option; if the user knows the short one, they can
     # skim the long one.
-    printf 'Usage: %q %s\n' "[PARSETIMESPANWITHADJUSTMENT_ACCEPT_FRACTIONAL=1|t|true] $(basename "$1")" "$formatParameter [-?|-h|--help]"
+    printf 'Usage: %q %s\n' "[DURATIONWITHADJUSTMENTTOSECONDS_ACCEPT_FRACTIONAL=1|t|true] $(basename "$1")" "$formatParameter [-?|-h|--help]"
 }
 printUsage()
 {
@@ -46,7 +47,8 @@ printLongUsage()
     # This is the long "man page" when launched with the help argument.
     # It is printed to stdout to allow paging with 'more'.
     cat <<HELPDESCRIPTION
-Parse the passed TIMESPAN and optional ADJUSTMENT into seconds.
+Parse the passed TIMESPAN and optional ADJUSTMENT (which is either an absolute
+difference or a percentage change) into a single resulting value in seconds.
 HELPDESCRIPTION
     echo
     printShortUsage "$1"
@@ -70,18 +72,32 @@ if [ $# -ne 1 ]; then
     exit 2
 fi
 
-export DURATIONTOSECONDS_ACCEPT_FRACTIONAL="$PARSETIMESPANWITHADJUSTMENT_ACCEPT_FRACTIONAL"
+calculate()
+{
+    local calculation; printf -v calculation '%f %s' "$timespan" "${1:?}"
+    [ "$DURATIONWITHADJUSTMENTTOSECONDS_ACCEPT_FRACTIONAL" ] \
+	&& calculation="scale=10; $calculation" \
+	|| calculation="scale=10; result = ${calculation}; scale = 0; (result + 0.5) / 1"
+
+    local result; result=$(printf '%s\n' "$calculation" | bc) || { printf >&2 'ASSERT: Calculation failed: %s\n' "$calculation"; exit 3; }
+    [[ "$result" = -* ]] && result=0	# Don't allow negative results.
+    [[ "$result" = .* ]] && result="0$result"	# bc omits a leading zero for fractional numbers smaller than one.
+    [[ "$result" = *.* ]] && result=${result%%?(.)+(0)}	# Remove trailing zeros and the decimal point if there are no more digits after it.
+    printf '%s\n' "$result"
+}
+
+export DURATIONTOSECONDS_ACCEPT_FRACTIONAL="$DURATIONWITHADJUSTMENTTOSECONDS_ACCEPT_FRACTIONAL"
 fractionPattern=''; [ "$DURATIONTOSECONDS_ACCEPT_FRACTIONAL" ] && fractionPattern='(\.[[:digit:]]+)?'
 
 timespan=
 adjustment=
 rawAdjustment=
-if [[ "$1" =~ ^(.*[^[:space:]])[[:space:]]*([+-])([[:space:]]*([0-9]+%)|[[:space:]]*([^[:space:]].*))$ ]]; then
+if [[ "$1" =~ ^(.*[^[:space:]])[[:space:]]*([+-])([[:space:]]*([0-9]+)%|[[:space:]]*([^[:space:]].*))$ ]]; then
     rawTimespan="${BASH_REMATCH[1]}"
     if [ -n "${BASH_REMATCH[4]}" ]; then
-	adjustment="${BASH_REMATCH[2]}${BASH_REMATCH[4]}"   # percentage
+	adjustment="* (100 ${BASH_REMATCH[2]} ${BASH_REMATCH[4]}) / 100"
     else
-	rawAdjustment="${BASH_REMATCH[2]}${BASH_REMATCH[5]}"	# timespan
+	rawAdjustment="${BASH_REMATCH[2]}${BASH_REMATCH[5]}"
 	if [[ "$rawAdjustment" =~ ^[[:digit:]]+${fractionPattern}$ ]]; then
 	    adjustment=$rawAdjustment
 	    rawAdjustment=''
@@ -97,6 +113,8 @@ fi
 [ -z "$rawTimespan" ] || timespan=$(durationToSeconds -- "${rawTimespan:?}") || { status=$?; printf >&2 'ERROR: Illegal TIMESPAN: %s\n' "$rawTimespan"; exit $status; }
 [ -z "$rawAdjustment" ] || adjustment=$(DURATIONTOSECONDS_ACCEPT_SIGN=t durationToSeconds -- "$rawAdjustment") || { status=$?; printf >&2 'ERROR: Illegal ADJUSTMENT-TIMESPAN: %s\n' "$rawAdjustment"; exit $status; }
 
-[ -n "$adjustment" ] \
-    && printf '%s\t%s\n' "$timespan" "$adjustment" \
-    || printf '%s\n' "$timespan"
+if [ -n "$adjustment" ]; then
+    calculate "$adjustment"
+else
+    printf '%s\n' "$timespan"
+fi
