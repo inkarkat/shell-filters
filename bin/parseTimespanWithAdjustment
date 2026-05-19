@@ -32,7 +32,7 @@ printShortUsage()
 {
     # Note: short followed by long option; if the user knows the short one, they can
     # skim the long one.
-    printf 'Usage: %q %s\n' "$(basename "$1")" "$formatParameter [-?|-h|--help]"
+    printf 'Usage: %q %s\n' "[PARSETIMESPANWITHADJUSTMENT_ACCEPT_FRACTIONAL=1|t|true] $(basename "$1")" "$formatParameter [-?|-h|--help]"
 }
 printUsage()
 {
@@ -69,6 +69,8 @@ if [ $# -ne 1 ]; then
     printUsage "$0" >&2
     exit 2
 fi
+
+export DURATIONTOSECONDS_ACCEPT_FRACTIONAL="$PARSETIMESPANWITHADJUSTMENT_ACCEPT_FRACTIONAL"
 
 adjustment=
 rawAdjustment=
