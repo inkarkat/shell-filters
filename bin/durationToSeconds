@@ -190,7 +190,7 @@ function convert(duration,      calendar, n, c, cc, clock, v, seconds, fractiona
 	if (isFractional && calendar[cc] ~ /^[[:digit:]]+ms$/) {
 	    v = substr(calendar[cc], 1, length(calendar[cc]) - 1)
 	    seconds += int(v / 1000)
-	    fractionalSeconds = sprintf("%03d", v % 1000)
+	    fractionalSeconds = gensub(/0+$/, "", 1, sprintf("%03d", v % 1000))
 	    hasMatch = 1
 	    continue
 	}
