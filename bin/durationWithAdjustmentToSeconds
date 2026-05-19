@@ -33,8 +33,8 @@ printShortUsage()
 {
     # Note: short followed by long option; if the user knows the short one, they can
     # skim the long one.
-    printf 'Usage: [DURATIONWITHADJUSTMENTTOSECONDS_ACCEPT_FRACTIONAL=1|t|true] %q %s\n' "$(basename "$1")" "$formatParameter [...] [-?|-h|--help]"
-    printf 'Usage: cat FILE [...] | %q %s\n' "$(basename "$1")" '[-u|--unbuffered]'
+    printf 'Usage: [DURATIONWITHADJUSTMENTTOSECONDS_ACCEPT_FRACTIONAL=1|t|true] %q %s\n' "$(basename "$1")" "[-N|--no-adjustment] $formatParameter [...] [-?|-h|--help]"
+    printf 'Usage: cat FILE [...] | %q %s\n' "$(basename "$1")" '[-u|--unbuffered] [-N|--no-adjustment]'
 }
 printUsage()
 {
@@ -56,9 +56,14 @@ HELPDESCRIPTION
     echo
     cat <<HELPTEXT
     --unbuffered|-u	Immediately output each value.
+    --no-adjustment|-N	Output the TIMESPAN converted to seconds and (if given)
+			the ADJUSTMENT (as percentage or converted to seconds)
+			as two tab-separated values instead of combining both
+			into a single value.
 HELPTEXT
 }
 
+isAdjust=t
 while [ $# -ne 0 ]
 do
     case "$1" in
@@ -69,6 +74,8 @@ do
 			shift; getLongUsage "$@"; exit 0;;
 	--unbuffered|-u)
 			shift;;	# Ignore; this implementation is always unbuffered.
+	--no-adjustment|-N)
+			shift; isAdjust=;;
 	--)		shift; break;;
 	-*)		{ echo "ERROR: Unknown option \"$1\"!"; echo; printUsage "$0"; } >&2; exit 2;;
 	*)		break;;
@@ -95,11 +102,12 @@ fractionPattern=''; [ "$DURATIONTOSECONDS_ACCEPT_FRACTIONAL" ] && fractionPatter
 convert()
 {
     local durationAndOptionalAdjustment="${1:?}"; shift
-    local timespan='' adjustment='' rawAdjustment=''
+    local timespan='' adjustment='' adjustmentCalculation='' rawAdjustment=''
     if [[ "$durationAndOptionalAdjustment" =~ ^(.*[^[:space:]])[[:space:]]*([+-])([[:space:]]*([0-9]+)%|[[:space:]]*([^[:space:]].*))$ ]]; then
 	local rawTimespan="${BASH_REMATCH[1]}"
 	if [ -n "${BASH_REMATCH[4]}" ]; then
-	    adjustment="* (100 ${BASH_REMATCH[2]} ${BASH_REMATCH[4]}) / 100"
+	    adjustment="${BASH_REMATCH[2]}${BASH_REMATCH[4]}%"
+	    adjustmentCalculation="* (100 ${BASH_REMATCH[2]} ${BASH_REMATCH[4]}) / 100"
 	else
 	    rawAdjustment="${BASH_REMATCH[2]}${BASH_REMATCH[5]}"
 	    if [[ "$rawAdjustment" =~ ^[[:digit:]]+${fractionPattern}$ ]]; then
@@ -118,7 +126,11 @@ convert()
     [ -z "$rawAdjustment" ] || adjustment=$(DURATIONTOSECONDS_ACCEPT_SIGN=t durationToSeconds -- "$rawAdjustment") || { status=$?; printf >&2 'ERROR: Illegal ADJUSTMENT-TIMESPAN: %s\n' "$rawAdjustment"; return $status; }
 
     if [ -n "$adjustment" ]; then
-	calculate "$adjustment"
+	if [ "$isAdjust" ]; then
+	    calculate "${adjustmentCalculation:-$adjustment}"
+	else
+	    printf '%s\t%s\n' "$timespan" "$adjustment"
+	fi
     else
 	printf '%s\n' "$timespan"
     fi
