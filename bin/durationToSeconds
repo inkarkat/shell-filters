@@ -188,7 +188,7 @@ function convert(duration,      calendar, n, c, cc, clock, v, seconds, fractiona
 	hasMatch = 1
     }
 
-    return (hasMatch ? seconds fractionalSeconds : duration)
+    return (hasMatch ? seconds (fractionalSeconds ~ /^\.0+$/ ? "" : fractionalSeconds) : duration)
 }
 function shallowclone(target, source,      e)
 {
