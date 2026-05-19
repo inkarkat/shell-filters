@@ -7,7 +7,7 @@
 : ${WORKGENERATION_SECONDS:=$((WORKYEAR_SECONDS * 38))}; export WORKGENERATION_SECONDS
 : ${WORK_PREFIX=w}; export WORK_PREFIX
 
-readonly formatParameterTemplate="\"${DURATIONTOSECONDS_ACCEPT_SIGN:+[+-]}${DURATIONTOSECONDS_ACCEPT_NEGATIVE:+[-]}[G_g ][Y_y ][MO_mo ][W_w ]([D_d ]([HH:]MM:SS|[Hh ][Mm ][Ss${DURATIONTOSECONDS_ACCEPT_FRACTIONAL:+ }]${DURATIONTOSECONDS_ACCEPT_FRACTIONAL:+[MSms]}))|D-[HH:]MM:SS${DURATIONTOSECONDS_ACCEPT_FRACTIONAL:+[.MS]}\""
+readonly formatParameterTemplate="\"${DURATIONTOSECONDS_ACCEPT_SIGN:+[+-]}${DURATIONTOSECONDS_ACCEPT_NEGATIVE:+[-]}[G_g ][Y_y ][MO_mo ][W_w ]([D_d ]([HH:]MM:SS|[Hh ][Mm ][Ss${DURATIONTOSECONDS_ACCEPT_FRACTIONAL:+ }]${DURATIONTOSECONDS_ACCEPT_FRACTIONAL:+[MSms]}))|D-[HH:]MM:SS${DURATIONTOSECONDS_ACCEPT_FRACTIONAL:+[.F]}|S${DURATIONTOSECONDS_ACCEPT_FRACTIONAL:+[.F]}\""
 readonly formatParameter="${formatParameterTemplate//_/${WORK_PREFIX:+[}${WORK_PREFIX}${WORK_PREFIX:+]}}"
 getShortUsage()
 {
@@ -21,7 +21,7 @@ printShortUsage()
 {
     # Note: short followed by long option; if the user knows the short one, she can
     # skim the long one.
-    printf 'Usage: [DURATIONTOSECONDS_ACCEPT_NEGATIVE=1|t|true|DURATIONTOSECONDS_ACCEPT_SIGN=1|t|true] [DURATIONTOSECONDS_ACCEPT_FRACTIONAL=1|t|true] %q %s\n' "$(basename "$1")" "$formatParameter [...] [-?|-h|--help]"
+    printf 'Usage: [DURATIONTOSECONDS_ACCEPT_NEGATIVE=1|t|true|DURATIONTOSECONDS_ACCEPT_SIGN=1|t|true] [DURATIONTOSECONDS_ACCEPT_FRACTIONAL=1|t|true] [DURATIONTOSECONDS_FORMAT=ms] %q %s\n' "$(basename "$1")" "$formatParameter [...] [-?|-h|--help]"
     printf 'Usage: cat FILE [...] | %q %s\n' "$(basename "$1")" '[-u|--unbuffered] [-s|--skip SKIP&PATTERN [...]] [-m|--match MATCH&PATTERN [...]]'
 }
 printUsage()
@@ -78,13 +78,38 @@ do
     esac
 done
 
-awk -F $'\n' \
+exec awk -F $'\n' \
     -v "isBuffered=$isBuffered" \
     -v "skipPattern=${skipPattern//\\/\\\\}" \
     -v "matchPattern=${matchPattern//\\/\\\\}" \
     -v "signPattern=${DURATIONTOSECONDS_ACCEPT_SIGN:+[+-]}${DURATIONTOSECONDS_ACCEPT_NEGATIVE:+-}" \
     -v "isFractional=$DURATIONTOSECONDS_ACCEPT_FRACTIONAL" \
+    -v "format=${DURATIONTOSECONDS_FORMAT//\\/\\\\}" \
 '
+function formatParse(seconds, fractionalSeconds)
+{
+    switch (format) {
+	case "ms":
+	    if (fractionalSeconds == "") {
+		fractionalSeconds = "000"
+	    } else if (length(fractionalSeconds) > 3 && substr(fractionalSeconds, 4, 1) ~ /^[56789]$/) {
+		fractionalSeconds = sprintf("%03d", int(substr(fractionalSeconds, 1, 3)) + 1)	# Round up.
+	    } else {
+		fractionalSeconds = substr(fractionalSeconds "000", 1, 3)
+	    }
+	    break
+	case "":
+	    if (fractionalSeconds ~ /^0+$/) {
+		fractionalSeconds = ""
+	    }
+	    break
+	default:
+	    printf("ERROR: Invalid DURATIONTOSECONDS_FORMAT: %s\n", format) > "/dev/stderr"
+	    exit 2
+    }
+
+    return seconds (fractionalSeconds == "" ? "" : ".") fractionalSeconds
+}
 function convert(duration,      calendar, n, c, cc, clock, v, seconds, fractionalSeconds, hasMatch)
 {
     n = split(gensub(/^.* /, "", 1, duration), clock, /:/)
@@ -165,7 +190,7 @@ function convert(duration,      calendar, n, c, cc, clock, v, seconds, fractiona
 	if (isFractional && calendar[cc] ~ /^[[:digit:]]+ms$/) {
 	    v = substr(calendar[cc], 1, length(calendar[cc]) - 1)
 	    seconds += int(v / 1000)
-	    fractionalSeconds = sprintf(".%03d", v % 1000)
+	    fractionalSeconds = sprintf("%03d", v % 1000)
 	    hasMatch = 1
 	    continue
 	}
@@ -174,7 +199,7 @@ function convert(duration,      calendar, n, c, cc, clock, v, seconds, fractiona
     if (n == 2 || n == 3) {
 	if (match(clock[n], /\.[[:digit:]]+$/)) {
 	    seconds += int(substr(clock[n], 1, RSTART - 1))
-	    fractionalSeconds = substr(clock[n], RSTART, RLENGTH)
+	    fractionalSeconds = substr(clock[n], RSTART + 1, RLENGTH)
 	} else {
 	    seconds += clock[n]
 	}
@@ -188,7 +213,7 @@ function convert(duration,      calendar, n, c, cc, clock, v, seconds, fractiona
 	hasMatch = 1
     }
 
-    return (hasMatch ? seconds (fractionalSeconds ~ /^\.0+$/ ? "" : fractionalSeconds) : duration)
+    return (hasMatch ? formatParse(seconds, fractionalSeconds) : duration)
 }
 function shallowclone(target, source,      e)
 {
@@ -210,7 +235,8 @@ BEGIN {
     WEEK_AND_LONGER_PATTERN = WEEK_AND_LONGER_PATTERN "|(" DIGITS_WORK "g )?" DIGITS_WORK "y"
     WEEK_AND_LONGER_PATTERN = WEEK_AND_LONGER_PATTERN "|" DIGITS_WORK "g"
     DAY_PATTERN = DIGITS_WORK "d"
-    DAY_AND_TIME_PATTERN = "([[:digit:]]+(" WP_OPTIONAL "d |-))?[[:digit:]]+(:[[:digit:]]{2}){1,2}" (isFractional ? "(\\.[[:digit:]]{1,3})?" : "")
+    FRACTION_PATTERN = (isFractional ? "(\\.[[:digit:]]+)?" : "")
+    DAY_AND_TIME_PATTERN = "([[:digit:]]+(" WP_OPTIONAL "d |-))?[[:digit:]]+(:[[:digit:]]{2}){1,2}" FRACTION_PATTERN
     HMSMS_PATTERN = "([[:digit:]]+h )?([[:digit:]]+m )?([[:digit:]]+s )?([[:digit:]]+ms)"
     HMS_PATTERN = "([[:digit:]]+h )?([[:digit:]]+m )?([[:digit:]]+s)"
     HM_PATTERN = "([[:digit:]]+h )?([[:digit:]]+m)"
@@ -230,8 +256,8 @@ BEGIN {
 		print convert(ARGV[i])
 	    else if ( signPattern != "" && match(ARGV[i], "^(" signPattern ")" DURATION_PATTERN "$", submatches))
 		print submatches[1] convert(substr(ARGV[i], 2))
-	    else if (ARGV[i] ~ "^" (signPattern == "" ? "" : signPattern "?") "[[:digit:]]+$")
-		print ARGV[i]
+	    else if (match(ARGV[i], "^(" (signPattern == "" ? "" : signPattern "?") ")([[:digit:]]+)" FRACTION_PATTERN "$", submatches))
+		print formatParse(submatches[1] submatches[2], substr(submatches[3], 2))
 	    else
 		status = 1
 	}
