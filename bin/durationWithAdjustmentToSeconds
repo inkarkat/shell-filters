@@ -34,6 +34,7 @@ printShortUsage()
     # Note: short followed by long option; if the user knows the short one, they can
     # skim the long one.
     printf 'Usage: %q %s\n' "[DURATIONWITHADJUSTMENTTOSECONDS_ACCEPT_FRACTIONAL=1|t|true] $(basename "$1")" "$formatParameter [...] [-?|-h|--help]"
+    printf 'Usage: cat FILE [...] | %q %s\n' "$(basename "$1")" '[-u|--unbuffered]'
 }
 printUsage()
 {
@@ -52,6 +53,10 @@ difference or a percentage change) into a single resulting value in seconds.
 HELPDESCRIPTION
     echo
     printShortUsage "$1"
+    echo
+    cat <<HELPTEXT
+    --unbuffered|-u	Immediately output each value.
+HELPTEXT
 }
 
 while [ $# -ne 0 ]
@@ -62,6 +67,8 @@ do
 			shift; getShortUsage "$@"; exit 0;;
 	--get-long-usage)
 			shift; getLongUsage "$@"; exit 0;;
+	--unbuffered|-u)
+			shift;;	# Ignore; this implementation is always unbuffered.
 	--)		shift; break;;
 	-*)		{ echo "ERROR: Unknown option \"$1\"!"; echo; printUsage "$0"; } >&2; exit 2;;
 	*)		break;;
@@ -119,8 +126,10 @@ convert()
 
 status=0
 if [ $# -eq 0 ]; then
-    printUsage "$0" >&2
-    exit 2
+    while IFS=$'\n' read -r line || [ -n "$line" ]
+    do
+	convert "$line" || status=$?
+    done
 else
     for arg
     do
