@@ -89,32 +89,36 @@ calculate()
 export DURATIONTOSECONDS_ACCEPT_FRACTIONAL="$DURATIONWITHADJUSTMENTTOSECONDS_ACCEPT_FRACTIONAL"
 fractionPattern=''; [ "$DURATIONTOSECONDS_ACCEPT_FRACTIONAL" ] && fractionPattern='(\.[[:digit:]]+)?'
 
-timespan=
-adjustment=
-rawAdjustment=
-if [[ "$1" =~ ^(.*[^[:space:]])[[:space:]]*([+-])([[:space:]]*([0-9]+)%|[[:space:]]*([^[:space:]].*))$ ]]; then
-    rawTimespan="${BASH_REMATCH[1]}"
-    if [ -n "${BASH_REMATCH[4]}" ]; then
-	adjustment="* (100 ${BASH_REMATCH[2]} ${BASH_REMATCH[4]}) / 100"
-    else
-	rawAdjustment="${BASH_REMATCH[2]}${BASH_REMATCH[5]}"
-	if [[ "$rawAdjustment" =~ ^[[:digit:]]+${fractionPattern}$ ]]; then
-	    adjustment=$rawAdjustment
-	    rawAdjustment=''
+convert()
+{
+    local durationAndOptionalAdjustment="${1:?}"; shift
+    local timespan='' adjustment='' rawAdjustment=''
+    if [[ "$durationAndOptionalAdjustment" =~ ^(.*[^[:space:]])[[:space:]]*([+-])([[:space:]]*([0-9]+)%|[[:space:]]*([^[:space:]].*))$ ]]; then
+	local rawTimespan="${BASH_REMATCH[1]}"
+	if [ -n "${BASH_REMATCH[4]}" ]; then
+	    adjustment="* (100 ${BASH_REMATCH[2]} ${BASH_REMATCH[4]}) / 100"
+	else
+	    rawAdjustment="${BASH_REMATCH[2]}${BASH_REMATCH[5]}"
+	    if [[ "$rawAdjustment" =~ ^[[:digit:]]+${fractionPattern}$ ]]; then
+		adjustment=$rawAdjustment
+		rawAdjustment=''
+	    fi
 	fi
+	if [[ "$rawTimespan" =~ ^[[:digit:]]+${fractionPattern}$ ]]; then
+	    timespan=$rawTimespan
+	    rawTimespan=''
+	fi
+    else
+	local rawTimespan="$durationAndOptionalAdjustment"
     fi
-    if [[ "$rawTimespan" =~ ^[[:digit:]]+${fractionPattern}$ ]]; then
-	timespan=$rawTimespan
-	rawTimespan=''
-    fi
-else
-    rawTimespan="$1"
-fi
-[ -z "$rawTimespan" ] || timespan=$(durationToSeconds -- "${rawTimespan:?}") || { status=$?; printf >&2 'ERROR: Illegal TIMESPAN: %s\n' "$rawTimespan"; exit $status; }
-[ -z "$rawAdjustment" ] || adjustment=$(DURATIONTOSECONDS_ACCEPT_SIGN=t durationToSeconds -- "$rawAdjustment") || { status=$?; printf >&2 'ERROR: Illegal ADJUSTMENT-TIMESPAN: %s\n' "$rawAdjustment"; exit $status; }
+    [ -z "$rawTimespan" ] || timespan=$(durationToSeconds -- "${rawTimespan:?}") || { status=$?; printf >&2 'ERROR: Illegal TIMESPAN: %s\n' "$rawTimespan"; exit $status; }
+    [ -z "$rawAdjustment" ] || adjustment=$(DURATIONTOSECONDS_ACCEPT_SIGN=t durationToSeconds -- "$rawAdjustment") || { status=$?; printf >&2 'ERROR: Illegal ADJUSTMENT-TIMESPAN: %s\n' "$rawAdjustment"; exit $status; }
 
-if [ -n "$adjustment" ]; then
-    calculate "$adjustment"
-else
-    printf '%s\n' "$timespan"
-fi
+    if [ -n "$adjustment" ]; then
+	calculate "$adjustment"
+    else
+	printf '%s\n' "$timespan"
+    fi
+}
+
+convert "${1:?}"
