@@ -235,7 +235,7 @@ expiry()
 	check)
 	    if [ -n "$startTime" ]; then
 		endTime=$(date +%s.%N)
-		local timeComparison; printf -v timeComparison '%f - %f >= %f' "$endTime" "$startTime" "$timespan"
+		local timeComparison; printf -v timeComparison '%.10f - %.10f >= %.10f' "$endTime" "$startTime" "$timespan"
 		local result; result=$(printf '%s\n' "$timeComparison" | bc) || { echo >&2 "ASSERT: Time difference comparison should succeed: $timeComparison"; exit 3; }
 		case ",${DEBUG:-}," in *,sampleLines:expiry,*) printf >&2 '%ssampleLines (expiry): %s = %d\n' "$PS5" "$timeComparison" "$result";; esac
 		[ $result -ne 0 ] && startTime=$endTime	# Optimization: Set new start time on expiry, so "expiry reset" doesn't have to obtain the time again.

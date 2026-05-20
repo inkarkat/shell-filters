@@ -84,7 +84,7 @@ done
 
 calculate()
 {
-    local calculation; printf -v calculation '%f %s' "$timespan" "${1:?}"
+    local calculation; printf -v calculation '%.10f %s' "$timespan" "${1:?}"
     [ "$DURATIONWITHADJUSTMENTTOSECONDS_ACCEPT_FRACTIONAL" ] \
 	&& calculation="scale=10; $calculation" \
 	|| calculation="scale=10; result = ${calculation}; scale = 0; (result + 0.5) / 1"
