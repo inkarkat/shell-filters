@@ -211,53 +211,32 @@ fi >&2
 if [ "$isInline" ]; then prefix="${POS1_AND_ERASE_LINE}$inlinePrefix"; suffix=; finalizer='\n'; fi
 [ "$isClear" ] && finalizer="$POS1_AND_ERASE_LINE"
 
-expiry()
-{
-    local action="${1:?}"; shift
-    case "$action" in
-	set)
-	    if [[ "$*" = *.* ]]; then
-		startTime=$(awk 'BEGIN{ printf "%f\n", ARGV[1] - ARGV[2] + ARGV[3]; }' "$(date +%s.%N)" "${1:?}" "${2:-0}")
-	    else
-		SECONDS=$((${1:?} - ${2:-0}))
-		unset startTime
-	    fi
-	    ;;
-	reset)
-	    if [[ "$timespan" = *.* ]]; then
-		: ${startTime:=$(date +%s.%N)}
-	    else
-		SECONDS=0
-		unset startTime
-	    fi
-	    ;;
-	check)
-	    if [ -n "$startTime" ]; then
-		endTime=$(date +%s.%N)
-		local timeComparison; printf -v timeComparison '%.10f - %.10f >= %.10f' "$endTime" "$startTime" "$timespan"
-		local result; result=$(printf '%s\n' "$timeComparison" | bc) || { echo >&2 "ASSERT: Time difference comparison should succeed: $timeComparison"; exit 3; }
-		case ",${DEBUG:-}," in *,sampleLines:expiry,*) printf >&2 '%ssampleLines (expiry): %s = %d\n' "$PS5" "$timeComparison" "$result";; esac
-		[ $result -ne 0 ] && startTime=$endTime	# Optimization: Set new start time on expiry, so "expiry reset" doesn't have to obtain the time again.
-	    else
-		[ $SECONDS -ge $timespan ]
-	    fi
-	    ;;
-	*)  printf >&2 'ASSERT: Unhandled action: %s\n' "$action"; exit 3;;
-    esac
-}
-
 typeset -a ADJUSTER=()
+adjuster()
+{
+    local input="${1:?}"; shift
+    local -n resultRef="${1:?}"; shift
+
+    [ ${#ADJUSTER[@]} -gt 0 ] \
+	|| coproc ADJUSTER { durationWithAdjustmentToSeconds; } # Start a coproc to adjust individual timespans and manage expiration; this is much more efficient than starting a new process for each timespan.
+
+    printf '%s\n' "$input" >&"${ADJUSTER[1]}"
+    IFS=$'\n' read -r -u "${ADJUSTER[0]}" resultRef \
+	|| { printf >&2 'ASSERT: Adjustment succeeds: %s\n' "$input"; exit 3; }
+    case ",${DEBUG:-}," in *,sampleLines:adjuster,*) printf >&2 '%ssampleLines (adjuster): %s -> %s\n' "$PS5" "$input" "$resultRef";; esac
+}
 adjustTimespan()
 {
     [ -n "$adjustment" ] || return
-
-    [ ${#ADJUSTER[@]} -gt 0 ] \
-	|| coproc ADJUSTER { durationWithAdjustmentToSeconds; } # Start a coproc to adjust individual timespans; this is much more efficient than starting a new process for each timespan.
-    printf '%s %s\n' "$timespan" "$adjustment" >&"${ADJUSTER[1]}"
-    local updatedTimespan; IFS=$'\n' read -r -u "${ADJUSTER[0]}" updatedTimespan \
-	|| { printf >&2 'ASSERT: Timespan %s can be adjusted by %s' "$timespan" "$adjustment"; exit 3; }
-    case ",${DEBUG:-}," in *,sampleLines:adjust,*) printf >&2 '%ssampleLines (adjust): %s -> %s\n' "$PS5" "$timespan" "$updatedTimespan";; esac
-    timespan=$updatedTimespan
+    adjuster "${timespan}${adjustment}" timespan
+    [ "$timespan" = 0 ] && adjustment=''    # Optimization: Once the timespan has been reduced to zero, it's not gonna increase again, so we can stop adjusting.
+}
+expiry()
+{
+    local action="${1:?}"; shift
+    local actionArgs; [ $# -eq 0 ] || printf -v actionArgs '\t%s' "$@"
+    local result; adjuster "${action}${actionArgs}" result
+    [ "$action" != 'check' ] || [ "$result" = 'expired' ]
 }
 
 originalTimespan=$timespan
@@ -342,7 +321,7 @@ do
 	printf "${prefix}%s%s${suffix}${keepResetSuffix}" "$keepResetPrefix" "$sample"
 
 	[ "$hasExpired" ] && [ ! "$isFirstExpiry" ] && adjustTimespan
-	expiry reset
+	expiry reset "$timespan"
 	isFirstExpiry=
 	let previousCount=$count
 	let count=0
