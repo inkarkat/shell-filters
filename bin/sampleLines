@@ -215,21 +215,20 @@ expiry()
 {
     local action="${1:?}"; shift
     case "$action" in
-	reset)
-	    if [ $# -eq 0 ]; then
-		if [[ "$timespan" = *.* ]]; then
-		    : ${startTime:=$(date +%s.%N)}
-		else
-		    SECONDS=0
-		    unset startTime
-		fi
+	set)
+	    if [[ "$*" = *.* ]]; then
+		startTime=$(awk 'BEGIN{ printf "%f\n", ARGV[1] - ARGV[2] + ARGV[3]; }' "$(date +%s.%N)" "${1:?}" "${2:-0}")
 	    else
-		if [[ "$*" = *.* ]]; then
-		    startTime=$(awk 'BEGIN{ printf "%f\n", ARGV[1] - ARGV[2] + ARGV[3]; }' "$(date +%s.%N)" "${1:-0}" "${2:-0}")
-		else
-		    SECONDS=$((${1:-0} - ${2:-0}))
-		    unset startTime
-		fi
+		SECONDS=$((${1:?} - ${2:-0}))
+		unset startTime
+	    fi
+	    ;;
+	reset)
+	    if [[ "$timespan" = *.* ]]; then
+		: ${startTime:=$(date +%s.%N)}
+	    else
+		SECONDS=0
+		unset startTime
 	    fi
 	    ;;
 	check)
@@ -262,7 +261,7 @@ adjustTimespan()
 }
 
 originalTimespan=$timespan
-expiry reset "$timespan" "$initialDelay"
+expiry set "$timespan" "$initialDelay"
 let previousCount=-1
 let total=0
 let count=0
