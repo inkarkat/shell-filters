@@ -25,11 +25,13 @@ fi
 : ${SAMPLELINES_COMMAND_JOINER=|}
 : ${SAMPLELINES_EXEC_END=;}
 
+export DURATIONWITHADJUSTMENTTOSECONDS_ACCEPT_FRACTIONAL=t DURATIONTOSECONDS_ACCEPT_FRACTIONAL=t
+
 printShortUsage()
 {
     # Note: short followed by long option; if the user knows the short one, she can
     # skim the long one.
-    printf 'Usage: cat FILE [...] | %q %s\n' "$(basename "$1")" "[-r|--reset-on PATTERN [-r ...]] [-i|--inline-or-none|--inline-or-passthrough|-I|--inline-always [--inline-prefix IP] [-c|--clear] [-a|--append-reset|-k|--keep-reset]] [--transform-command TRANSFORM-COMMAND [--transform-command ...] | --transform-exec SIMPLECOMMAND [...] ${SAMPLELINES_EXEC_END} [--transform-exec ...]] [-S|--summarize WHAT[,PLURAL-WHAT] --summary-only] [-n|--count WHAT] [-s|--skip PATTERN [-s ...]] [-m|--match PATTERN [-m ...]] [-t|--timespan $(parseTimespanWithAdjustment --get-short-usage format)] [-T|--initial-delay TIMESPAN] [-?|-h|--help]"
+    printf 'Usage: cat FILE [...] | %q %s\n' "$(basename "$1")" "[-r|--reset-on PATTERN [-r ...]] [-i|--inline-or-none|--inline-or-passthrough|-I|--inline-always [--inline-prefix IP] [-c|--clear] [-a|--append-reset|-k|--keep-reset]] [--transform-command TRANSFORM-COMMAND [--transform-command ...] | --transform-exec SIMPLECOMMAND [...] ${SAMPLELINES_EXEC_END} [--transform-exec ...]] [-S|--summarize WHAT[,PLURAL-WHAT] --summary-only] [-n|--count WHAT] [-s|--skip PATTERN [-s ...]] [-m|--match PATTERN [-m ...]] [-t|--timespan $(durationWithAdjustmentToSeconds --get-short-usage format)] [-T|--initial-delay TIMESPAN] [-?|-h|--help]"
 }
 printUsage()
 {
@@ -98,7 +100,7 @@ HELPDESCRIPTION
 			(both for summary and total counts); other lines (and
 			those that also match --skip PATTERN) are ignored.
 HELPTEXT
-    parseTimespanWithAdjustment --get-long-usage '--timespan|-t' 'Print a line every [adjusted] TIMESPAN instead of every
+    durationWithAdjustmentToSeconds --get-long-usage '--timespan|-t' 'Print a line every [adjusted] TIMESPAN instead of every
 			second.'
     cat <<HELPTEXT
     --initial-delay|-T $timespanFormat
@@ -115,39 +117,6 @@ HELPTEXT
     printf 'ping localhost | %q %s\n' "$(basename "$1")" '--inline-or-none --clear -t 3'
     printf 'ping -c 10 localhost | tee >(%q %s >/dev/tty) | tail -n 1 | delay 1s\n' "$(basename "$1")" '--inline-or-none --clear -t 3'
 }
-adjust()
-{
-    local var="${1?}"; shift
-    local adjustment="$1"; shift
-    eval "local value=\$$var"
-    local newValue
-    case "$adjustment" in
-	'')	    return;;
-	[+-]0?(%))  return;;
-	++([0-9]))  newValue="$((value + ${adjustment#+}))";;
-	-+([0-9]))  newValue="$((value - ${adjustment#-}))";;
-	[+-]+([0-9])%)
-		    # As Bash doesn't support floating point math yet, multiply
-		    # with 100, add the percentage change, and divide back and
-		    # round.
-		    # To avoid that the rounding truncates small changes and
-		    # therefore never lets the real value change, store the cent
-		    # value in a global variable, and re-use that instead.
-		    eval "local centValue=\$${var}CentValue"
-		    [ "$centValue" ] || centValue=$((value * 100))
-
-		    local change=$((${adjustment:1:-1} * value))
-		    [ "${adjustment:0:1}" = '+' ] && let centValue+=$change || let centValue-=$change
-		    newValue=$(((centValue + 50) / 100))
-
-		    eval "${var}CentValue=\$centValue"
-		    ;;
-	*)	    printf >&2 'ASSERT: Invalid adjustment: %s\n' "$adjustment"; exit 3;;
-    esac
-
-    [ $newValue -lt 0 ] && newValue=0
-    eval "$var=\$newValue"
-}
 
 prefix=
 suffix='\n'
@@ -163,8 +132,8 @@ unset totalCountWhat
 isSummaryOnly=
 skipPattern=
 matchPattern=
+adjustment=
 timespan=1
-timespanAdjustment=
 initialDelay=0
 transformCommands=
 while [ $# -ne 0 ]
@@ -225,7 +194,7 @@ do
 	--count|-n)	shift; totalCountWhat="$1"; shift;;
 	--skip|-s)	shift; skipPattern+="${skipPattern:+|}${1:?}"; shift;;
 	--match|-m)	shift; matchPattern+="${matchPattern:+|}${1:?}"; shift;;
-	--timespan|-t)	shift; < <(parseTimespanWithAdjustment -- "${1:?}") IFS=$'\t' read -r timespan timespanAdjustment || exit 2; shift;;
+	--timespan|-t)	shift; < <(durationWithAdjustmentToSeconds --no-adjustment -- "${1:?}") IFS=$'\t' read -r timespan adjustment || exit 2; shift;;
 	--initial-delay|-T)
 			shift; initialDelay=$(durationToSeconds -- "${1:?}") || { printf >&2 'ERROR: Illegal TIMESPAN: %s\n' "$1"; exit 2; }; shift;;
 	--)		shift; break;;
@@ -242,53 +211,58 @@ fi >&2
 if [ "$isInline" ]; then prefix="${POS1_AND_ERASE_LINE}$inlinePrefix"; suffix=; finalizer='\n'; fi
 [ "$isClear" ] && finalizer="$POS1_AND_ERASE_LINE"
 
-case "${timespan}${initialDelay}" in
-    *.*)
-	resetTime()
-	{
+expiry()
+{
+    local action="${1:?}"; shift
+    case "$action" in
+	reset)
 	    if [ $# -eq 0 ]; then
-		IFS='.' read startEpoch startNanos <<<"$(date +%s.%N)"
+		if [[ "$timespan" = *.* ]]; then
+		    : ${startTime:=$(date +%s.%N)}
+		else
+		    SECONDS=0
+		    unset startTime
+		fi
 	    else
-		IFS='.' read startEpoch startNanos <<<"$(awk 'BEGIN{ printf "%.3f\n", ARGV[1] - ARGV[2] + ARGV[3]; }' "$(date +%s.%N)" "${1:-0}" "${2:-0}")"
+		if [[ "$*" = *.* ]]; then
+		    startTime=$(awk 'BEGIN{ printf "%f\n", ARGV[1] - ARGV[2] + ARGV[3]; }' "$(date +%s.%N)" "${1:-0}" "${2:-0}")
+		else
+		    SECONDS=$((${1:-0} - ${2:-0}))
+		    unset startTime
+		fi
 	    fi
-	}
-	case "$timespan" in
-	    *.*)
-		isExpired()
-		{
-		    IFS='.' read endEpoch endNanos <<<"$(date +%s.%N)"
-		    local startMillis=10#${startNanos:0:3}; local endMillis=10#${endNanos:0:3}; local diffMillis=$(((endEpoch - startEpoch) * 1000))
-		    [ $((endMillis + diffMillis - startMillis)) -ge ${timespan/./} ]
-		}
-		;;
-	    *)
-		isExpired()
-		{
-		    IFS='.' read endEpoch endNanos <<<"$(date +%s.%N)"
-		    local startMillis=10#${startNanos:0:3}; local endMillis=10#${endNanos:0:3}; local diffMillis=$(((endEpoch - startEpoch) * 1000))
-		    [ $((endMillis + diffMillis - startMillis)) -ge ${timespan:?}000 ]
-		}
-		;;
-	esac
-	;;
-    *)
-	resetTime()
-	{
-	    if [ $# -eq 0 ]; then
-		SECONDS=0
+	    ;;
+	check)
+	    if [ -n "$startTime" ]; then
+		endTime=$(date +%s.%N)
+		local timeComparison; printf -v timeComparison '%f - %f >= %f' "$endTime" "$startTime" "$timespan"
+		local result; result=$(printf '%s\n' "$timeComparison" | bc) || { echo >&2 "ASSERT: Time difference comparison should succeed: $timeComparison"; exit 3; }
+		case ",${DEBUG:-}," in *,sampleLines:expiry,*) printf >&2 '%ssampleLines (expiry): %s = %d\n' "$PS5" "$timeComparison" "$result";; esac
+		[ $result -ne 0 ] && startTime=$endTime	# Optimization: Set new start time on expiry, so "expiry reset" doesn't have to obtain the time again.
 	    else
-		SECONDS=$((${1:-0} - ${2:-0}))
+		[ $SECONDS -ge $timespan ]
 	    fi
-	}
-	isExpired()
-	{
-	    [ $SECONDS -ge $timespan ]
-	}
-	;;
-esac
+	    ;;
+	*)  printf >&2 'ASSERT: Unhandled action: %s\n' "$action"; exit 3;;
+    esac
+}
+
+typeset -a ADJUSTER=()
+adjustTimespan()
+{
+    [ -n "$adjustment" ] || return
+
+    [ ${#ADJUSTER[@]} -gt 0 ] \
+	|| coproc ADJUSTER { durationWithAdjustmentToSeconds; } # Start a coproc to adjust individual timespans; this is much more efficient than starting a new process for each timespan.
+    printf '%s %s\n' "$timespan" "$adjustment" >&"${ADJUSTER[1]}"
+    local updatedTimespan; IFS=$'\n' read -r -u "${ADJUSTER[0]}" updatedTimespan \
+	|| { printf >&2 'ASSERT: Timespan %s can be adjusted by %s' "$timespan" "$adjustment"; exit 3; }
+    case ",${DEBUG:-}," in *,sampleLines:adjust,*) printf >&2 '%ssampleLines (adjust): %s -> %s\n' "$PS5" "$timespan" "$updatedTimespan";; esac
+    timespan=$updatedTimespan
+}
 
 originalTimespan=$timespan
-resetTime "$timespan" "$initialDelay"
+expiry reset "$timespan" "$initialDelay"
 let previousCount=-1
 let total=0
 let count=0
@@ -320,7 +294,7 @@ do
 	isFirstExpiry=t
     fi
 
-    hasExpired=; isExpired && hasExpired=t
+    hasExpired=; expiry check && hasExpired=t
     if [ -n "$isTakeThisLine" ] || [ "$hasExpired" ]; then
 	if [ -n "$transformCommands" ]; then
 	    printf '%s\n' "$line" >&"${TRANSFORMER[1]}"
@@ -368,8 +342,8 @@ do
 
 	printf "${prefix}%s%s${suffix}${keepResetSuffix}" "$keepResetPrefix" "$sample"
 
-	resetTime
-	[ "$hasExpired" ] && [ ! "$isFirstExpiry" ] && adjust timespan "$timespanAdjustment"
+	[ "$hasExpired" ] && [ ! "$isFirstExpiry" ] && adjustTimespan
+	expiry reset
 	isFirstExpiry=
 	let previousCount=$count
 	let count=0
