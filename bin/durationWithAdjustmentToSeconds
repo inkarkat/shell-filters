@@ -82,6 +82,12 @@ do
     esac
 done
 
+printfWithSeparator()
+{
+    local format="${1?}"; shift
+    printf "${format}%s" "$@" "${SEPARATOR:-$'\n'}"
+}
+
 calculate()
 {
     local calculation; printf -v calculation '%.10f %s' "$timespan" "${1:?}"
@@ -93,7 +99,7 @@ calculate()
     [[ "$result" = -* ]] && result=0	# Don't allow negative results.
     [[ "$result" = .* ]] && result="0$result"	# bc omits a leading zero for fractional numbers smaller than one.
     [[ "$result" = *.* ]] && result=${result%%?(.)+(0)}	# Remove trailing zeros and the decimal point if there are no more digits after it.
-    printf '%s\n' "$result"
+    printfWithSeparator '%s' "$result"
 }
 
 export DURATIONTOSECONDS_ACCEPT_FRACTIONAL="$DURATIONWITHADJUSTMENTTOSECONDS_ACCEPT_FRACTIONAL"
@@ -129,10 +135,10 @@ convert()
 	if [ "$isAdjust" ]; then
 	    calculate "${adjustmentCalculation:-$adjustment}"
 	else
-	    printf '%s\t%s\n' "$timespan" "$adjustment"
+	    printfWithSeparator '%s\t%s' "$timespan" "$adjustment"
 	fi
     else
-	printf '%s\n' "$timespan"
+	printfWithSeparator %s "$timespan"
     fi
 }
 
