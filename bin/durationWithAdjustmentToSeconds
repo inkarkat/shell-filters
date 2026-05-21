@@ -151,6 +151,43 @@ convert()
     fi
 }
 
+getFifo()
+{
+    local i tempFifo
+    for ((i = 0; i < 5; i++))
+    do
+	tempFifo="$(mktemp --dry-run --tmpdir="${XDG_RUNTIME_DIR:-/tmp}" "$(basename -- "$0")-XXXXXX" 2>/dev/null || echo "${XDG_RUNTIME_DIR:-/tmp}/$(basename -- "$0").$$$RANDOM")"
+	if mkfifo -m 600 "$tempFifo" 2>/dev/null; then	# mkfifo fails when the file already exists; this handles the race condition.
+	    printf %s "$tempFifo"
+	    return 0
+	fi
+    done
+    return 1
+}
+
+makeFifoCoproc()
+{
+    local -n nameRef="${1:?}" namePidRef="${1}_PID"; shift
+    local inFifo outFifo
+    inFifo=$(getFifo) && outFifo=$(getFifo) || return 1
+
+    "$@" <"$inFifo" >"$outFifo" &
+    namePidRef=$!   # Note: Cannot check for failure here, and even the PID isn't dropped immediately; we'll only find out once we're interacting through the FIFOs.
+    exec {nameRef[1]}>"$inFifo" {nameRef[0]}<"$outFifo"
+    rm -- "$inFifo" "$outFifo"
+}
+
+typeset -a TIMESTAMP=()
+getTimestampInto()
+{
+    local -n resultRef="$1"; shift
+    [ ${#TIMESTAMP[@]} -gt 0 ] \
+	|| makeFifoCoproc TIMESTAMP ${DATE:-stdbuf -oL date} --file=- +%s.%N	# Start an async process with in/outputs connected via FIFOs to obtain individual timestamps; this is much more efficient than starting a new process for each timestamp.
+    echo now >&"${TIMESTAMP[1]}"
+    IFS=$'\n' read -r -u "${TIMESTAMP[0]}" resultRef \
+	|| { echo >&2 'ASSERT: Timestamp can be obtained.'; exit 3; }
+}
+
 expiryTimespan=
 process()
 {
@@ -164,7 +201,8 @@ process()
 	    if [[ "${expiryTimespan}${initialDelay}" = *.* ]]; then
 		# First expiry should happen immediately / after initial delay, so subtract the
 		# expiry timespan from the current time and add the initial delay.
-		startTime=$(awk 'BEGIN{ printf "%f\n", ARGV[1] - ARGV[2] + ARGV[3]; }' "$(date +%s.%N)" "$expiryTimespan" "$initialDelay")
+		local timestamp; getTimestampInto timestamp
+		startTime=$(awk 'BEGIN{ printf "%f\n", ARGV[1] - ARGV[2] + ARGV[3]; }' "$timestamp" "$expiryTimespan" "$initialDelay")
 		printf '🕔 %s\n' "$startTime"
 	    else
 		# First expiry should happen immediately / after initial delay, so prime the
@@ -179,7 +217,7 @@ process()
 	    shift
 	    expiryTimespan="${1:?}"; shift
 	    if [[ "$expiryTimespan" = *.* ]]; then
-		: ${startTime:=$(date +%s.%N)}
+		[ -n "$startTime" ] || getTimestampInto startTime
 		printf '🕔 %s\n' "$startTime"
 	    else
 		SECONDS=0
@@ -190,7 +228,7 @@ process()
 	check)
 	    shift
 	    if [ -n "$startTime" ]; then
-		endTime=$(date +%s.%N)
+		getTimestampInto endTime
 		local timeComparison; printf -v timeComparison '%.10f - %.10f >= %.10f' "$endTime" "$startTime" "${expiryTimespan:?}"
 		local result; result=$(printf '%s\n' "$timeComparison" | bc) || { echo >&2 "ASSERT: Time difference comparison should succeed: $timeComparison"; exit 3; }
 		case ",${DEBUG:-}," in *,durationWithAdjustmentToSeconds:expiry,*) printf >&2 '%sdurationWithAdjustmentToSeconds (expiry): %s = %d\n' "$PS5" "$timeComparison" "$result";; esac
@@ -222,4 +260,6 @@ if [ $# -eq 0 ]; then
 else
     process "$@" || status=$?
 fi
+
+[ ${#TIMESTAMP[@]} -eq 0 ] || exec {TIMESTAMP[1]}>&- {TIMESTAMP[0]}<&-
 exit $status
