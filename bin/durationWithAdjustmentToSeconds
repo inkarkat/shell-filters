@@ -223,7 +223,8 @@ process()
 		    # First expiry should happen immediately / after initial delay, so subtract the
 		    # expiry timespan from the current time and add the initial delay.
 		    local timestamp; getTimestampInto timestamp
-		    startTime=$(awk 'BEGIN{ printf "%f\n", ARGV[1] - ARGV[2] + ARGV[3]; }' "$timestamp" "$expiryTimespan" "$initialDelay")
+		    local startTimeCalculation; printf -v startTimeCalculation '%.10f - %.10f + %.10f' "$timestamp" "$expiryTimespan" "${initialDelay:-0}"
+		    calculateInto startTime "$startTimeCalculation" || exit $?
 		    printf '🕔 %s\n' "${startTime%%?(.)+(0)}"
 		else
 		    # First expiry should happen immediately / after initial delay, so prime the
