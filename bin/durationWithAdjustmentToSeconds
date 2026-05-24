@@ -188,67 +188,72 @@ getTimestampInto()
 	|| { echo >&2 'ASSERT: Timestamp can be obtained.'; exit 3; }
 }
 
+seconds=
 expiryTimespan=
 process()
 {
     local status=0
-    [ $# -gt 0 ] || return 0
-    case "$1" in
-	set)
-	    shift
-	    expiryTimespan="${1:?}"; shift
-	    local initialDelay="${1:-0}"; shift
-	    if [[ "${expiryTimespan}${initialDelay}" = *.* ]]; then
-		# First expiry should happen immediately / after initial delay, so subtract the
-		# expiry timespan from the current time and add the initial delay.
-		local timestamp; getTimestampInto timestamp
-		startTime=$(awk 'BEGIN{ printf "%f\n", ARGV[1] - ARGV[2] + ARGV[3]; }' "$timestamp" "$expiryTimespan" "$initialDelay")
-		printf '🕔 %s\n' "$startTime"
-	    else
-		# First expiry should happen immediately / after initial delay, so prime the
-		# counter with the expiry timespan minus the initial delay.
-		local startSeconds=$((expiryTimespan - initialDelay))
-		SECONDS=$startSeconds
-		unset startTime
-		printf '⏱️ %d\n' "$startSeconds"
-	    fi
-	    ;;
-	reset)
-	    shift
-	    expiryTimespan="${1:?}"; shift
-	    if [[ "$expiryTimespan" = *.* ]]; then
-		[ -n "$startTime" ] || getTimestampInto startTime
-		printf '🕔 %s\n' "$startTime"
-	    else
-		SECONDS=0
-		unset startTime
-		printf '⏱️ 0\n'
-	    fi
-	    ;;
-	check)
-	    shift
-	    if [ -n "$startTime" ]; then
-		getTimestampInto endTime
-		local timeComparison; printf -v timeComparison '%.10f - %.10f >= %.10f' "$endTime" "$startTime" "${expiryTimespan:?}"
-		local result; result=$(printf '%s\n' "$timeComparison" | bc) || { echo >&2 "ASSERT: Time difference comparison should succeed: $timeComparison"; exit 3; }
-		case ",${DEBUG:-}," in *,durationWithAdjustmentToSeconds:expiry,*) printf >&2 '%sdurationWithAdjustmentToSeconds (expiry): %s = %d\n' "$PS5" "$timeComparison" "$result";; esac
-		[ $result -ne 0 ] && startTime=$endTime	# Optimization: Set new start time on expiry, so "expiry reset" doesn't have to obtain the time again.
-	    else
-		[ $SECONDS -ge ${expiryTimespan:?} ]
-	    fi \
-		&& echo 'expired' \
-		|| echo 'remaining'
-	    ;;
+    while [ $# -gt 0 ]
+    do
+	case "$1" in
+	    set)
+		shift
+		expiryTimespan="${1:?}"; shift
+		local initialDelay
+		if [[ "$1" =~ ^[0-9.]+$ ]]; then
+		    initialDelay="$1"; shift
+		fi
+		if [[ "${expiryTimespan}${initialDelay}" = *.* ]]; then
+		    # First expiry should happen immediately / after initial delay, so subtract the
+		    # expiry timespan from the current time and add the initial delay.
+		    local timestamp; getTimestampInto timestamp
+		    startTime=$(awk 'BEGIN{ printf "%f\n", ARGV[1] - ARGV[2] + ARGV[3]; }' "$timestamp" "$expiryTimespan" "$initialDelay")
+		    printf '🕔 %s\n' "$startTime"
+		else
+		    # First expiry should happen immediately / after initial delay, so prime the
+		    # counter with the expiry timespan minus the initial delay.
+		    local startSeconds=$((expiryTimespan - initialDelay))
+		    [ -n "$SECONDSOURCE" ] && seconds=$($SECONDSOURCE --seek $startSeconds) || SECONDS=$startSeconds
+		    unset startTime
+		    printf '⏱️ %d\n' "$startSeconds"
+		fi
+		;;
+	    reset)
+		shift
+		expiryTimespan="${1:?}"; shift
+		if [[ "$expiryTimespan" = *.* ]]; then
+		    [ -n "$startTime" ] || getTimestampInto startTime
+		    printf '🕔 %s\n' "$startTime"
+		else
+		    [ -n "$SECONDSOURCE" ] && seconds=$($SECONDSOURCE --reset) || SECONDS=0
+		    unset startTime
+		    printf '⏱️ 0\n'
+		fi
+		;;
+	    check)
+		shift
+		if [ -n "$startTime" ]; then
+		    getTimestampInto endTime
+		    local timeComparison; printf -v timeComparison '%.10f - %.10f >= %.10f' "$endTime" "$startTime" "${expiryTimespan:?}"
+		    local result; result=$(printf '%s\n' "$timeComparison" | bc) || { echo >&2 "ASSERT: Time difference comparison should succeed: $timeComparison"; exit 3; }
+		    case ",${DEBUG:-}," in *,durationWithAdjustmentToSeconds:expiry,*) printf >&2 '%sdurationWithAdjustmentToSeconds (expiry): %s = %d\n' "$PS5" "$timeComparison" "$result";; esac
+		    [ $result -ne 0 ] && startTime=$endTime	# Optimization: Set new start time on expiry, so "expiry reset" doesn't have to obtain the time again.
+		else
+		    [ -n "$SECONDSOURCE" ] && seconds=$($SECONDSOURCE) || seconds=$SECONDS
+		    case ",${DEBUG:-}," in *,durationWithAdjustmentToSeconds:expiry,*) printf >&2 '%sdurationWithAdjustmentToSeconds (expiry): %d -ge %d\n' "$PS5" "$seconds" "$expiryTimespan";; esac
+		    [ $seconds -ge ${expiryTimespan:?} ]
+		fi \
+		    && echo 'expired' \
+		    || echo 'remaining'
+		;;
 
-	*)  while [ $# -gt 0 ]
-	    do
-		[ $# -eq 1 ] && SEPARATOR=$'\n'
+	    *)  [ $# -eq 1 ] && SEPARATOR=$'\n'
 		convert "$1" || status=$?
 		shift
-	    done
-	    return $status
-	    ;;
-    esac
+		;;
+	esac
+    done
+    return $status
 }
 
 status=0
