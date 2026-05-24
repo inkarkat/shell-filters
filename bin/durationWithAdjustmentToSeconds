@@ -230,7 +230,7 @@ process()
 		    # First expiry should happen immediately / after initial delay, so prime the
 		    # counter with the expiry timespan minus the initial delay.
 		    local startSeconds=$((expiryTimespan - initialDelay))
-		    [ -n "$SECONDSOURCE" ] && seconds=$($SECONDSOURCE --seek $startSeconds) || SECONDS=$startSeconds
+		    [ -n "$SECONDSOURCE" ] && seconds=$($SECONDSOURCE --seek ${SECONDSOURCE_START_LINENR:-$startSeconds}) || SECONDS=$startSeconds
 		    unset startTime
 		    printf '⏱️ %d\n' "$startSeconds"
 		fi
