@@ -277,9 +277,11 @@ status=0
 if [ $# -eq 0 ]; then
     while IFS=$'\t' read -r -a items || [ -n "${items[*]}" ]
     do
+	case ",${DEBUG:-}," in *,durationWithAdjustmentToSeconds:input,*) printf >&2 '%sdurationWithAdjustmentToSeconds (input): ' "$PS4"; dump-args -- "${items[@]}";; esac
 	SEPARATOR=$'\t' process "${items[@]}" || status=$?
     done
 else
+    case ",${DEBUG:-}," in *,durationWithAdjustmentToSeconds:input,*) printf >&2 '%sdurationWithAdjustmentToSeconds (input): ' "$PS4"; dump-args -- "$@";; esac
     process "$@" || status=$?
 fi
 
