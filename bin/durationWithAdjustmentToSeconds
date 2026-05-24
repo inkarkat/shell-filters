@@ -1,0 +1,287 @@
+#!/bin/bash
+shopt -qs extglob
+
+readonly formatParameter='TIMESPAN [(+-)ADJUSTMENT-TIMESPAN|N%]'
+getShortUsage()
+{
+    case "$1" in
+	format)
+	    printf %s "$formatParameter";;
+	*)  echo "ERROR: Unknown short usage topic \"$1\"!" >&2; exit 2;;
+    esac
+}
+getLongUsage()
+{
+    local optionName="${1:?}"; shift
+    local action="$1"; shift
+    local timespanFormat="$(durationToSeconds --get-short-usage format 2>/dev/null)"
+    cat <<HELPTEXT
+    $optionName $formatParameter
+			${action:-Parse the passed TIMESPAN into seconds}
+    $timespanFormat
+			An optional ADJUSTMENT can change the original value
+			after every iteration. It starts with either + or -,
+			followed by another TIMESPAN or a percentage change N%.
+			For example, "10m + 30s" starts with 10 minutes and then
+			increases that by 30 seconds on every iteration. 10-5%
+			starts with 10 seconds and then continually decreases
+			that by 5 percent.
+HELPTEXT
+}
+
+printShortUsage()
+{
+    # Note: short followed by long option; if the user knows the short one, they can
+    # skim the long one.
+    printf 'Usage: [DURATIONWITHADJUSTMENTTOSECONDS_ACCEPT_FRACTIONAL=1|t|true] %q %s\n' "$(basename "$1")" "[-N|--no-adjustment] $formatParameter [...] [-?|-h|--help]"
+    printf "Usage: printf '%%s\\\\t%%s\\\\n' %s | %q %s\\n" "$formatParameter [...]" "$(basename "$1")" '[-u|--unbuffered] [-N|--no-adjustment]'
+    echo
+    printf "Usage: printf 'set\\\\tEXPIRY-TIMESPAN[\\\\tINITIAL-DELAY]\\\\n' | %q ...\\n" "$(basename "$1")"
+    printf "Usage: printf 'reset\\\\tEXPIRY-TIMESPAN\\\\n' | %q ...\\n" "$(basename "$1")"
+    printf "Usage: printf 'check\\\\n' | %q ...\\n" "$(basename "$1")"
+}
+printUsage()
+{
+    # This is the short help when launched with no or incorrect arguments.
+    # It is printed to stderr to avoid accidental processing.
+    printShortUsage "$1" >&2
+    printf >&2 '\nTry %q --help for more information.\n' "$(basename "$1")"
+}
+printLongUsage()
+{
+    # This is the long "man page" when launched with the help argument.
+    # It is printed to stdout to allow paging with 'more'.
+    cat <<HELPDESCRIPTION
+Parse the passed TIMESPAN and optional ADJUSTMENT (which is either an absolute
+difference or a percentage change) into a single resulting value in seconds.
+HELPDESCRIPTION
+    echo
+    printShortUsage "$1"
+    echo
+    cat <<HELPTEXT
+    --unbuffered|-u	Immediately output each value.
+    --no-adjustment|-N	Output the TIMESPAN converted to seconds and (if given)
+			the ADJUSTMENT (as percentage or converted to seconds)
+			as two tab-separated values instead of combining both
+			into a single value.
+HELPTEXT
+}
+
+isAdjust=t
+while [ $# -ne 0 ]
+do
+    case "$1" in
+	--help|-h|-\?)	shift; printLongUsage "$0"; exit 0;;
+	--get-short-usage)
+			shift; getShortUsage "$@"; exit 0;;
+	--get-long-usage)
+			shift; getLongUsage "$@"; exit 0;;
+	--unbuffered|-u)
+			shift;;	# Ignore; this implementation is always unbuffered.
+	--no-adjustment|-N)
+			shift; isAdjust=;;
+	--)		shift; break;;
+	-*)		{ echo "ERROR: Unknown option \"$1\"!"; echo; printUsage "$0"; } >&2; exit 2;;
+	*)		break;;
+    esac
+done
+
+SEPARATOR=''
+printfWithSeparator()
+{
+    local format="${1?}"; shift
+    printf "${format}%s" "$@" "${SEPARATOR:-$'\n'}"
+}
+
+typeset -a BC=()
+calculateInto()
+{
+    local -n resultRef="${1:?}"; shift	# Pass by reference because a command substitution could not lazily initialize the coproc.
+    local calculation="${1:?}"; shift
+
+    # Lazily start a coproc to do individual calculations; this is much more
+    # efficient than starting a new process for each one.
+    [ ${#BC[@]} -gt 0 ] \
+	|| coproc BC { bc; }
+
+    printf '%s\n' "$calculation" >&"${BC[1]}"
+    IFS=$'\n' read -r -u "${BC[0]}" resultRef \
+	|| { status=$?; echo >&2 "ASSERT: Calculation returns result${resultRef:+; just got $resultRef}."; return $status; }
+}
+
+calculateAdjustment()
+{
+    local originalTimespan="${1:?}"; shift
+    local calculation; printf -v calculation '%.10f %s' "$originalTimespan" "${1:?}"
+
+    [ "$DURATIONWITHADJUSTMENTTOSECONDS_ACCEPT_FRACTIONAL" ] \
+	&& calculation="scale=10; $calculation" \
+	|| calculation="scale=10; result = ${calculation}; scale = 0; (result + 0.5) / 1"
+
+    local updatedTimespan; calculateInto updatedTimespan "$calculation" || exit $?
+    [[ "$updatedTimespan" = -* ]] && updatedTimespan=0	# Don't allow negative results.
+    [[ "$updatedTimespan" = .* ]] && updatedTimespan="0$updatedTimespan"	# bc omits a leading zero for fractional numbers smaller than one.
+    [[ "$updatedTimespan" = *.* ]] && updatedTimespan=${updatedTimespan%%?(.)+(0)}	# Remove trailing zeros and the decimal point if there are no more digits after it.
+
+    printfWithSeparator '%s' "$updatedTimespan"
+    case ",${DEBUG:-}," in *,durationWithAdjustmentToSeconds:adjust,*) printf >&2 '%sdurationWithAdjustmentToSeconds (adjust): %s -> %s\n' "$PS5" "$originalTimespan" "$updatedTimespan";; esac
+}
+
+export DURATIONTOSECONDS_ACCEPT_FRACTIONAL="$DURATIONWITHADJUSTMENTTOSECONDS_ACCEPT_FRACTIONAL"
+fractionPattern=''; [ "$DURATIONTOSECONDS_ACCEPT_FRACTIONAL" ] && fractionPattern='(\.[[:digit:]]+)?'
+
+convert()
+{
+    local durationAndOptionalAdjustment="${1:?}"; shift
+    local timespan='' adjustment='' adjustmentCalculation='' rawAdjustment=''
+    if [[ "$durationAndOptionalAdjustment" =~ ^(.*[^[:space:]])[[:space:]]*([+-])([[:space:]]*([0-9]+)%|[[:space:]]*([^[:space:]].*))$ ]]; then
+	local rawTimespan="${BASH_REMATCH[1]}"
+	if [ -n "${BASH_REMATCH[4]}" ]; then
+	    adjustment="${BASH_REMATCH[2]}${BASH_REMATCH[4]}%"
+	    adjustmentCalculation="* (100 ${BASH_REMATCH[2]} ${BASH_REMATCH[4]}) / 100"
+	else
+	    rawAdjustment="${BASH_REMATCH[2]}${BASH_REMATCH[5]}"
+	    if [[ "$rawAdjustment" =~ ^[[:digit:]]+${fractionPattern}$ ]]; then
+		adjustment=$rawAdjustment
+		rawAdjustment=''
+	    fi
+	fi
+	if [[ "$rawTimespan" =~ ^[[:digit:]]+${fractionPattern}$ ]]; then
+	    timespan=$rawTimespan
+	    rawTimespan=''
+	fi
+    else
+	local rawTimespan="$durationAndOptionalAdjustment"
+    fi
+    [ -z "$rawTimespan" ] || timespan=$(durationToSeconds -- "${rawTimespan:?}") || { status=$?; printf >&2 'ERROR: Illegal TIMESPAN: %s\n' "$rawTimespan"; return $status; }
+    [ -z "$rawAdjustment" ] || adjustment=$(DURATIONTOSECONDS_ACCEPT_SIGN=t durationToSeconds -- "$rawAdjustment") || { status=$?; printf >&2 'ERROR: Illegal ADJUSTMENT-TIMESPAN: %s\n' "$rawAdjustment"; return $status; }
+
+    if [ -n "$adjustment" ]; then
+	if [ "$isAdjust" ]; then
+	    calculateAdjustment "$timespan" "${adjustmentCalculation:-$adjustment}"
+	else
+	    printfWithSeparator '%s\t%s' "$timespan" "$adjustment"
+	fi
+    else
+	printfWithSeparator %s "$timespan"
+    fi
+}
+
+getFifo()
+{
+    local i tempFifo
+    for ((i = 0; i < 5; i++))
+    do
+	tempFifo="$(mktemp --dry-run --tmpdir="${XDG_RUNTIME_DIR:-/tmp}" "$(basename -- "$0")-XXXXXX" 2>/dev/null || echo "${XDG_RUNTIME_DIR:-/tmp}/$(basename -- "$0").$$$RANDOM")"
+	if mkfifo -m 600 "$tempFifo" 2>/dev/null; then	# mkfifo fails when the file already exists; this handles the race condition.
+	    printf %s "$tempFifo"
+	    return 0
+	fi
+    done
+    return 1
+}
+
+makeFifoCoproc()
+{
+    local -n nameRef="${1:?}" namePidRef="${1}_PID"; shift
+    local inFifo outFifo
+    inFifo=$(getFifo) && outFifo=$(getFifo) || return 1
+
+    "$@" <"$inFifo" >"$outFifo" &
+    namePidRef=$!   # Note: Cannot check for failure here, and even the PID isn't dropped immediately; we'll only find out once we're interacting through the FIFOs.
+    exec {nameRef[1]}>"$inFifo" {nameRef[0]}<"$outFifo"
+    rm -- "$inFifo" "$outFifo"
+}
+
+typeset -a TIMESTAMP=()
+getTimestampInto()
+{
+    local -n resultRef="$1"; shift
+    [ ${#TIMESTAMP[@]} -gt 0 ] \
+	|| makeFifoCoproc TIMESTAMP ${DATE:-stdbuf -oL date} --file=- +%s.%N	# Start an async process with in/outputs connected via FIFOs to obtain individual timestamps; this is much more efficient than starting a new process for each timestamp.
+    echo now >&"${TIMESTAMP[1]}"
+    IFS=$'\n' read -r -u "${TIMESTAMP[0]}" resultRef \
+	|| { echo >&2 'ASSERT: Timestamp can be obtained.'; exit 3; }
+}
+
+seconds=
+expiryTimespan=
+process()
+{
+    local status=0
+    while [ $# -gt 0 ]
+    do
+	case "$1" in
+	    set)
+		shift
+		expiryTimespan="${1:?}"; shift
+		local initialDelay
+		if [[ "$1" =~ ^[0-9.]+$ ]]; then
+		    initialDelay="$1"; shift
+		fi
+		if [[ "${expiryTimespan}${initialDelay}" = *.* ]]; then
+		    # First expiry should happen immediately / after initial delay, so subtract the
+		    # expiry timespan from the current time and add the initial delay.
+		    local timestamp; getTimestampInto timestamp
+		    startTime=$(awk 'BEGIN{ printf "%f\n", ARGV[1] - ARGV[2] + ARGV[3]; }' "$timestamp" "$expiryTimespan" "$initialDelay")
+		    printf '🕔 %s\n' "$startTime"
+		else
+		    # First expiry should happen immediately / after initial delay, so prime the
+		    # counter with the expiry timespan minus the initial delay.
+		    local startSeconds=$((expiryTimespan - initialDelay))
+		    [ -n "$SECONDSOURCE" ] && seconds=$($SECONDSOURCE --seek $startSeconds) || SECONDS=$startSeconds
+		    unset startTime
+		    printf '⏱️ %d\n' "$startSeconds"
+		fi
+		;;
+	    reset)
+		shift
+		expiryTimespan="${1:?}"; shift
+		if [[ "$expiryTimespan" = *.* ]]; then
+		    [ -n "$startTime" ] || getTimestampInto startTime
+		    printf '🕔 %s\n' "$startTime"
+		else
+		    [ -n "$SECONDSOURCE" ] && seconds=$($SECONDSOURCE --reset) || SECONDS=0
+		    unset startTime
+		    printf '⏱️ 0\n'
+		fi
+		;;
+	    check)
+		shift
+		if [ -n "$startTime" ]; then
+		    getTimestampInto endTime
+		    local timeComparison; printf -v timeComparison '%.10f - %.10f >= %.10f' "$endTime" "$startTime" "${expiryTimespan:?}"
+		    local timeDifference; calculateInto timeDifference "$timeComparison" || exit $?
+		    case ",${DEBUG:-}," in *,durationWithAdjustmentToSeconds:expiry,*) printf >&2 '%sdurationWithAdjustmentToSeconds (expiry): %s = %d\n' "$PS5" "$timeComparison" "$timeDifference";; esac
+		    [ $timeDifference -ne 0 ] && startTime=$endTime	# Optimization: Set new start time on expiry, so "expiry reset" doesn't have to obtain the time again.
+		else
+		    [ -n "$SECONDSOURCE" ] && seconds=$($SECONDSOURCE) || seconds=$SECONDS
+		    case ",${DEBUG:-}," in *,durationWithAdjustmentToSeconds:expiry,*) printf >&2 '%sdurationWithAdjustmentToSeconds (expiry): %d -ge %d\n' "$PS5" "$seconds" "$expiryTimespan";; esac
+		    [ $seconds -ge ${expiryTimespan:?} ]
+		fi \
+		    && echo 'expired' \
+		    || echo 'remaining'
+		;;
+
+	    *)  [ $# -eq 1 ] && SEPARATOR=$'\n'
+		convert "$1" || status=$?
+		shift
+		;;
+	esac
+    done
+    return $status
+}
+
+status=0
+if [ $# -eq 0 ]; then
+    while IFS=$'\t' read -r -a items || [ -n "${items[*]}" ]
+    do
+	SEPARATOR=$'\t' process "${items[@]}" || status=$?
+    done
+else
+    process "$@" || status=$?
+fi
+
+[ ${#BC[@]} -eq 0 ] || exec {BC[1]}>&- {BC[0]}<&-; BC=()
+[ ${#TIMESTAMP[@]} -eq 0 ] || exec {TIMESTAMP[1]}>&- {TIMESTAMP[0]}<&-
+exit $status
