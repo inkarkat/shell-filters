@@ -21,7 +21,7 @@ printShortUsage()
 {
     # Note: short followed by long option; if the user knows the short one, she can
     # skim the long one.
-    printf 'Usage: [DURATIONTOSECONDS_ACCEPT_NEGATIVE=1|t|true|DURATIONTOSECONDS_ACCEPT_SIGN=1|t|true] [DURATIONTOSECONDS_ACCEPT_FRACTIONAL=1|t|true] [DURATIONTOSECONDS_FORMAT=ms] %q %s\n' "$(basename "$1")" "$formatParameter [...] [-?|-h|--help]"
+    printf 'Usage: [DURATIONTOSECONDS_ACCEPT_NEGATIVE=1|t|true|DURATIONTOSECONDS_ACCEPT_SIGN=1|t|true] [DURATIONTOSECONDS_ACCEPT_FRACTIONAL=1|t|true] [DURATIONTOSECONDS_FORMAT=ms[?]] %q %s\n' "$(basename "$1")" "$formatParameter [...] [-?|-h|--help]"
     printf 'Usage: cat FILE [...] | %q %s\n' "$(basename "$1")" '[-u|--unbuffered] [-s|--skip SKIP&PATTERN [...]] [-m|--match MATCH&PATTERN [...]]'
 }
 printUsage()
@@ -89,9 +89,9 @@ exec awk -F $'\n' \
 function formatParse(seconds, fractionalSeconds)
 {
     switch (format) {
-	case "ms":
+	case /^ms\??$/:
 	    if (fractionalSeconds == "") {
-		fractionalSeconds = "000"
+		fractionalSeconds = (format == "ms?" ? "" : "000")
 	    } else if (length(fractionalSeconds) > 3 && substr(fractionalSeconds, 4, 1) ~ /^[56789]$/) {
 		fractionalSeconds = sprintf("%03d", int(substr(fractionalSeconds, 1, 3)) + 1)	# Round up.
 	    } else {
@@ -101,6 +101,8 @@ function formatParse(seconds, fractionalSeconds)
 	case "":
 	    if (fractionalSeconds ~ /^0+$/) {
 		fractionalSeconds = ""
+	    } else {
+		fractionalSeconds = gensub(/0+$/, "", 1, fractionalSeconds)
 	    }
 	    break
 	default:
@@ -190,7 +192,7 @@ function convert(duration,      calendar, n, c, cc, clock, v, seconds, fractiona
 	if (isFractional && calendar[cc] ~ /^[[:digit:]]+ms$/) {
 	    v = substr(calendar[cc], 1, length(calendar[cc]) - 1)
 	    seconds += int(v / 1000)
-	    fractionalSeconds = gensub(/0+$/, "", 1, sprintf("%03d", v % 1000))
+	    fractionalSeconds = sprintf("%03d", v % 1000)
 	    hasMatch = 1
 	    continue
 	}

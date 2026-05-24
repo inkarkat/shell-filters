@@ -1,6 +1,8 @@
 #!/bin/bash
 shopt -qs extglob
 
+export DURATIONTOSECONDS_ACCEPT_FRACTIONAL=t DURATIONTOSECONDS_FORMAT='ms?'
+
 printShortUsage()
 {
     # Note: short followed by long option; if the user knows the short one, she can
@@ -27,7 +29,7 @@ HELPDESCRIPTION
     echo
     printShortUsage "$1"
     echo
-    local timespanFormat="$(DURATIONTOSECONDS_ACCEPT_FRACTIONAL=t durationToSeconds --get-short-usage format 2>/dev/null)"
+    local timespanFormat="$(durationToSeconds --get-short-usage format 2>/dev/null)"
     cat <<HELPTEXT
     --unbuffered|-u	    Immediately output each record.
     --field-separator|-F FS Use FS as the input field separator (as with AWK).
@@ -133,14 +135,14 @@ do
 	--field-separator|-F)
 			    awkArgs+=("$1" "$2"); shift; shift;;
 	--timestamp-field)  shift; timestampField="$1"; shift;;
-	--max-difference)   shift; maxDifference=$(DURATIONTOSECONDS_ACCEPT_FRACTIONAL=t durationToSeconds -- "${1:?}") || { printf >&2 'ERROR: Illegal TIMESPAN: %s\n' "$1"; exit 2; }; shift;;
+	--max-difference)   shift; maxDifference=$(durationToSeconds -- "${1:?}") || { printf >&2 'ERROR: Illegal TIMESPAN: %s\n' "$1"; exit 2; }; shift;;
 	--max-record-duration)
-			    shift; maxRecordDuration=$(DURATIONTOSECONDS_ACCEPT_FRACTIONAL=t durationToSeconds -- "${1:?}") || { printf >&2 'ERROR: Illegal TIMESPAN: %s\n' "$1"; exit 2; }; shift;;
+			    shift; maxRecordDuration=$(durationToSeconds -- "${1:?}") || { printf >&2 'ERROR: Illegal TIMESPAN: %s\n' "$1"; exit 2; }; shift;;
 	--max-record-length)
 			    shift; maxRecordLength="$1"; shift;;
-	--entry-duration)   shift; entryDuration=$(DURATIONTOSECONDS_ACCEPT_FRACTIONAL=t durationToSeconds -- "${1:?}") || { printf >&2 'ERROR: Illegal TIMESPAN: %s\n' "$1"; exit 2; }; shift;;
+	--entry-duration)   shift; entryDuration=$(durationToSeconds -- "${1:?}") || { printf >&2 'ERROR: Illegal TIMESPAN: %s\n' "$1"; exit 2; }; shift;;
 	--single-entry-duration)
-			    shift; singleEntryDuration=$(DURATIONTOSECONDS_ACCEPT_FRACTIONAL=t durationToSeconds -- "${1:?}") || { printf >&2 'ERROR: Illegal TIMESPAN: %s\n' "$1"; exit 2; }; shift;;
+			    shift; singleEntryDuration=$(durationToSeconds -- "${1:?}") || { printf >&2 'ERROR: Illegal TIMESPAN: %s\n' "$1"; exit 2; }; shift;;
 	--tally)	    shift
 			    if [ "$isSummarize" ]; then
 				{ echo "ERROR: Cannot combine --tally with --summarize."; echo; printUsage "$0"; } >&2
