@@ -219,7 +219,7 @@ process()
 		if [[ "$1" =~ ^[0-9.]+$ ]]; then
 		    initialDelay="$1"; shift
 		fi
-		if [[ "${expiryTimespan}${initialDelay}" = *.* ]]; then
+		if [[ "${expiryTimespan}${initialDelay}" = *.* ]] || [ -n "$DATE" -a -z "$SECONDSOURCE" ]; then
 		    # First expiry should happen immediately / after initial delay, so subtract the
 		    # expiry timespan from the current time and add the initial delay.
 		    local timestamp; getTimestampInto timestamp
@@ -230,7 +230,7 @@ process()
 		    # First expiry should happen immediately / after initial delay, so prime the
 		    # counter with the expiry timespan minus the initial delay.
 		    local startSeconds=$((expiryTimespan - initialDelay))
-		    [ -n "$SECONDSOURCE" ] && seconds=$($SECONDSOURCE --seek $startSeconds) || SECONDS=$startSeconds
+		    [ -n "$SECONDSOURCE" ] && seconds=$($SECONDSOURCE --seek ${SECONDSOURCE_START_LINENR:-$startSeconds}) || SECONDS=$startSeconds
 		    unset startTime
 		    printf '⏱️ %d\n' "$startSeconds"
 		fi
@@ -238,7 +238,7 @@ process()
 	    reset)
 		shift
 		expiryTimespan="${1:?}"; shift
-		if [[ "$expiryTimespan" = *.* ]]; then
+		if [[ "$expiryTimespan" = *.* ]] || [ -n "$DATE" -a -z "$SECONDSOURCE" ]; then
 		    [ -n "$startTime" ] || getTimestampInto startTime
 		    printf '🕔 %s\n' "${startTime%%?(.)+(0)}"
 		else
@@ -277,9 +277,11 @@ status=0
 if [ $# -eq 0 ]; then
     while IFS=$'\t' read -r -a items || [ -n "${items[*]}" ]
     do
+	case ",${DEBUG:-}," in *,durationWithAdjustmentToSeconds:input,*) printf >&2 '%sdurationWithAdjustmentToSeconds (input): ' "$PS4"; dump-args -- "${items[@]}";; esac
 	SEPARATOR=$'\t' process "${items[@]}" || status=$?
     done
 else
+    case ",${DEBUG:-}," in *,durationWithAdjustmentToSeconds:input,*) printf >&2 '%sdurationWithAdjustmentToSeconds (input): ' "$PS4"; dump-args -- "$@";; esac
     process "$@" || status=$?
 fi
 
