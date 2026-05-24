@@ -93,7 +93,23 @@ printfWithSeparator()
     printf "${format}%s" "$@" "${SEPARATOR:-$'\n'}"
 }
 
-calculate()
+typeset -a BC=()
+calculateInto()
+{
+    local -n resultRef="${1:?}"; shift	# Pass by reference because a command substitution could not lazily initialize the coproc.
+    local calculation="${1:?}"; shift
+
+    # Lazily start a coproc to do individual calculations; this is much more
+    # efficient than starting a new process for each one.
+    [ ${#BC[@]} -gt 0 ] \
+	|| coproc BC { bc; }
+
+    printf '%s\n' "$calculation" >&"${BC[1]}"
+    IFS=$'\n' read -r -u "${BC[0]}" resultRef \
+	|| { status=$?; echo >&2 "ASSERT: Calculation returns result${resultRef:+; just got $resultRef}."; return $status; }
+}
+
+calculateAdjustment()
 {
     local originalTimespan="${1:?}"; shift
     local calculation; printf -v calculation '%.10f %s' "$originalTimespan" "${1:?}"
@@ -102,7 +118,7 @@ calculate()
 	&& calculation="scale=10; $calculation" \
 	|| calculation="scale=10; result = ${calculation}; scale = 0; (result + 0.5) / 1"
 
-    local updatedTimespan; updatedTimespan=$(printf '%s\n' "$calculation" | bc) || { printf >&2 'ASSERT: Calculation failed: %s\n' "$calculation"; exit 3; }
+    local updatedTimespan; calculateInto updatedTimespan "$calculation" || exit $?
     [[ "$updatedTimespan" = -* ]] && updatedTimespan=0	# Don't allow negative results.
     [[ "$updatedTimespan" = .* ]] && updatedTimespan="0$updatedTimespan"	# bc omits a leading zero for fractional numbers smaller than one.
     [[ "$updatedTimespan" = *.* ]] && updatedTimespan=${updatedTimespan%%?(.)+(0)}	# Remove trailing zeros and the decimal point if there are no more digits after it.
@@ -142,7 +158,7 @@ convert()
 
     if [ -n "$adjustment" ]; then
 	if [ "$isAdjust" ]; then
-	    calculate "$timespan" "${adjustmentCalculation:-$adjustment}"
+	    calculateAdjustment "$timespan" "${adjustmentCalculation:-$adjustment}"
 	else
 	    printfWithSeparator '%s\t%s' "$timespan" "$adjustment"
 	fi
@@ -235,9 +251,9 @@ process()
 		if [ -n "$startTime" ]; then
 		    getTimestampInto endTime
 		    local timeComparison; printf -v timeComparison '%.10f - %.10f >= %.10f' "$endTime" "$startTime" "${expiryTimespan:?}"
-		    local result; result=$(printf '%s\n' "$timeComparison" | bc) || { echo >&2 "ASSERT: Time difference comparison should succeed: $timeComparison"; exit 3; }
-		    case ",${DEBUG:-}," in *,durationWithAdjustmentToSeconds:expiry,*) printf >&2 '%sdurationWithAdjustmentToSeconds (expiry): %s = %d\n' "$PS5" "$timeComparison" "$result";; esac
-		    [ $result -ne 0 ] && startTime=$endTime	# Optimization: Set new start time on expiry, so "expiry reset" doesn't have to obtain the time again.
+		    local timeDifference; calculateInto timeDifference "$timeComparison" || exit $?
+		    case ",${DEBUG:-}," in *,durationWithAdjustmentToSeconds:expiry,*) printf >&2 '%sdurationWithAdjustmentToSeconds (expiry): %s = %d\n' "$PS5" "$timeComparison" "$timeDifference";; esac
+		    [ $timeDifference -ne 0 ] && startTime=$endTime	# Optimization: Set new start time on expiry, so "expiry reset" doesn't have to obtain the time again.
 		else
 		    [ -n "$SECONDSOURCE" ] && seconds=$($SECONDSOURCE) || seconds=$SECONDS
 		    case ",${DEBUG:-}," in *,durationWithAdjustmentToSeconds:expiry,*) printf >&2 '%sdurationWithAdjustmentToSeconds (expiry): %d -ge %d\n' "$PS5" "$seconds" "$expiryTimespan";; esac
@@ -266,5 +282,6 @@ else
     process "$@" || status=$?
 fi
 
+[ ${#BC[@]} -eq 0 ] || exec {BC[1]}>&- {BC[0]}<&-; BC=()
 [ ${#TIMESTAMP[@]} -eq 0 ] || exec {TIMESTAMP[1]}>&- {TIMESTAMP[0]}<&-
 exit $status
