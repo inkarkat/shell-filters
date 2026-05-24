@@ -212,10 +212,10 @@ if [ "$isInline" ]; then prefix="${POS1_AND_ERASE_LINE}$inlinePrefix"; suffix=; 
 [ "$isClear" ] && finalizer="$POS1_AND_ERASE_LINE"
 
 typeset -a ADJUSTER=()
-adjuster()
+adjustInto()
 {
-    local input="${1:?}"; shift
     local -n resultRef="${1:?}"; shift
+    local input="${1:?}"; shift
 
     [ ${#ADJUSTER[@]} -gt 0 ] \
 	|| coproc ADJUSTER { durationWithAdjustmentToSeconds; } # Start a coproc to adjust individual timespans and manage expiration; this is much more efficient than starting a new process for each timespan.
@@ -228,14 +228,14 @@ adjuster()
 adjustTimespan()
 {
     [ -n "$adjustment" ] || return
-    adjuster "${timespan}${adjustment}" timespan
+    adjustInto timespan "${timespan}${adjustment}"
     [ "$timespan" = 0 ] && adjustment=''    # Optimization: Once the timespan has been reduced to zero, it's not gonna increase again, so we can stop adjusting.
 }
 expiry()
 {
     local action="${1:?}"; shift
     local actionArgs; [ $# -eq 0 ] || printf -v actionArgs '\t%s' "$@"
-    local result; adjuster "${action}${actionArgs}" result
+    local result; adjustInto result "${action}${actionArgs}"
     [ "$action" != 'check' ] || [ "$result" = 'expired' ]
 }
 
@@ -329,6 +329,7 @@ do
 	    keepResetPrefix="${SAMPLELINES_APPEND_RESET_PREFIX}${line}${SAMPLELINES_APPEND_RESET_SUFFIX}"    # Prepend the header to subsequent samples now.
     fi
 done
+[ ${#ADJUSTER[@]} -eq 0 ] || exec {ADJUSTER[1]}>&- {ADJUSTER[0]}<&-; ADJUSTER=()
 
 if [ -n "$summarizeWhat" ]; then
     if [ $total -eq 1 ]; then
