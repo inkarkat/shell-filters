@@ -252,9 +252,9 @@ process()
 		if [ -n "$startTime" ]; then
 		    getTimestampInto endTime
 		    local timeComparison; printf -v timeComparison '%.10f - %.10f >= %.10f' "$endTime" "$startTime" "${expiryTimespan:?}"
-		    local timeDifference; calculateInto timeDifference "$timeComparison" || exit $?
-		    case ",${DEBUG:-}," in *,durationWithAdjustmentToSeconds:expiry,*) printf >&2 '%sdurationWithAdjustmentToSeconds (expiry): %s = %d\n' "$PS5" "$timeComparison" "$timeDifference";; esac
-		    [ $timeDifference -ne 0 ] && startTime=$endTime	# Optimization: Set new start time on expiry, so "expiry reset" doesn't have to obtain the time again.
+		    local isExpired; calculateInto isExpired "$timeComparison" || exit $?
+		    case ",${DEBUG:-}," in *,durationWithAdjustmentToSeconds:expiry,*) printf >&2 '%sdurationWithAdjustmentToSeconds (expiry): %s = %d\n' "$PS5" "$timeComparison" "$isExpired";; esac
+		    [ $isExpired -ne 0 ] && startTime=$endTime	# Optimization: Set new start time on expiry, so "expiry reset" doesn't have to obtain the time again.
 		else
 		    [ -n "$SECONDSOURCE" ] && seconds=$($SECONDSOURCE) || seconds=$SECONDS
 		    case ",${DEBUG:-}," in *,durationWithAdjustmentToSeconds:expiry,*) printf >&2 '%sdurationWithAdjustmentToSeconds (expiry): %d -ge %d\n' "$PS5" "$seconds" "$expiryTimespan";; esac
