@@ -219,7 +219,10 @@ process()
 		if [[ "$1" =~ ^[0-9.]+$ ]]; then
 		    initialDelay="$1"; shift
 		fi
-		if [[ "${expiryTimespan}${initialDelay}" = *.* ]] || [ -n "$DATE" -a -z "$SECONDSOURCE" ]; then
+		if [[ "$1" =~ ^[0-9.]+$ ]]; then
+		    local waitInterval="$1"; shift
+		fi
+		if [[ "${expiryTimespan}${initialDelay}${waitInterval}" = *.* ]] || [ -n "$DATE" -a -z "$SECONDSOURCE" ]; then
 		    # First expiry should happen immediately / after initial delay, so subtract the
 		    # expiry timespan from the current time and add the initial delay.
 		    local timestamp; getTimestampInto timestamp
@@ -238,7 +241,10 @@ process()
 	    reset)
 		shift
 		expiryTimespan="${1:?}"; shift
-		if [[ "$expiryTimespan" = *.* ]] || [ -n "$DATE" -a -z "$SECONDSOURCE" ]; then
+		if [[ "$1" =~ ^[0-9.]+$ ]]; then
+		    local waitInterval="$1"; shift
+		fi
+		if [[ "${expiryTimespan}${waitInterval}" = *.* ]] || [ -n "$DATE" -a -z "$SECONDSOURCE" ]; then
 		    [ -n "$startTime" ] || getTimestampInto startTime
 		    printf '🕔 %s\n' "${startTime%%?(.)+(0)}"
 		else
