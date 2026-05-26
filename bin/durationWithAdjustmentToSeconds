@@ -93,6 +93,15 @@ printfWithSeparator()
     printf "${format}%s" "$@" "${SEPARATOR:-$'\n'}"
 }
 
+isTime()
+{
+    [[ "${1?}" =~ ^[0-9.]+$ ]]
+}
+isFractional()
+{
+    [[ "$*" = *.* ]]
+}
+
 typeset -a BC=()
 calculateInto()
 {
@@ -121,7 +130,7 @@ calculateAdjustment()
     local updatedTimespan; calculateInto updatedTimespan "$calculation" || exit $?
     [[ "$updatedTimespan" = -* ]] && updatedTimespan=0	# Don't allow negative results.
     [[ "$updatedTimespan" = .* ]] && updatedTimespan="0$updatedTimespan"	# bc omits a leading zero for fractional numbers smaller than one.
-    [[ "$updatedTimespan" = *.* ]] && updatedTimespan=${updatedTimespan%%?(.)+(0)}	# Remove trailing zeros and the decimal point if there are no more digits after it.
+    isFractional $updatedTimespan && updatedTimespan=${updatedTimespan%%?(.)+(0)}	# Remove trailing zeros and the decimal point if there are no more digits after it.
 
     printfWithSeparator '%s' "$updatedTimespan"
     case ",${DEBUG:-}," in *,durationWithAdjustmentToSeconds:adjust,*) printf >&2 '%sdurationWithAdjustmentToSeconds (adjust): %s -> %s\n' "$PS5" "$originalTimespan" "$updatedTimespan";; esac
@@ -216,13 +225,13 @@ process()
 		shift
 		expiryTimespan="${1:?}"; shift
 		local initialDelay
-		if [[ "$1" =~ ^[0-9.]+$ ]]; then
+		if isTime "$1"; then
 		    initialDelay="$1"; shift
 		fi
-		if [[ "$1" =~ ^[0-9.]+$ ]]; then
+		if isTime "$1"; then
 		    local waitInterval="$1"; shift
 		fi
-		if [[ "${expiryTimespan}${initialDelay}${waitInterval}" = *.* ]] || [ -n "$DATE" -a -z "$SECONDSOURCE" ]; then
+		if isFractional $expiryTimespan $initialDelay $waitInterval || [ -n "$DATE" -a -z "$SECONDSOURCE" ]; then
 		    # First expiry should happen immediately / after initial delay, so subtract the
 		    # expiry timespan from the current time and add the initial delay.
 		    local timestamp; getTimestampInto timestamp
@@ -241,10 +250,10 @@ process()
 	    reset)
 		shift
 		expiryTimespan="${1:?}"; shift
-		if [[ "$1" =~ ^[0-9.]+$ ]]; then
+		if isTime "$1"; then
 		    local waitInterval="$1"; shift
 		fi
-		if [[ "${expiryTimespan}${waitInterval}" = *.* ]] || [ -n "$DATE" -a -z "$SECONDSOURCE" ]; then
+		if isFractional $expiryTimespan $waitInterval || [ -n "$DATE" -a -z "$SECONDSOURCE" ]; then
 		    [ -n "$startTime" ] || getTimestampInto startTime
 		    printf '🕔 %s\n' "${startTime%%?(.)+(0)}"
 		else
@@ -276,7 +285,7 @@ process()
 		local result; calculateInto result "$calculation" || exit $?
 		case ",${DEBUG:-}," in *,durationWithAdjustmentToSeconds:expiry,*) printf >&2 '%sdurationWithAdjustmentToSeconds (expiry): %s = %s\n' "$PS5" "$calculation" "$result";; esac
 		[[ "$result" =~ ^(-?)(\..*) ]] && result="${BASH_REMATCH[1]}0${BASH_REMATCH[2]}"    # bc omits a leading zero for fractional numbers smaller than one.
-		[[ "$result" = *.* ]] && result=${result%%?(.)+(0)}	# Remove trailing zeros and the decimal point if there are no more digits after it.
+		isFractional $result && result=${result%%?(.)+(0)}	# Remove trailing zeros and the decimal point if there are no more digits after it.
 		printf '%s\n' "$result"
 		;;
 
