@@ -251,17 +251,18 @@ process()
 		shift
 		if [ -n "$startTime" ]; then
 		    getTimestampInto endTime
-		    local timeComparison; printf -v timeComparison '%.10f - %.10f >= %.10f' "$endTime" "$startTime" "${expiryTimespan:?}"
-		    local isExpired; calculateInto isExpired "$timeComparison" || exit $?
-		    case ",${DEBUG:-}," in *,durationWithAdjustmentToSeconds:expiry,*) printf >&2 '%sdurationWithAdjustmentToSeconds (expiry): %s = %d\n' "$PS5" "$timeComparison" "$isExpired";; esac
-		    [ $isExpired -ne 0 ] && startTime=$endTime	# Optimization: Set new start time on expiry, so "expiry reset" doesn't have to obtain the time again.
+		    local calculation; printf -v calculation '%.10f - %.10f - %.10f' "$endTime" "$startTime" "${expiryTimespan:?}"
+		    local timeRemaining; calculateInto timeRemaining "$calculation" || exit $?
+		    case ",${DEBUG:-}," in *,durationWithAdjustmentToSeconds:expiry,*) printf >&2 '%sdurationWithAdjustmentToSeconds (expiry): %s = %s\n' "$PS5" "$calculation" "$timeRemaining";; esac
+		    [ ${timeRemaining:0:1} != '-' ] && startTime=$endTime	# Optimization: Set new start time on expiry, so "expiry reset" doesn't have to obtain the time again.
 		else
 		    [ -n "$SECONDSOURCE" ] && seconds=$($SECONDSOURCE) || seconds=$SECONDS
-		    case ",${DEBUG:-}," in *,durationWithAdjustmentToSeconds:expiry,*) printf >&2 '%sdurationWithAdjustmentToSeconds (expiry): %d -ge %d\n' "$PS5" "$seconds" "$expiryTimespan";; esac
-		    [ $seconds -ge ${expiryTimespan:?} ]
+		    local timeRemaining=$((seconds - ${expiryTimespan:?}))
+		    case ",${DEBUG:-}," in *,durationWithAdjustmentToSeconds:expiry,*) printf >&2 '%sdurationWithAdjustmentToSeconds (expiry): %d - %d = %d\n' "$PS5" $seconds $expiryTimespan $timeRemaining;; esac
+		    [ ${timeRemaining:0:1} != '-' ]
 		fi \
 		    && echo 'expired' \
-		    || echo 'remaining'
+		    || echo "${timeRemaining#-}"
 		;;
 
 	    *)  [ $# -eq 1 ] && SEPARATOR=$'\n'

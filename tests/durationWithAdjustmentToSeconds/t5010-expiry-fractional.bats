@@ -17,8 +17,8 @@ load fakeTimer
     assert_output - <<'EOF'
 🕔 99.5
 expired
-remaining
-remaining
+.4120000000
+.3040000000
 EOF
 }
 
@@ -28,10 +28,10 @@ EOF
 🕔 99.5
 expired
 🕔 100.101
-remaining
-remaining
-remaining
-remaining
+.4120000000
+.3040000000
+.1970000000
+.0890000000
 expired
 EOF
 }
@@ -42,12 +42,12 @@ EOF
 🕔 99.5
 expired
 🕔 100.101
-remaining
-remaining
-remaining
+.3120000000
+.2040000000
+.0970000000
 expired
 🕔 100.512
-remaining
+.1100000000
 expired
 EOF
 }
@@ -56,16 +56,16 @@ EOF
     run -0 durationWithAdjustmentToSeconds -- set 0.5 0.2 check check check reset 0.3 check check check reset 0.3 check check check
     assert_output - <<'EOF'
 🕔 99.7
-remaining
-remaining
+.0990000000
+.0110000000
 expired
 🕔 100.297
-remaining
-remaining
+.1930000000
+.0850000000
 expired
 🕔 100.602
-remaining
-remaining
+.1810000000
+.0930000000
 expired
 EOF
 }
@@ -74,17 +74,17 @@ EOF
     run -0 durationWithAdjustmentToSeconds -- set 0.7 0.3 check check check check reset 0.7 check check check check check check check reset 0.7
     assert_output - <<'EOF'
 🕔 99.6
-remaining
-remaining
-remaining
+.1990000000
+.1110000000
+.0030000000
 expired
 🕔 100.404
-remaining
-remaining
-remaining
-remaining
-remaining
-remaining
+.5920000000
+.5020000000
+.3830000000
+.2950000000
+.1960000000
+.0870000000
 expired
 🕔 101.13
 EOF
