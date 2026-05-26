@@ -264,6 +264,15 @@ process()
 		    && echo 'expired' \
 		    || echo "${timeRemaining#-}"
 		;;
+	    calc)
+		shift
+		local calculation; printf -v calculation 'scale=10; %.10f %s %.10f' "${1:?}" "${2:?}" "${3:?}"; shift 3
+		local result; calculateInto result "$calculation" || exit $?
+		case ",${DEBUG:-}," in *,durationWithAdjustmentToSeconds:expiry,*) printf >&2 '%sdurationWithAdjustmentToSeconds (expiry): %s = %s\n' "$PS5" "$calculation" "$result";; esac
+		[[ "$result" =~ ^(-?)(\..*) ]] && result="${BASH_REMATCH[1]}0${BASH_REMATCH[2]}"    # bc omits a leading zero for fractional numbers smaller than one.
+		[[ "$result" = *.* ]] && result=${result%%?(.)+(0)}	# Remove trailing zeros and the decimal point if there are no more digits after it.
+		printf '%s\n' "$result"
+		;;
 
 	    *)  [ $# -eq 1 ] && SEPARATOR=$'\n'
 		convert "$1" || status=$?
