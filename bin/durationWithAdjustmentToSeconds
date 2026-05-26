@@ -7,7 +7,7 @@ getShortUsage()
     case "$1" in
 	format)
 	    printf %s "$formatParameter";;
-	*)  echo "ERROR: Unknown short usage topic \"$1\"!" >&2; exit 2;;
+	*)  echo "ERROR: Unknown short usage topic \"$1\"!" >&2; return 2;;
     esac
 }
 getLongUsage()
@@ -73,9 +73,9 @@ do
     case "$1" in
 	--help|-h|-\?)	shift; printLongUsage "$0"; exit 0;;
 	--get-short-usage)
-			shift; getShortUsage "$@"; exit 0;;
+			shift; getShortUsage "$@"; exit $?;;
 	--get-long-usage)
-			shift; getLongUsage "$@"; exit 0;;
+			shift; getLongUsage "$@"; exit $?;;
 	--unbuffered|-u)
 			shift;;	# Ignore; this implementation is always unbuffered.
 	--no-adjustment|-N)
