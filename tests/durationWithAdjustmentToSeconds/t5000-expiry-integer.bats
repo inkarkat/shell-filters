@@ -28,8 +28,8 @@ EOF
 ⏱️ 3
 expired
 ⏱️ 0
-remaining
-remaining
+2
+1
 expired
 EOF
 }
@@ -40,12 +40,12 @@ EOF
 ⏱️ 3
 expired
 ⏱️ 0
-remaining
-remaining
-remaining
+3
+2
+1
 expired
 ⏱️ 0
-remaining
+1
 expired
 EOF
 }
@@ -54,11 +54,11 @@ EOF
     run -0 durationWithAdjustmentToSeconds -- set 3 2 check check reset 3 check check check
     assert_output - <<'EOF'
 ⏱️ 1
-remaining
+1
 expired
 ⏱️ 0
-remaining
-remaining
+2
+1
 expired
 EOF
 }
@@ -67,16 +67,16 @@ EOF
     run -0 durationWithAdjustmentToSeconds -- set 7 3 check check check reset 7 check check check check check check check
     assert_output - <<'EOF'
 ⏱️ 4
-remaining
-remaining
+2
+1
 expired
 ⏱️ 0
-remaining
-remaining
-remaining
-remaining
-remaining
-remaining
+6
+5
+4
+3
+2
+1
 expired
 EOF
 }

@@ -262,7 +262,7 @@ process()
 		    [ ${timeRemaining:0:1} != '-' ]
 		fi \
 		    && echo 'expired' \
-		    || echo 'remaining'
+		    || echo "${timeRemaining#-}"
 		;;
 
 	    *)  [ $# -eq 1 ] && SEPARATOR=$'\n'

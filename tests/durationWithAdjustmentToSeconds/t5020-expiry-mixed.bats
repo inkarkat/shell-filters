@@ -8,14 +8,14 @@ load fakeTimer
 🕔 99.7
 expired
 🕔 100.101
-remaining
-remaining
+.2120000000
+.1040000000
 expired
 ⏱️ 0
-remaining
+1
 expired
 ⏱️ 0
-remaining
+1
 expired
 EOF
 }
@@ -26,15 +26,15 @@ EOF
 ⏱️ 2
 expired
 ⏱️ 0
-remaining
+1
 expired
 🕔 100
-remaining
-remaining
+.1490000000
+.0610000000
 expired
 🕔 100.297
-remaining
-remaining
+.1430000000
+.0350000000
 expired
 EOF
 }
