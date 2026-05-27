@@ -1,6 +1,8 @@
 #!/bin/bash
 shopt -qs extglob
 
+export DURATIONTOSECONDS_ACCEPT_FRACTIONAL="$DURATIONWITHADJUSTMENTTOSECONDS_ACCEPT_FRACTIONAL"
+
 readonly formatParameter='TIMESPAN [(+-)ADJUSTMENT-TIMESPAN|N%]'
 getShortUsage()
 {
@@ -136,9 +138,7 @@ calculateAdjustment()
     case ",${DEBUG:-}," in *,durationWithAdjustmentToSeconds:adjust,*) printf >&2 '%sdurationWithAdjustmentToSeconds (adjust): %s -> %s\n' "$PS5" "$originalTimespan" "$updatedTimespan";; esac
 }
 
-export DURATIONTOSECONDS_ACCEPT_FRACTIONAL="$DURATIONWITHADJUSTMENTTOSECONDS_ACCEPT_FRACTIONAL"
 fractionPattern=''; [ "$DURATIONTOSECONDS_ACCEPT_FRACTIONAL" ] && fractionPattern='(\.[[:digit:]]+)?'
-
 convert()
 {
     local durationAndOptionalAdjustment="${1:?}"; shift
