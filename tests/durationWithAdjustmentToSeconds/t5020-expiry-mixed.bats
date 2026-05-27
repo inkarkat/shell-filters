@@ -6,17 +6,17 @@ load fakeTimer
     run -0 durationWithAdjustmentToSeconds -- set 0.300 check reset 0.300 check check check reset 2 check check reset 2 check check
     assert_output - <<'EOF'
 🕔 99.7
-expired
+-.1010000000
 🕔 100.101
 .2120000000
 .1040000000
-expired
+-.0030000000
 ⏱️ 0
 1
-expired
+-0
 ⏱️ 0
 1
-expired
+-0
 EOF
 }
 
@@ -24,17 +24,17 @@ EOF
     run -0 durationWithAdjustmentToSeconds -- set 2 check reset 2 check check reset 0.250 check check check reset 0.250 check check check
     assert_output - <<'EOF'
 ⏱️ 2
-expired
+-1
 ⏱️ 0
 1
-expired
+-0
 🕔 100
 .1490000000
 .0610000000
-expired
+-.0470000000
 🕔 100.297
 .1430000000
 .0350000000
-expired
+-.0550000000
 EOF
 }
