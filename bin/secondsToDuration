@@ -151,9 +151,9 @@ function round(integer, rounder)
 {
     return (rounder == 1 ? integer : int(integer / rounder + 0.5) * rounder)
 }
-function makeUnit(value, shortUnit, longUnit)
+function makeUnit(value, prefix, shortUnit, longUnit)
 {
-    return (isShortUnits ? workDayPrefix shortUnit " " : tempUnitSeparator workDayPrefix plural(value,longUnit) ", ")
+    return (isShortUnits ? prefix shortUnit " " : tempUnitSeparator prefix plural(value,longUnit) ", ")
 }
 function convert(integer, rounder, isPreferClock,      seconds, hours, minutes, days, weeks, months, years, generations, renderedDuration, secondUnit, hourUnit, minuteUnit, dayUnit, weekUnit, monthUnit, yearUnit, generationUnit)
 {
@@ -183,14 +183,14 @@ function convert(integer, rounder, isPreferClock,      seconds, hours, minutes, 
     # Cannot use a space between the number and the unit yet, because the
     # precision counting relies on each unit being a single word; the
     # tempUnitSeparator will be replaced with a space in the end.
-    generationUnit = makeUnit(generations, "g", "generation")
-    yearUnit = makeUnit(years, "y", "year")
-    monthUnit = makeUnit(months, "mo", "month")
-    weekUnit = makeUnit(weeks, "w", "week")
-    dayUnit = makeUnit(days, "d", "day")
-    hourUnit = makeUnit(hours, "h", "hour")
-    minuteUnit = makeUnit(minutes, "m", "minute")
-    secondUnit = makeUnit(seconds, "s", "second")
+    generationUnit = makeUnit(generations, workDayPrefix, "g", "generation")
+    yearUnit = makeUnit(years, workDayPrefix, "y", "year")
+    monthUnit = makeUnit(months, workDayPrefix, "mo", "month")
+    weekUnit = makeUnit(weeks, workDayPrefix, "w", "week")
+    dayUnit = makeUnit(days, workDayPrefix, "d", "day")
+    hourUnit = makeUnit(hours, "", "h", "hour")
+    minuteUnit = makeUnit(minutes, "", "m", "minute")
+    secondUnit = makeUnit(seconds, "", "s", "second")
 
     if ((hours == 0 || minutes == 0 || seconds == 0) && ! isPreferClock) {
 	renderedDuration = \
