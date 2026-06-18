@@ -1,0 +1,35 @@
+#!/bin/bash
+
+printUsage()
+{
+    cat <<HELPTEXT
+Sort lines, outputting only the longest of an equal run of lines, where lines
+are considered equal if they share a common prefix (e.g. "foo" and "foobar" are
+equal, but "foo" and "foe" are not).
+HELPTEXT
+    echo
+    printf 'Usage: %q %s\n' "$(basename "$1")" '[-r|--reverse] [--] FILE [...] [-?|-h|--help]'
+    printf 'Usage: cat FILE [...] | %q %s\n' "$(basename "$1")" '[...]'
+}
+
+typeset -a postProcessor=(tac)
+while [ $# -ne 0 ]
+do
+    case "$1" in
+	--help|-h|-\?)	shift; printUsage "$0"; exit 0;;
+	--reverse|-r)	shift; postProcessor=();;
+	--)		shift; break;;
+	-*)		{ echo "ERROR: Unknown option \"$1\"!"; echo; printUsage "$0"; } >&2; exit 2;;
+	*)		break;;
+    esac
+done
+
+printLongestPrefixes()
+{
+    sed -e '1!{ G; /^\([^\n]*\)\n\1/d; s/\n[^\n]*$//; }' -e h
+}
+
+# Note: Need to reverse-sort to get the longest line first.
+sort --unique --reverse -- "$@" \
+    | eval 'printLongestPrefixes' \
+    "${postProcessor:+|}" '"${postProcessor[@]}"'
