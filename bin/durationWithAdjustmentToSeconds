@@ -135,7 +135,7 @@ calculateAdjustment()
     isFractional $updatedTimespan && updatedTimespan=${updatedTimespan%%?(.)+(0)}	# Remove trailing zeros and the decimal point if there are no more digits after it.
 
     printfWithSeparator '%s' "$updatedTimespan"
-    case ",${DEBUG:-}," in *,durationWithAdjustmentToSeconds:adjust,*) printf >&2 '%sdurationWithAdjustmentToSeconds (adjust): %s -> %s\n' "$PS5" "$originalTimespan" "$updatedTimespan";; esac
+    ${DEBUG:+debuglogf --module adjust '%s -> %s' "$originalTimespan" "$updatedTimespan"}
 }
 
 fractionPattern=''; [ "$DURATIONTOSECONDS_ACCEPT_FRACTIONAL" ] && fractionPattern='(\.[[:digit:]]+)?'
@@ -268,13 +268,13 @@ process()
 		    getTimestampInto endTime
 		    local calculation; printf -v calculation '%.10f + %.10f - %.10f' "${expiryTimespan:?}" "$startTime" "$endTime"
 		    local timeRemaining; calculateInto timeRemaining "$calculation" || exit $?
-		    case ",${DEBUG:-}," in *,durationWithAdjustmentToSeconds:expiry,*) printf >&2 '%sdurationWithAdjustmentToSeconds (expiry): %s = %s\n' "$PS5" "$calculation" "$timeRemaining";; esac
+		    ${DEBUG:+debuglogf --module expiry '%s = %s' "$calculation" "$timeRemaining"}
 		    [[ $timeRemaining = 0?(.?(0)) ]] && timeRemaining=-$timeRemaining  # Show zero as negative to indicate that the expiry has been reached; makes it easier for the client to check.
 		    [ ${timeRemaining:0:1} = '-' ] && startTime=$endTime	# Optimization: Set new start time on expiry, so "expiry reset" doesn't have to obtain the time again.
 		else
 		    [ -n "$SECONDSOURCE" ] && seconds=$($SECONDSOURCE) || seconds=$SECONDS
 		    local timeRemaining=$((${expiryTimespan:?} - seconds))
-		    case ",${DEBUG:-}," in *,durationWithAdjustmentToSeconds:expiry,*) printf >&2 '%sdurationWithAdjustmentToSeconds (expiry): %d - %d = %d\n' "$PS5" $expiryTimespan $seconds $timeRemaining;; esac
+		    ${DEBUG:+debuglogf --module expiry '%d - %d = %d' $expiryTimespan $seconds $timeRemaining}
 		    [ $timeRemaining -eq 0 ] && timeRemaining=-0    # Show zero as negative to indicate that the expiry has been reached; makes it easier for the client to check.
 		    [ ${timeRemaining:0:1} = '-' ]
 		fi
@@ -284,7 +284,7 @@ process()
 		shift
 		local calculation; printf -v calculation 'scale=10; %.10f %s %.10f' "${1:?}" "${2:?}" "${3:?}"; shift 3
 		local result; calculateInto result "$calculation" || exit $?
-		case ",${DEBUG:-}," in *,durationWithAdjustmentToSeconds:expiry,*) printf >&2 '%sdurationWithAdjustmentToSeconds (expiry): %s = %s\n' "$PS5" "$calculation" "$result";; esac
+		${DEBUG:+debuglogf --module expiry '%s = %s' "$calculation" "$result"}
 		[[ "$result" =~ ^(-?)(\..*) ]] && result="${BASH_REMATCH[1]}0${BASH_REMATCH[2]}"    # bc omits a leading zero for fractional numbers smaller than one.
 		isFractional $result && result=${result%%?(.)+(0)}	# Remove trailing zeros and the decimal point if there are no more digits after it.
 		printf '%s\n' "$result"
@@ -303,11 +303,11 @@ status=0
 if [ $# -eq 0 ]; then
     while IFS=$'\t' read -r -a items || [ -n "${items[*]}" ]
     do
-	case ",${DEBUG:-}," in *,durationWithAdjustmentToSeconds:input,*) printf >&2 '%sdurationWithAdjustmentToSeconds (input): ' "$PS4"; dump-args -- "${items[@]}";; esac
+	${DEBUG:+dump-args --on-debug --module input -- "${items[@]}"}
 	SEPARATOR=$'\t' process "${items[@]}" || status=$?
     done
 else
-    case ",${DEBUG:-}," in *,durationWithAdjustmentToSeconds:input,*) printf >&2 '%sdurationWithAdjustmentToSeconds (input): ' "$PS4"; dump-args -- "$@";; esac
+    ${DEBUG:+dump-args --on-debug --module input -- "$@"}
     process "$@" || status=$?
 fi
 

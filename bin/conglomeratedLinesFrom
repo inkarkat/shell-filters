@@ -224,7 +224,7 @@ conglomerate()
     local resetFilespec
     if [ "$isResetAfterPrint" ]; then
 	resetFilespec="$(mktemp --tmpdir "$(basename -- "$0")-XXXXXX" 2>/dev/null || echo "${TMPDIR:-/tmp}/$(basename -- "$0").$$$RANDOM")"
-	[ "${DEBUG:-}" ] || trap 'rm -f -- "$resetFilespec" 2>/dev/null' EXIT
+	! ${DEBUG:+debugenabled --invert-match --} ${DEBUG:-:} || trap 'rm -f -- "$resetFilespec" 2>/dev/null' EXIT
     fi
 
     awk \
