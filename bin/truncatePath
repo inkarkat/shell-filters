@@ -75,7 +75,7 @@ pathTruncater()
 
 	    # pathBack contains the last characters (as many of $width that are not yet spent by the front part plus the $ellipsis).
 	    pathBack="${shortenedPath:$((${#shortenedPath} - width + ${#pathFront} + ${#ellipsis}))}"
-	    [[ "${pathBack:0:-1}" =~ / ]] && pathBack="/${pathBack#*/}"    # Trim left up to slash.
+	    [ -n "$pathBack" ] && [[ "${pathBack:0:-1}" =~ / ]] && pathBack="/${pathBack#*/}"    # Trim left up to slash.
 
 	    shortenedPath="${pathFront}${ellipsis}${pathBack}"	# Reassemble path.
 	fi
