@@ -1,6 +1,6 @@
 #!/bin/bash
 
-: ${HIGHLIGHTRELATIVEAGE_RESET=[0m}
+: ${HIGHLIGHTRELATIVEAGE_RESET='[0m'}
 : ${HIGHLIGHTRELATIVEAGE_COLORS:="[38;5;155m [38;5;149m $HIGHLIGHTRELATIVEAGE_RESET [38;5;132m [38;5;124m [38;5;161m"}
 
 printUsage()
@@ -22,7 +22,7 @@ while [ $# -ne 0 ]
 do
     case "$1" in
 	--help|-h|-\?)	    shift; printUsage "$0"; exit 0;;
-	--delete-date|-d)   shift; match='\(.*\)'; frontReplacement='\6'; prefixReplacement=''; innerReplacement='\2\6';;
+	--delete-date|-d)   shift; match='\(.*\)'; frontReplacement='\7'; prefixReplacement=''; innerReplacement='\2\6';;
 	--palette|-p)	    shift
 			    case "$1" in
 				dashboard)  HIGHLIGHTRELATIVEAGE_COLORS="[38;2;255;255;255m [38;2;238;238;238m $HIGHLIGHTRELATIVEAGE_RESET [38;2;72;72;72m [38;2;175;21;26m [38;2;79;9;10m";;
@@ -55,18 +55,19 @@ addPattern()
     )
 }
 
-# [LINE-COLOR] PREFIX (AGE) SUFFIX
-lineColorPattern='^\(\x1b\[[0-9:;]*m\)\?'
+colorPattern='\(\x1b\[[0-9:;]*m\)\?'
+# [LINE-COLOR] PREFIX (AGE) [SUFFIX]
+lineColorPattern="^${colorPattern}"
 beforePattern='\(.*\)'
 prefixPattern='\([[:space:]]\+(\)'
 suffixPattern='\()\)'
 addPattern
 
-# [LINE-COLOR] AGE SUFFIX
-lineColorPattern='^\(\x1b\[[0-9:;]*m\)\?'
+# [LINE-COLOR] AGE [SUFFIX]
+lineColorPattern="^${colorPattern}"
 beforePattern='\(\)'
 prefixPattern='\(\)'
-suffixPattern='\([[:space:]]\+\)'
+suffixPattern="\\(${colorPattern}\$\|[[:space:]]\\+\\)"
 prefixReplacement=''
 innerReplacement="$frontReplacement"
 addPattern
