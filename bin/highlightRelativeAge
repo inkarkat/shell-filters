@@ -21,6 +21,18 @@ typeset -a dashboardColors=(
 '[38;2;143;52;52m'
 '[38;2;127;86;86m'
 )
+typeset -a testingColors=(
+'{SECONDS}'
+'{MINUTES}'
+'{HOURS}'
+'{1-9DAYS}'
+'{10+DAYS}'
+'{WEEKS}'
+'{MONTHS}'
+'{YEARS}'
+)
+testingReset='{}'
+
 : ${HIGHLIGHTRELATIVEAGE_COLORS:="${defaultColors[*]}"}
 
 printUsage()
@@ -52,6 +64,8 @@ do
 				printUsage "$0"
 				exit 2
 			    fi >&2
+			    eval "resetOverride=\"\${${1:?}Reset}\""
+			    [ -n "$resetOverride" ] && HIGHLIGHTRELATIVEAGE_RESET="$resetOverride"
 			    shift
 			    ;;
 	--)		    break;;
