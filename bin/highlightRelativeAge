@@ -33,6 +33,7 @@ HELPTEXT
     echo
     printf 'Usage: cat FILE [...] | %q %s\n' "$(basename "$1")" '[...]'
 }
+
 match=
 frontReplacement='\3'
 prefixReplacement='\1\2'
@@ -44,14 +45,13 @@ do
 	--help|-h|-\?)	    shift; printUsage "$0"; exit 0;;
 	--delete-date|-d)   shift; match='\(.*\)'; frontReplacement='\7'; prefixReplacement=''; innerReplacement='\2\6';;
 	--palette|-p)	    shift
-			    case "$1" in
-				dashboard)  HIGHLIGHTRELATIVEAGE_COLORS="${dashboardColors[*]}";;
-				*)	    printf 'ERROR: Invalid palette: %s\n' "$1"
-					    echo
-					    printUsage "$0"
-					    exit 2
-					    ;;
-			    esac >&2
+			    eval "HIGHLIGHTRELATIVEAGE_COLORS=\"\${${1:?}Colors[*]}\""
+			    if [ -z "$HIGHLIGHTRELATIVEAGE_COLORS" ]; then
+				printf 'ERROR: Invalid palette: %s\n' "$1"
+				echo
+				printUsage "$0"
+				exit 2
+			    fi >&2
 			    shift
 			    ;;
 	--)		    break;;
