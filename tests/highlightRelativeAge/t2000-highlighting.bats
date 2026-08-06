@@ -7,7 +7,10 @@ load fixture
     assert_output - <<'EOF'
 {MINUTES}3 minutes ago {}I was here
 {MONTHS}5 months ago{}
-Warning:{10+DAYS} (10 days ago){} It finally happened.
+{1-9DAYS_OR_WEEK}7 days ago {}is the same as
+{1-9DAYS_OR_WEEK}1 week ago{}
+Warning:{10+DAYS_OR_WEEKS} (10 days ago){} It finally happened.
+{10+DAYS_OR_WEEKS}2 weeks ago {}almost
 That happened recently{MINUTES} (1 minute ago){}
 EOF
 }
@@ -17,7 +20,10 @@ EOF
     assert_output - <<'EOF'
 {MINUTES}I was here{}
 {MONTHS}{}
-{10+DAYS}Warning: It finally happened.{}
+{1-9DAYS_OR_WEEK}is the same as{}
+{1-9DAYS_OR_WEEK}{}
+{10+DAYS_OR_WEEKS}Warning: It finally happened.{}
+{10+DAYS_OR_WEEKS}almost{}
 {MINUTES}That happened recently{}
 EOF
 }
@@ -27,7 +33,10 @@ EOF
     assert_output - <<'EOF'
 {MINUTES}3 minutes ago {}[1mI was here[0m
 {MONTHS}5 months ago[0m{}[1m
-[1mWarning:{10+DAYS} (10 days ago){}[1m It finally happened.[0m
+{1-9DAYS_OR_WEEK}7 days ago {}is the same as
+{1-9DAYS_OR_WEEK}1 week ago{}
+[1mWarning:{10+DAYS_OR_WEEKS} (10 days ago){}[1m It finally happened.[0m
+{10+DAYS_OR_WEEKS}2 weeks ago {}almost
 [1mThat happened recently{MINUTES} (1 minute ago){}[1m[0m
 EOF
 }
@@ -37,7 +46,10 @@ EOF
     assert_output - <<'EOF'
 07m3 minutes ago I was here[0m
 07m5 months ago[0m
-{10+DAYS}07mWarning: It finally happened.[0m{}
+{1-9DAYS_OR_WEEK}is the same as{}
+{1-9DAYS_OR_WEEK}{}
+{10+DAYS_OR_WEEKS}07mWarning: It finally happened.[0m{}
+{10+DAYS_OR_WEEKS}almost{}
 {MINUTES}07mThat happened recently[0m{}
 EOF
 }
