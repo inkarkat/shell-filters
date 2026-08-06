@@ -35,15 +35,44 @@ testingReset='{}'
 
 : ${HIGHLIGHTRELATIVEAGE_COLORS:="${defaultColors[*]}"}
 
+printShortUsage()
+{
+    # Note: short followed by long option; if the user knows the short one, she can
+    # skim the long one.
+    printf 'Usage: %q %s\n' "$(basename "$1")" '[-d|--delete-date] [-p|--palette dashboard] [-e SED-EXPR ...] [--] [FILE ...] [-?|-h|--help]'
+    printf 'Usage: cat FILE [...] | %q %s\n' "$(basename "$1")" '[...]'
+}
 printUsage()
 {
-    cat <<HELPTEXT
+    # This is the short help when launched with no or incorrect arguments.
+    # It is printed to stderr to avoid accidental processing.
+    printShortUsage "$1" >&2
+    printf >&2 '\nTry %q --help for more information.\n' "$(basename "$1")"
+}
+printLongUsage()
+{
+    # This is the long "man page" when launched with the help argument.
+    # It is printed to stdout to allow paging with 'more'.
+    cat <<HELPDESCRIPTION
 Highlight relative dates with colors, depending on the age.
+HELPDESCRIPTION
+    echo
+    printShortUsage "$1"
+    echo
+    cat <<HELPTEXT
+DEMO:
 HELPTEXT
-    echo
-    printf 'Usage: %q %s\n' "$(basename "$1")" '[-d|--delete-date] [-p|--palette dashboard] [-e SED-EXPR ...] [--] [FILE ...] [-?|-h|--help]'
-    echo
-    printf 'Usage: cat FILE [...] | %q %s\n' "$(basename "$1")" '[...]'
+    export HIGHLIGHTRELATIVEAGE_COLORS HIGHLIGHTRELATIVEAGE_RESET
+    "${BASH_SOURCE[0]}" <<'EOF'
+20 seconds ago
+2 minutes ago
+3 hours ago
+4 days ago
+11 days ago is almost as long as
+2 weeks ago
+3 months ago is old
+4 years ago is very far away now
+EOF
 }
 
 match=
@@ -54,7 +83,7 @@ typeset -a sedArgs=()
 while [ $# -ne 0 ]
 do
     case "$1" in
-	--help|-h|-\?)	    shift; printUsage "$0"; exit 0;;
+	--help|-h|-\?)	    shift; printLongUsage "$0"; exit 0;;
 	--delete-date|-d)   shift; match='\(.*\)'; frontReplacement='\7'; prefixReplacement=''; innerReplacement='\2\6';;
 	--palette|-p)	    shift
 			    eval "HIGHLIGHTRELATIVEAGE_COLORS=\"\${${1:?}Colors[*]}\""
