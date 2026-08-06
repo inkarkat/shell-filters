@@ -7,11 +7,15 @@ bats_load_library bats-assert
 inputWrapper()
 {
     local color="${1?}"; shift
-    local colorEnd="${color:+[0m}"
+    local R='[0m'
+    local colorEnd="${color:+$R}"
     printf '%s%s%s\n' \
 	    "$color" '3 minutes ago I was here' "$colorEnd" \
 	    "$color" '5 months ago' "$colorEnd" \
+	    '' '7 days ago is the same as' '' \
+	    '' '1 week ago' '' \
 	    "$color" 'Warning: (10 days ago) It finally happened.' "$colorEnd" \
+	    '' '2 weeks ago almost' '' \
 	    "$color" 'That happened recently (1 minute ago)' "$colorEnd" \
 	| "$@"
 }
