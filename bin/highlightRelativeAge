@@ -1,7 +1,27 @@
 #!/bin/bash
 
 : ${HIGHLIGHTRELATIVEAGE_RESET='[0m'}
-: ${HIGHLIGHTRELATIVEAGE_COLORS:="[38;5;192m [38;5;155m [38;5;149m $HIGHLIGHTRELATIVEAGE_RESET [38;5;132m [38;5;124m [38;5;161m [38;5;197m"}
+typeset -a defaultColors=(
+'[38;5;192m'
+'[38;5;155m'
+'[38;5;149m'
+"$HIGHLIGHTRELATIVEAGE_RESET"
+'[38;5;132m'
+'[38;5;124m'
+'[38;5;161m'
+'[38;5;197m'
+)
+typeset -a dashboardColors=(
+'[38;2;215;255;135m'
+'[38;2;255;255;255m'
+'[38;2;238;238;238m'
+"$HIGHLIGHTRELATIVEAGE_RESET"
+'[38;2;72;72;72m'
+'[38;2;175;21;26m'
+'[38;2;143;52;52m'
+'[38;2;127;86;86m'
+)
+: ${HIGHLIGHTRELATIVEAGE_COLORS:="${defaultColors[*]}"}
 
 printUsage()
 {
@@ -25,7 +45,7 @@ do
 	--delete-date|-d)   shift; match='\(.*\)'; frontReplacement='\7'; prefixReplacement=''; innerReplacement='\2\6';;
 	--palette|-p)	    shift
 			    case "$1" in
-				dashboard)  HIGHLIGHTRELATIVEAGE_COLORS="[38;2;215;255;135m [38;2;255;255;255m [38;2;238;238;238m $HIGHLIGHTRELATIVEAGE_RESET [38;2;72;72;72m [38;2;175;21;26m [38;2;143;52;52m [38;2;127;86;86m";;
+				dashboard)  HIGHLIGHTRELATIVEAGE_COLORS="${dashboardColors[*]}";;
 				*)	    printf 'ERROR: Invalid palette: %s\n' "$1"
 					    echo
 					    printUsage "$0"
