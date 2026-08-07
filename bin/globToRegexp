@@ -40,6 +40,9 @@ HELPDESCRIPTION
 			regular expressions (PCREs).
     --additional-chars|-a CHARS
 			Also escape each character in CHARS as well.
+SEE ALSO:
+- toLiteralRegexp converts literal text instead of treating text as a shell
+  glob.
 HELPTEXT
 }
 
