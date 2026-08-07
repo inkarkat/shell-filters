@@ -28,10 +28,14 @@ HELPDESCRIPTION
     printShortUsage "$1"
     echo
     cat <<HELPTEXT
+    --unbuffered|-u	Immediately output each read line.
     --multiline|-m	Convert the entire FILE / TEXT to a single replacement
 			with \n instead of converting each line separately.
     --additional-chars|-a CHARS
 			Also escape each character in CHARS as well.
+SEE ALSO:
+- toLiteralRegexp converts literal text to a regular expression instead of a
+  replacement string.
 HELPTEXT
 }
 

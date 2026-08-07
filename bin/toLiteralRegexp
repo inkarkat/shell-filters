@@ -44,6 +44,8 @@ HELPDESCRIPTION
 			Also escape each character in CHARS as well.
 SEE ALSO:
 - globToRegexp converts shell globs instead of literal text.
+- toLiteralReplacement converts literal text to a replacement string for use in
+  sed et al.
 HELPTEXT
 }
 
