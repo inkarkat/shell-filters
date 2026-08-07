@@ -28,15 +28,22 @@ HELPDESCRIPTION
     printShortUsage "$1"
     echo
     cat <<HELPTEXT
+    --unbuffered|-u	Immediately output each read line.
+    --basic-regexp|-G	Apply escaping for interpretation as basic regular
+			expressions. (This is the default.)
     --extended-regexp|-E
-			Apply escaping for interpretation as an extended regular
-			expression.
+			Apply escaping for interpretation as extended regular
+			expressions.
+    --perl-regexp|-P	Apply escaping for interpretation as Perl-compatible
+			regular expressions (PCREs).
     --line-regexp|-x	Add ^ and $ anchors to the resulting regular expression.
     --multiline|-m	Convert the entire FILE / TEXT to a single regular
 			expression with \n atoms instead of converting each line
 			separately.
     --additional-chars|-a CHARS
 			Also escape each character in CHARS as well.
+SEE ALSO:
+- globToRegexp converts shell globs instead of literal text.
 HELPTEXT
 }
 
@@ -56,7 +63,7 @@ do
 	--extended-regexp|-E)
 			shift; additionalChars+='+?{}|()';;
 	--perl-regexp|-P)
-			shift; basicChars='\\'; additionalSedArgs+=(-e 's/[^\\]\+/\\Q&\\E/g');;
+			shift; basicChars=\\; additionalSedArgs+=(-e 's/[^\\]\+/\\Q&\\E/g');;
 	--line-regexp|-x)
 			shift; finalSedArgs+=(-e 's/.*/^&$/');;
 	--additional-chars|-a)

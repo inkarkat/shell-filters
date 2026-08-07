@@ -1,0 +1,155 @@
+#!/bin/bash
+
+printShortUsage()
+{
+    # Note: short followed by long option; if the user knows the short one, she can
+    # skim the long one.
+    printf 'Usage: %q %s\n' "$(basename "$1")" '[-u|--unbuffered] [--unanchored] [-G|--basic-regexp|-E|--extended-regexp|-P|--perl-regexp] [-a|--additional-chars CHARS] [-?|-h|--help]'
+    printf 'Usage: %q %s\n' "$(basename "$1")" '... -- FILE [...]'
+    printf 'Usage: %q %s\n' "$(basename "$1")" '... TEXT [...]'
+    printf 'Usage: cat FILE [...] | %q %s\n' "$(basename "$1")" '... [-]'
+}
+printUsage()
+{
+    # This is the short help when launched with no or incorrect arguments.
+    # It is printed to stderr to avoid accidental processing.
+    printShortUsage "$1" >&2
+    printf >&2 '\nTry %q --help for more information.\n' "$(basename "$1")"
+}
+printLongUsage()
+{
+    # This is the long "man page" when launched with the help argument.
+    # It is printed to stdout to allow paging with 'more'.
+    cat <<HELPDESCRIPTION
+Treat each line in FILE(s) / TEXT as a shell glob and convert it to an
+equivalent basic regular expression.
+HELPDESCRIPTION
+    echo
+    printShortUsage "$1"
+    echo
+    cat <<HELPTEXT
+    --unbuffered|-u	Immediately output each read line.
+    --unanchored	Do not add ^ and $ anchors to the resulting regular
+			expression.
+    --basic-regexp|-G	Apply escaping for interpretation as basic regular
+			expressions. (This is the default.)
+    --extended-regexp|-E
+			Apply escaping for interpretation as extended regular
+			expressions.
+    --perl-regexp|-P	Apply escaping for interpretation as Perl-compatible
+			regular expressions (PCREs).
+    --additional-chars|-a CHARS
+			Also escape each character in CHARS as well.
+SEE ALSO:
+- toLiteralRegexp converts literal text instead of treating text as a shell
+  glob.
+HELPTEXT
+}
+
+isBuffered=t; [ -t 1 ] && isBuffered=
+beginAnchor='^'
+endAnchor='$'
+beginLiteral=
+endLiteral=
+basicChars='][\$*.^'
+additionalChars=
+while [ $# -ne 0 ]
+do
+    case "$1" in
+	--help|-h|-\?)	shift; printLongUsage "$0"; exit 0;;
+	--unbuffered|-u)
+			shift; isBuffered=;;
+	--unanchored)	shift; beginAnchor=; endAnchor=;;
+	--basic-regexp|-G)
+			shift;;
+	--extended-regexp|-E)
+			shift; additionalChars+='+?{}|()';;
+	--perl-regexp|-P)
+			shift; basicChars=\\; beginLiteral='\Q'; endLiteral='\E';;
+	--additional-chars|-a)
+			shift; additionalChars+="${1?}"; shift;;
+	--)		break;;
+	-)		break;; # For supporting special - FILE without prior --
+	-*)		{ echo "ERROR: Unknown option \"$1\"!"; echo; printUsage "$0"; } >&2; exit 2;;
+	*)		break;;
+    esac
+done
+
+typeset -a GLOBTOREGEXP=(
+    awk \
+	-v "isBuffered=$isBuffered" \
+	-v "beginAnchor=$beginAnchor" \
+	-v "endAnchor=$endAnchor" \
+	-v "beginLiteral=${beginLiteral//\\/\\\\}" \
+	-v "endLiteral=${endLiteral//\\/\\\\}" \
+	-v "escapeChars=[${basicChars//\\/\\\\\\\\}${additionalChars//\\/\\\\\\\\}]" \
+    '
+function addSpecial(regexp) {
+    if (isLiteral) {
+	re = re endLiteral
+	isLiteral = 0
+    }
+    re = re regexp
+}
+{
+    re = ""
+    addSpecial(beginAnchor)
+    for (i = 1; i <= length($0); i++) {
+	c = substr($0, i, 1)
+
+	if (c == "*") {
+	    addSpecial(".*")
+	} else if (c == "?") {
+	    addSpecial(".")
+	} else if (c == "[") {
+	    j = i + 1
+	    characterClass = "["
+
+	    # [!...] -> [^...]
+	    if (substr($0, j, 1) == "!") {
+		characterClass = characterClass "^"
+		j++
+	    }
+
+	    # A leading ] is taken literally.
+	    if (substr($0, j, 1) == "]") {
+		characterClass = characterClass "]"
+		j++
+	    }
+
+	    while (j <= length($0)) {
+		c = substr($0, j, 1)
+		characterClass = characterClass c
+		if (c == "]")
+		    break
+		j++
+	    }
+
+	    addSpecial(characterClass)
+	    i = j
+	} else if (c ~ escapeChars) {
+	    addSpecial("\\" c)
+	} else {
+	    if (! isLiteral) {
+		re = re beginLiteral
+		isLiteral = 1
+	    }
+	    re = re c
+	}
+    }
+    addSpecial(endAnchor)
+
+    print re
+    if (! isBuffered) fflush()
+}
+'
+)
+
+if [ $# -eq 0 -o "$*" = - ]; then
+    exec "${GLOBTOREGEXP[@]}"
+elif [ $# -ge 2 -a "$1" = '--' ]; then
+    shift
+    exec "${GLOBTOREGEXP[@]}" "$@"
+else
+    printf '%s\n' "$@" | "${GLOBTOREGEXP[@]}"
+fi
