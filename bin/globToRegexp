@@ -36,6 +36,8 @@ HELPDESCRIPTION
     --extended-regexp|-E
 			Apply escaping for interpretation as extended regular
 			expressions.
+    --perl-regexp|-P	Apply escaping for interpretation as Perl-compatible
+			regular expressions (PCREs).
     --additional-chars|-a CHARS
 			Also escape each character in CHARS as well.
 HELPTEXT
@@ -44,6 +46,8 @@ HELPTEXT
 isBuffered=t; [ -t 1 ] && isBuffered=
 beginAnchor='^'
 endAnchor='$'
+beginLiteral=
+endLiteral=
 basicChars='][\$*.^'
 additionalChars=
 while [ $# -ne 0 ]
@@ -58,7 +62,7 @@ do
 	--extended-regexp|-E)
 			shift; additionalChars+='+?{}|()';;
 	--perl-regexp|-P)
-			shift; basicChars='\\'; additionalSedArgs+=(-e 's/[^\\]\+/\\Q&\\E/g');;
+			shift; basicChars=\\; beginLiteral='\Q'; endLiteral='\E';;
 	--additional-chars|-a)
 			shift; additionalChars+="${1?}"; shift;;
 	--)		break;;
@@ -73,17 +77,27 @@ typeset -a GLOBTOREGEXP=(
 	-v "isBuffered=$isBuffered" \
 	-v "beginAnchor=$beginAnchor" \
 	-v "endAnchor=$endAnchor" \
+	-v "beginLiteral=${beginLiteral//\\/\\\\}" \
+	-v "endLiteral=${endLiteral//\\/\\\\}" \
 	-v "escapeChars=[${basicChars//\\/\\\\\\\\}${additionalChars//\\/\\\\\\\\}]" \
     '
+function addSpecial(regexp) {
+    if (isLiteral) {
+	re = re endLiteral
+	isLiteral = 0
+    }
+    re = re regexp
+}
 {
-    re = beginAnchor
+    re = ""
+    addSpecial(beginAnchor)
     for (i = 1; i <= length($0); i++) {
 	c = substr($0, i, 1)
 
 	if (c == "*") {
-	    re = re ".*"
+	    addSpecial(".*")
 	} else if (c == "?") {
-	    re = re "."
+	    addSpecial(".")
 	} else if (c == "[") {
 	    j = i + 1
 	    characterClass = "["
@@ -108,15 +122,21 @@ typeset -a GLOBTOREGEXP=(
 		j++
 	    }
 
-	    re = re characterClass
+	    addSpecial(characterClass)
 	    i = j
 	} else if (c ~ escapeChars) {
-	    re = re "\\" c
+	    addSpecial("\\" c)
 	} else {
+	    if (! isLiteral) {
+		re = re beginLiteral
+		isLiteral = 1
+	    }
 	    re = re c
 	}
     }
-    print re endAnchor
+    addSpecial(endAnchor)
+
+    print re
     if (! isBuffered) fflush()
 }
 '
