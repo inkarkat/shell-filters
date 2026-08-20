@@ -1,0 +1,33 @@
+#!/bin/bash
+shopt -qs extglob
+
+printUsage()
+{
+    cat <<HELPTEXT
+Compare two unsorted files line by line.
+HELPTEXT
+    echo
+    printf 'Usage: %q %s\n' "$(basename "$1")" '[OPTION]... FILE1 FILE2 [-?|-h|--help]'
+}
+
+typeset -a commArgs=()
+typeset -a sortArgs=()
+while [ $# -ne 0 ]
+do
+    case "$1" in
+	--help|-h|-\?)	shift; printUsage "$0"; exit 0;;
+
+	-+([123]))	commArgs+=("$1"); shift;;
+	--@(total|version))
+			commArgs+=("$1"); shift;;
+	--zero-terminated|-z)
+			commArgs+=("$1"); sortArgs=("$1"); shift;;
+	--)		commArgs+=("$1"); shift; break;;
+	-*)		{ echo "ERROR: Unknown option \"$1\"!"; echo; printUsage "$0"; } >&2; exit 2;;
+	*)		break;;
+    esac
+done
+[ $# -eq 2 ] \
+    || exec comm "${commArgs[@]}" "$@"
+
+eval "comm \"\${commArgs[@]}\" <(sort \"\${sortArgs[@]}\" -- \"\$1\") <(sort \"\${sortArgs[@]}\" -- \"\$2\")"
