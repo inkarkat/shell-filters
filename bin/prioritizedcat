@@ -51,7 +51,7 @@ do
 done
 
 TMPFILE="$(mktemp --tmpdir "$(basename -- "$0")-XXXXXX" 2>/dev/null || echo "${TMPDIR:-/tmp}/$(basename -- "$0").$$$RANDOM")"
-! ${DEBUG:+debugenabled --invert-match --} ${DEBUG:-:} || trap 'rm -f -- "$TMPFILE" 2>/dev/null' EXIT
+trap '${DEBUG:+debugcommand --} rm -f -- "$TMPFILE" 2>/dev/null' EXIT
 
 sourceCommand=; [ $# -eq 0 ] || sourceCommand=cat
 eval "${sourceCommand}${sourceCommand:+ \"\$@\" | }tee \"\$TMPFILE\"" | grep "${grepArgs[@]}" || cat "$TMPFILE"
