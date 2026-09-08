@@ -15,7 +15,7 @@ All of these transform some input into some output, potentially with other side 
 * [inkarkat/pipes](https://github.com/inkarkat/pipes) for the `conglomeratedLinesFrom` command
 * [inkarkat/shell-scripting](https://github.com/inkarkat/shell-scripting) for automated tests
 * [inkarkat/shell-debugging](https://github.com/inkarkat/shell-debugging) for debugging (optional)
-* automated testing is done with _bats - Bash Automated Testing System_ (https://github.com/bats-core/bats-core)
+* automated testing is done with _Bats_ - [Bash Automated Testing System](https://github.com/bats-core/bats-core)
 
 ### Installation
 
