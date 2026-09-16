@@ -28,7 +28,8 @@ HELPDESCRIPTION
     --whitespace|-w	Only remove trailing whitespace; keep empty lines at the
 			end.
     --blank-lines|-b	Only remove any lines that just contain whitespace or
-			are completely empty at the end; keep trailing whitespace.
+			are completely empty at the end; keep trailing
+			whitespace.
     --empty-lines|-e	Only remove (fully) empty lines at the end; keep
 			trailing whitespace.
 HELPTEXT
