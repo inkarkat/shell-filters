@@ -7,7 +7,7 @@ printShortUsage()
 {
     # Note: short followed by long option; if the user knows the short one, she can
     # skim the long one.
-    printf 'Usage: %q %s\n' "$(basename "$1")" '[-k|--keep-whitespace] [-s|--skip-empty] [-f|--first-only|-l|--last-only] [-?|-h|--help] ...'
+    printf 'Usage: %q %s\n' "$(basename "$1")" '[-k|--keep-whitespace] [-s|--skip-empty] [-f|--first-only|-l|--last-only|-L|--except-last] [-?|-h|--help] ...'
     echo
     printf 'Usage: %q %s\n' "$(basename "$1")" "... -c|--command \"COMMANDLINE\" [-c ...] | --exec SIMPLECOMMAND ... $SUFFIX_EXEC_END [--exec ...] [--] SUFFIX"
     echo
@@ -39,6 +39,7 @@ HELPDESCRIPTION
 			contain whitespace; print them as-is.
     --first-only|-f	Suffix the first line only.
     --last-only|-l	Suffix the last line only.
+    --except-last|-L	Suffix all but the last line.
     --command|-c CMD	Execute CMD as a command-line and add SUFFIX to its
 			output.
     --exec COMMAND $SUFFIX_EXEC_END	Execute COMMAND; all following arguments are taken to be
@@ -59,6 +60,7 @@ do
 	--skip-empty|-s)	shift; additionalSedProcessing+=(-e '/^[[:space:]]*\r\?$/b');;
 	--first-only|-f)	shift; address=1;;
 	--last-only|-l)		shift; address='$';;
+	--except-last|-L)	shift; address='$!';;
 	--command|-c)	shift; commands+="${commands:+ $SUFFIX_COMMAND_JOINER }$1"; shift;;
 	--exec)		shift
 			cmd=
