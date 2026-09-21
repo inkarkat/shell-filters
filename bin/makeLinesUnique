@@ -2,24 +2,31 @@
 
 BEGIN {
     if (ARGV[1] ~ /^(--(help|man|usage)|-[Hh?])$/) {
-	print "Make lines unique by appending a (2) count to them if necessary."
+	print "Make lines unique by appending a (1), (2), ... count to them if necessary."
 	print ""
 	print "Usage: makeLinesUnique FILE [...] [-?|-H|--man|--usage]"
 	print "Usage: cat FILE [...] | makeLinesUnique]"
 	exit
     }
 }
-
-function appendNumber(line)
+function appendNumber(line, number)
 {
-    return line " (" (++c[line] + 1) ")"
+    return line " (" number ")"
 }
 {
-    line = $0
-    while (line in a) {
-	line = appendNumber(line)
+    lines[NR] = $0
+    a[$0] += 1
+    a[appendNumber($0, a[$0])] += 1
+}
+END {
+    for (i = 1; i <= NR; i++) {
+	iline = lines[i]
+	if (a[iline] > 1) {
+	    while (a[iline] > 1) {
+		iline = appendNumber(iline, ++c[iline])
+	    }
+	    a[iline] += 1
+	}
+	print iline
     }
-    a[$0] = 1
-    a[line] = 1
-    print line
 }
